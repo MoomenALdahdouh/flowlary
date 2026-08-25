@@ -49,7 +49,11 @@ describe('Phase 3 — InputEngine + CommandRouter wiring', () => {
     router.register('CORRECT', correct)
     router.register('TRANSLATE', translate)
     router.register('FIX_LAYOUT', layout)
-    orchestrator = new CommandOrchestrator({ engine, router })
+    orchestrator = new CommandOrchestrator({
+      engine,
+      router,
+      onSpeedBox: () => true,
+    })
     engine.start()
     orchestrator.start()
   })

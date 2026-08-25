@@ -6,7 +6,7 @@
 | **1** | Foundation — monorepo, core scaffold, build, tests | ✅ Complete |
 | **2** | DOM / Safety / FieldSession hardening | ✅ Complete |
 | **3** | InputEngine + CommandRouter wired to events | ✅ Complete |
-| **4** | Port Layfix layout module (local-first) | Pending |
+| **4** | Port Layfix layout module (local-first) | ✅ Complete |
 | **5** | Port Lingo manual translation | Pending |
 | **6** | Port Lingo live translation (default OFF) | Pending |
 | **7** | Port EWA correction + BYOK Groq | Pending |

@@ -57,10 +57,12 @@ chrome.commands / Ctrl+Shift+, or P / RUN_COMMAND message
     → CommandOrchestrator
     → Safety Gate
     → FieldSession.tryAcquireWrite
-    → CommandRouter (stub handlers in Phase 3)
+    → CommandRouter (correction/translation stubs; layout implemented Phase 4)
 ```
 
-See [PHASE3_INPUT_ROUTING.md](./PHASE3_INPUT_ROUTING.md).
+Phase 4: **LayoutScheduler** subscribes to EventBus for auto-fix on word boundaries. **LayoutFeature** handles manual `FIX_LAYOUT`. **Speed Box** toggled via orchestrator callback — no extra document listeners.
+
+See [PHASE3_INPUT_ROUTING.md](./PHASE3_INPUT_ROUTING.md), [PHASE4_LAYOUT.md](./PHASE4_LAYOUT.md).
 
 ## FieldSession (Phase 2 hardened)
 

@@ -9,6 +9,7 @@ import type {
 } from '../messaging/types.ts'
 import { isExtensionRequest } from '../messaging/types.ts'
 import { commandFromChromeCommand, sendCommandToActiveTab } from './commands.ts'
+import { handleCheckWord } from './classify.ts'
 
 const router = new CommandRouter()
 
@@ -68,6 +69,9 @@ export async function handleMessage(
 
     case 'NOTE_USAGE_ACTIVITY':
       return { ok: true }
+
+    case 'CHECK_WORD':
+      return handleCheckWord(message)
 
     case 'ACTIVATE_LICENSE':
       return { ok: false, error: 'not_implemented' }

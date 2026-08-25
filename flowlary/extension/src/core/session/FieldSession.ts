@@ -196,6 +196,7 @@ export class FieldSession {
 
 export class FieldSessionRegistry {
   private sessions = new WeakMap<Element, FieldSession>()
+  private idToElement = new Map<string, Element>()
 
   getOrCreate(element: Element): FieldSession {
     let session = this.sessions.get(element)
@@ -203,6 +204,7 @@ export class FieldSessionRegistry {
       session = new FieldSession(element)
       this.sessions.set(element, session)
     }
+    this.idToElement.set(session.field.id, element)
     return session
   }
 
@@ -210,8 +212,19 @@ export class FieldSessionRegistry {
     return this.sessions.get(element)
   }
 
+  resolveElement(fieldId: string): Element | undefined {
+    const element = this.idToElement.get(fieldId)
+    if (!element) return undefined
+    if (!element.isConnected) {
+      this.idToElement.delete(fieldId)
+      return undefined
+    }
+    return element
+  }
+
   delete(element: Element): void {
     const session = this.sessions.get(element)
+    if (session) this.idToElement.delete(session.field.id)
     session?.abortActiveRequest()
     this.sessions.delete(element)
   }

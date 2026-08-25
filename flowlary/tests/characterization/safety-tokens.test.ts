@@ -37,7 +37,7 @@ describe('characterization: domains and markdown', () => {
 
 describe('characterization: tokenizer', () => {
   it('tokenizes words and finds last completed token at boundary', () => {
-    expect(tokenizeText("don't state-of-the-art").map((t) => t.token)).toEqual([
+    expect(tokenizeText("don't state-of-the-art").tokens.map((t) => t.token)).toEqual([
       "don't",
       'state-of-the-art',
     ])

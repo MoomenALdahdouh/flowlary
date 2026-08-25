@@ -53,4 +53,15 @@ export * from './domains.ts'
 export * from './markdown.ts'
 export * from './tokenKind.ts'
 export * from './codeEditor.ts'
-export * from './tokenize.ts'
+export {
+  isBoundaryChar,
+  lastCompletedToken,
+  peelBoundary,
+  splitTrueTrail,
+  tokenizeText,
+} from './tokenize.ts'
+export type { TextPiece, TokenSpan } from './tokenize.ts'
+export { isSafeToken } from './tokenKind.ts'
+
+export const MAX_FIELD_CHARS = 2_000
+export const MAX_FIELD_TOKENS = 48

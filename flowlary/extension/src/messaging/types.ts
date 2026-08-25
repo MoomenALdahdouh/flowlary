@@ -11,6 +11,7 @@ export type MessageType =
   | 'DISPATCH_COMMAND'
   | 'COMMAND_RESULT'
   | 'RUN_COMMAND'
+  | 'CHECK_WORD'
 
 export type ExtensionStatus = {
   brand: typeof BRAND
@@ -35,6 +36,13 @@ export type RunCommandMessage = {
   type: 'RUN_COMMAND'
   operation: 'TRANSLATE' | 'FIX_LAYOUT' | 'CORRECT'
 }
+export type CheckWordMessage = {
+  type: 'CHECK_WORD'
+  word: string
+  context?: string
+  sourceLayout?: string
+  candidateLayouts?: string[]
+}
 
 export type ExtensionRequest =
   | GetStatusMessage
@@ -45,6 +53,7 @@ export type ExtensionRequest =
   | ActivateLicenseMessage
   | DispatchCommandMessage
   | RunCommandMessage
+  | CheckWordMessage
 
 export type ExtensionResponse = ExtensionStatus | CommandResult | { ok: boolean; error?: string }
 

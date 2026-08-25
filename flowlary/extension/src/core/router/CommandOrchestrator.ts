@@ -10,10 +10,14 @@ import { mapHandlerResult, type DispatchResult } from './dispatch.ts'
 
 const DEDUP_MS = 250
 
-export type OrchestratorOptions = {
+export type CommandOrchestratorOptions = {
   engine: InputEngine
   router: CommandRouter
+  onSpeedBox?: () => boolean
 }
+
+/** @deprecated use CommandOrchestratorOptions */
+export type OrchestratorOptions = CommandOrchestratorOptions
 
 /**
  * Content-script command pipeline.
@@ -46,9 +50,12 @@ export class CommandOrchestrator {
     | ((message: unknown, sender: unknown, sendResponse: (value: unknown) => void) => boolean)
     | null = null
 
-  constructor(options: OrchestratorOptions) {
+  private onSpeedBox: (() => boolean) | null = null
+
+  constructor(options: CommandOrchestratorOptions) {
     this.engine = options.engine
     this.router = options.router
+    this.onSpeedBox = options.onSpeedBox ?? null
   }
 
   start(): void {
@@ -92,10 +99,12 @@ export class CommandOrchestrator {
       return this.lastResult ?? { status: 'error', reason: 'duplicate', handlerExecuted: false }
     }
     if (command === 'SPEED_BOX') {
+      const opened = this.onSpeedBox?.() ?? false
       const result: DispatchResult = {
-        status: 'speed_box',
+        status: opened ? 'speed_box' : 'blocked',
         operation: 'SPEED_BOX',
-        handlerExecuted: false,
+        reason: opened ? undefined : 'disabled',
+        handlerExecuted: opened,
       }
       this.lastResult = result
       return result

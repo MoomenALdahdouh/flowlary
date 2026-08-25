@@ -10,11 +10,18 @@ const router = new CommandRouter()
 
 router.registerCorrection(createCorrectionFeature())
 router.registerTranslation(createTranslationFeature())
-router.registerLayout(createLayoutFeature())
 
-const orchestrator = new CommandOrchestrator({ engine, router })
+const layout = createLayoutFeature({ engine })
+router.registerLayout(layout)
+
+const orchestrator = new CommandOrchestrator({
+  engine,
+  router,
+  onSpeedBox: () => layout.handleSpeedBox(),
+})
 
 engine.start()
+layout.start()
 orchestrator.start()
 
-export { engine, router, orchestrator }
+export { engine, router, orchestrator, layout }
