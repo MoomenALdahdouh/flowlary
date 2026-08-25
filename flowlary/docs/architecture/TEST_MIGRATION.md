@@ -60,7 +60,17 @@ Tests to port in Phase 2+ from source repositories. Source paths refer to audit 
 | Unified popup toggles | 9 |
 | Mixed field: `hsjo]lj I dont know...` | 14 |
 
-## Phase 1 Tests (Already Implemented)
+## Phase 2 Tests (Completed)
+
+| Source test | Flowlary test | Behavior preserved | Adaptations |
+|-------------|---------------|-------------------|-------------|
+| Lingo/Layfix `src/dom/replace.test.ts` | `tests/characterization/dom-replace.test.ts` | Value/CE replace, caret, stale discard, multiline | Uses `writeReplacement()` facade instead of `captureSnapshot` |
+| EWA `extension/src/adapters/index.test.ts` | `tests/characterization/adapters.test.ts` | textarea, text, password ignore, CE host | `EditableAdapter` instead of EWA adapter classes |
+| Lingo/Layfix `src/safety/fields.test.ts` | `tests/characterization/safety-fields.test.ts` | password, OTP, payment, email, URL, username | Direct probe API (same assertions) |
+| Lingo `src/safety/safety.test.ts` | `tests/characterization/safety-tokens.test.ts` | tokens, domains, markdown, tokenizer | Split tokenizer to `safety/tokenize.ts` |
+| Phase 2 spec (8 integration tests) | `tests/integration/phase2.test.ts` | stale, mutex, abort, programmatic, composition, safety, CE, DOM stale | Flowlary-specific session + editor API |
+
+## Phase 1 Tests (Still Passing)
 
 Located in `flowlary/tests/` and `flowlary/packages/shared/src/`:
 

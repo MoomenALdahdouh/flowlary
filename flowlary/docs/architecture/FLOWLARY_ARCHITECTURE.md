@@ -48,20 +48,61 @@ Single owner of:
 
 Feature modules **must not** register competing global listeners.
 
-## FieldSession
+## FieldSession (Phase 2 hardened)
 
-Per-field state:
+Per-field state and concurrency boundary:
 
-| Property | Purpose |
-|----------|---------|
-| `generation` | Invalidates stale AI responses after edits |
-| `requestSequence` | Monotonic request ids |
-| `activeOperation` | Mutex — one writer at a time |
-| `abortController` | Cancel in-flight work |
-| `lastCommittedSnapshot` | Last known good text state |
-| `composing` | IME guard |
-| `pendingCommand` | Queued router command |
-| `lastWriter` | Which feature last wrote |
+| Property / API | Purpose |
+|----------------|---------|
+| `generation` | Authoritative stale counter — increments on **user** input only (synced to DOM map) |
+| `requestSequence` | Monotonic ids — results from older ids must never commit |
+| `tryAcquireWrite()` | Mutex acquire — returns `{ ok: false, reason: 'mutex-held' \| 'composing' }` if blocked |
+| `releaseWrite()` / `noteWrite()` | Release mutex after successful commit |
+| `abortActiveRequest()` | Aborts controller + invalidates request sequence |
+| `canCommit(gen, requestId)` | Pre-write gate: composing, aborted, stale generation/sequence |
+| `lastWriter` | Diagnostic: `CORRECT` \| `TRANSLATE` \| `FIX_LAYOUT` \| `SYSTEM` \| null |
+| `composing` | IME guard — no acquire/commit while true |
+
+**Invariants:**
+
+1. Operation started at generation N may commit only if field is still compatible with N.
+2. Only one active write mutex holder per field.
+3. Timestamps in snapshots are diagnostic only — **generation is authoritative**.
+
+## WriteOrigin (Phase 2)
+
+Programmatic writes use `WriteOrigin`: `USER` \| `CORRECT` \| `TRANSLATE` \| `FIX_LAYOUT` \| `SYSTEM`.
+
+- `withWriteOrigin()` wraps controlled DOM writes.
+- `InputEngine` skips generation bump when `insertReplacementText` or controlled write is active.
+- Prevents feature-write → input event → re-trigger loops (Phase 3 wiring builds on this).
+
+## DOM Layer (Phase 2 unified API)
+
+Canonical operations in `core/dom/editor.ts`:
+
+| API | Role |
+|-----|------|
+| `readText()` | Field text |
+| `readSelection()` / `readCaret()` | Selection state |
+| `createSnapshot()` | FieldSnapshot with generation |
+| `verifySnapshot()` | Stale text/generation check |
+| `writeReplacement()` | Range write with session gates + `baselineSnapshot` |
+| `restoreSelection()` | Reapply selection range |
+
+`EditableAdapter` (`core/dom/adapter.ts`) bridges EWA edge cases: password ignore, Monaco/CodeMirror block, contenteditable host resolution.
+
+## Safety Gate (Phase 2 — fail closed)
+
+Baseline: Lingo/Layfix. Blocks before any future AI call:
+
+- Sensitive fields (password, OTP, payment, username, email, URL)
+- Code editors (Monaco, CodeMirror, Ace)
+- Markdown fenced / inline code regions
+- High-risk tokens (JWT, API keys, cards, env secrets)
+- Excluded domains (exact + subdomain, no unsafe wildcards)
+
+If uncertain → **BLOCK**.
 
 ## CommandRouter
 
