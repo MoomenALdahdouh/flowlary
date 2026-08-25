@@ -70,16 +70,24 @@ The interactive version of this report is the Next.js app in this repository.
 
 ## Flowlary (merged extension)
 
-The unified Chrome extension lives at:
+The unified Chrome extension should live on your Mac at:
 
 ```text
-/Moomen/Projects/flowlary
+/Users/moomen/Projects/flowlary
 ```
 
-(Same folder as `Moomen/Projects/flowlary` in this repo.)
+That is Finder: home **moomen** → **Projects** → **flowlary**.
+
+In this git repo the source is `Moomen/Projects/flowlary/`. Copy it onto the Mac (a Cloud Agent cannot write to your Finder):
+
+```bash
+rsync -a --exclude node_modules --exclude .git \
+  ./Moomen/Projects/flowlary/ /Users/moomen/Projects/flowlary/
+cd /Users/moomen/Projects/flowlary && npm install && npm run build
+```
 
 Load unpacked extension from:
 
 ```text
-/Moomen/Projects/flowlary/extension/dist
+/Users/moomen/Projects/flowlary/extension/dist
 ```

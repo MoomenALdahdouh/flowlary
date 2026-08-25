@@ -10,7 +10,9 @@ Flowlary is a unified Chrome MV3 extension that combines three writing capabilit
 
 Original source extensions remain read-only references; all product code lives in this folder.
 
-**Path:** `~/Moomen/Projects/flowlary` (or `Moomen/Projects/flowlary` inside this repo)
+**On your Mac:** `/Users/moomen/Projects/flowlary` (Finder: home **moomen** → **Projects** → **flowlary**)
+
+This repo keeps the same project at `Moomen/Projects/flowlary`. Copy it onto the Mac with `scripts/install-to-mac-projects.sh`.
 
 ## Structure
 
