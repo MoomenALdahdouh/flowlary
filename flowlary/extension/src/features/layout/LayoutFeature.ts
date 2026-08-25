@@ -1,5 +1,5 @@
 import type { Command, CommandResult, LayoutFeature } from '@flowlary/shared'
-import { createMemoryCacheCoordinator } from '@flowlary/shared'
+import { getFlowlaryCache } from '../../storage/cache/index.ts'
 import type { InputEngine } from '../../core/input/InputEngine.ts'
 import { stateManager } from '../../core/state/StateManager.ts'
 import {
@@ -35,7 +35,8 @@ export type LayoutModule = LayoutFeature & {
 }
 
 export function createLayoutFeature(options: LayoutModuleOptions): LayoutModule {
-  const cacheCoordinator = createMemoryCacheCoordinator(24 * 60 * 60 * 1000)
+  const cacheCoordinator = getFlowlaryCache()
+  void cacheCoordinator.initialize()
   const layoutCache = createLayoutCache(cacheCoordinator)
   const metrics = createLayoutMetrics()
   const classifier = new LayoutClassifier({

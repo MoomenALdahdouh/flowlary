@@ -113,6 +113,15 @@ export {
 } from './facade.ts'
 
 export {
+  getFlowlaryCache,
+  getCacheMetrics,
+  initializeFlowlaryCache,
+  resetFlowlaryCacheForTests,
+  getTranslateCoalescer,
+  getCorrectCoalescer,
+} from './cache/index.ts'
+
+export {
   recordHistory,
   ensureHistoryInitialized,
   resetHistoryServiceForTests,

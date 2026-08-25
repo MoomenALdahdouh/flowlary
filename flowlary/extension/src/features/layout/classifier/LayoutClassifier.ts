@@ -48,13 +48,28 @@ export class LayoutClassifier {
     return localClassificationHint(word, profile, context)
   }
 
+  private verdictFromRecord(
+    record: NonNullable<ReturnType<LayoutCache['get']>>,
+    source: LayoutId,
+  ): ClassifierVerdict {
+    if (record.result.kind === 'VALID') {
+      return { kind: 'VALID', sourceLayout: source }
+    }
+    return {
+      kind: 'LAYOUT_MISMATCH',
+      targetLayout: record.targetLayout ?? source,
+      corrected: record.corrected,
+      sourceLayout: source,
+    }
+  }
+
   decideFromCache(
     word: string,
     profile: UserLayoutProfile,
     context?: string,
   ): ClassifierVerdict | null {
     const source = inferSourceLayout(word, profile) ?? profile.sourceLayout
-    const key = this.cache.keyFor(word, profile, source, context)
+    const key = this.cache.flowKeyFor(word, profile, source, context)
     const hot = this.cache.decide(key)
     if (hot.kind === 'miss') return null
     this.metrics.layout_cache_hits += 1
@@ -72,17 +87,19 @@ export class LayoutClassifier {
 
   remember(word: string, profile: UserLayoutProfile, verdict: ClassifierVerdict, context?: string) {
     const source = verdict.sourceLayout
-    const key = this.cache.keyFor(word, profile, source, context)
     if (verdict.kind === 'VALID') {
-      this.cache.set(key, toCacheRecord({ kind: 'VALID' }))
+      this.cache.set(word, profile, source, toCacheRecord({ kind: 'VALID' }), context)
       return
     }
     this.cache.set(
-      key,
+      word,
+      profile,
+      source,
       toCacheRecord(
         { kind: 'LAYOUT_MISMATCH', targetLayout: verdict.targetLayout! },
         { corrected: verdict.corrected },
       ),
+      context,
     )
   }
 
@@ -115,12 +132,18 @@ export class LayoutClassifier {
     const cached = this.decideFromCache(word, profile, context)
     if (cached) return { ok: true, verdict: cached }
 
+    const source = inferSourceLayout(word, profile) ?? profile.sourceLayout
+    const persisted = await this.cache.getWithL2(word, profile, source, context)
+    if (persisted) {
+      this.metrics.layout_cache_hits += 1
+      return { ok: true, verdict: this.verdictFromRecord(persisted, source) }
+    }
+
     if (!this.classifyRemote) {
       return { ok: false, reason: 'error' }
     }
 
-    const source = inferSourceLayout(word, profile) ?? profile.sourceLayout
-    const key = this.cache.keyFor(word, profile, source, context)
+    const key = this.cache.flowKeyFor(word, profile, source, context)
     this.metrics.layout_classifier_calls += 1
 
     return coalesce.run(key, async () => {

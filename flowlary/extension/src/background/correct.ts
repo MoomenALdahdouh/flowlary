@@ -2,14 +2,22 @@ import {
   CORRECTION_DEFAULTS,
   CORRECTION_SYSTEM_PROMPT,
   validateCorrectionResponse,
+  buildCacheKey,
+  CACHE_TTL_MS,
+  hashCorrectionContext,
+  normalizeCacheText,
   type CorrectionResponse,
   type CorrectRequestContext,
 } from '@flowlary/shared'
+import {
+  getCacheMetrics,
+  getCorrectCoalescer,
+  getFlowlaryCache,
+} from '../storage/cache/index.ts'
 
 const GROQ_CHAT_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
 const inflight = new Map<string, AbortController>()
-const memoryCache = new Map<string, CorrectionResponse>()
 
 function truncateForCorrection(text: string): string {
   if (text.length <= CORRECTION_DEFAULTS.MAX_CORRECTION_CHARS) return text
@@ -19,15 +27,6 @@ function truncateForCorrection(text: string): string {
     return slice.slice(boundary + 1).trimStart()
   }
   return slice
-}
-
-function hashText(text: string): string {
-  let hash = 2166136261
-  for (let i = 0; i < text.length; i += 1) {
-    hash ^= text.charCodeAt(i)
-    hash = Math.imul(hash, 16777619)
-  }
-  return (hash >>> 0).toString(16)
 }
 
 async function callGroqOnce(
@@ -103,6 +102,14 @@ export type CorrectTextResponse =
       aborted?: boolean
     }
 
+function correctionCacheKey(text: string, context?: CorrectRequestContext): string {
+  return buildCacheKey({
+    operation: 'CORRECT',
+    text: normalizeCacheText('CORRECT', text),
+    contextHash: hashCorrectionContext(context),
+  })
+}
+
 export async function handleCorrectText(message: CorrectTextMessage): Promise<CorrectTextResponse> {
   const { requestId, text, fieldType, previousText, groqApiKey } = message
 
@@ -115,9 +122,16 @@ export async function handleCorrectText(message: CorrectTextMessage): Promise<Co
     return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'empty' }
   }
 
-  const key = hashText(trimmed)
-  const cached = memoryCache.get(key)
+  const context: CorrectRequestContext = {
+    fieldType: fieldType as CorrectRequestContext['fieldType'],
+    previousText,
+  }
+  const cache = getFlowlaryCache()
+  await cache.initialize()
+  const cacheKey = correctionCacheKey(trimmed, context)
+  const cached = await cache.getWithL2<CorrectionResponse>(cacheKey)
   if (cached) {
+    getCacheMetrics().ai_requests_avoided += 1
     return {
       type: 'CORRECT_TEXT_RESULT',
       ok: true,
@@ -131,46 +145,53 @@ export async function handleCorrectText(message: CorrectTextMessage): Promise<Co
   const controller = new AbortController()
   inflight.set(requestId, controller)
 
+  const coalescer = getCorrectCoalescer()
   try {
-    const segment = truncateForCorrection(trimmed)
-    let lastError: unknown
-
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      try {
-        const started = Date.now()
-        const result = await callGroqOnce(
-          groqApiKey,
-          segment,
-          { fieldType: fieldType as CorrectRequestContext['fieldType'], previousText },
-          controller.signal,
-        )
-        if (memoryCache.size >= CORRECTION_DEFAULTS.CACHE_LIMIT) {
-          const first = memoryCache.keys().next().value
-          if (first) memoryCache.delete(first)
-        }
-        memoryCache.set(key, result.data)
+    return await coalescer.run(cacheKey, async () => {
+      const again = await cache.getWithL2<CorrectionResponse>(cacheKey)
+      if (again) {
+        getCacheMetrics().ai_requests_avoided += 1
         return {
           type: 'CORRECT_TEXT_RESULT',
           ok: true,
           requestId,
-          data: result.data,
-          timing: { backendMs: Date.now() - started, model: result.model },
-        }
-      } catch (err) {
-        lastError = err
-        if (err instanceof DOMException && err.name === 'AbortError') {
-          return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'aborted', aborted: true }
-        }
-        if (err instanceof Error && (err.message === 'invalid_api_key' || err.message === 'rate_limited')) {
-          return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: err.message }
+          data: again,
+          timing: { backendMs: 0 },
         }
       }
-    }
 
-    if (lastError instanceof Error && lastError.message.startsWith('groq_http_')) {
-      return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'network' }
-    }
-    return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'invalid_response' }
+      getCacheMetrics().ai_requests_correct += 1
+      const segment = truncateForCorrection(trimmed)
+      let lastError: unknown
+
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          const started = Date.now()
+          const result = await callGroqOnce(groqApiKey, segment, context, controller.signal)
+          cache.setWithL2(cacheKey, result.data, 'CORRECT', CACHE_TTL_MS.CORRECT)
+          return {
+            type: 'CORRECT_TEXT_RESULT',
+            ok: true,
+            requestId,
+            data: result.data,
+            timing: { backendMs: Date.now() - started, model: result.model },
+          }
+        } catch (err) {
+          lastError = err
+          if (err instanceof DOMException && err.name === 'AbortError') {
+            return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'aborted', aborted: true }
+          }
+          if (err instanceof Error && (err.message === 'invalid_api_key' || err.message === 'rate_limited')) {
+            return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: err.message }
+          }
+        }
+      }
+
+      if (lastError instanceof Error && lastError.message.startsWith('groq_http_')) {
+        return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'network' }
+      }
+      return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'invalid_response' }
+    })
   } finally {
     inflight.delete(requestId)
   }
@@ -179,4 +200,9 @@ export async function handleCorrectText(message: CorrectTextMessage): Promise<Co
 export function cancelCorrectRequest(requestId: string): void {
   inflight.get(requestId)?.abort()
   inflight.delete(requestId)
+}
+
+export function resetCorrectHandlerForTests(): void {
+  getCorrectCoalescer().reset()
+  inflight.clear()
 }

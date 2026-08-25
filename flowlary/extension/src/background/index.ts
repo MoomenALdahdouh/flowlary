@@ -26,6 +26,7 @@ import {
   clearHistory,
 } from '../storage/index.ts'
 import { ensureHistoryInitialized } from '../storage/history/record.ts'
+import { initializeFlowlaryCache } from '../storage/cache/index.ts'
 
 const router = new CommandRouter()
 
@@ -41,6 +42,7 @@ export async function startupBackground(): Promise<void> {
       await runStorageMigration()
       await hydrateStateFromStorage(flowlaryStorage)
       await ensureHistoryInitialized()
+      await initializeFlowlaryCache(flowlaryStorage)
     })()
   }
   return startupPromise

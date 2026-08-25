@@ -1,32 +1,70 @@
-import type { CacheCoordinator } from '@flowlary/shared'
+import type { CacheCoordinator, TieredCacheCoordinator } from '@flowlary/shared'
 import type { UserLayoutProfile } from '../layouts/types.ts'
-import { classificationCacheKey } from './key.ts'
+import { relevantContext } from './key.ts'
 import { decideHotPath, toCacheRecord, type CacheRecord, WORD_CACHE_TTL_MS } from './records.ts'
 
 export type LayoutCache = {
-  keyFor(word: string, profile: UserLayoutProfile, sourceLayout: string, context?: string): string
+  flowKeyFor(
+    word: string,
+    profile: UserLayoutProfile,
+    sourceLayout: string,
+    context?: string,
+  ): string
+  getFlowKey(
+    word: string,
+    profile: UserLayoutProfile,
+    sourceLayout: string,
+    context?: string,
+  ): string
   get(key: string): CacheRecord | undefined
-  set(key: string, record: CacheRecord): void
+  getWithL2(
+    word: string,
+    profile: UserLayoutProfile,
+    sourceLayout: string,
+    context?: string,
+  ): Promise<CacheRecord | undefined>
+  set(
+    word: string,
+    profile: UserLayoutProfile,
+    sourceLayout: string,
+    record: CacheRecord,
+    context?: string,
+  ): void
   decide(key: string): ReturnType<typeof decideHotPath>
-  buildFlowlaryKey(word: string, profile: UserLayoutProfile, sourceLayout: string): string
+  buildFlowlaryKey(word: string, profile: UserLayoutProfile, sourceLayout: string, context?: string): string
 }
 
-export function createLayoutCache(coordinator: CacheCoordinator): LayoutCache {
+export function createLayoutCache(coordinator: CacheCoordinator | TieredCacheCoordinator): LayoutCache {
   const memory = new Map<string, CacheRecord>()
 
-  return {
-    keyFor(word, profile, sourceLayout, context) {
-      return classificationCacheKey(word, sourceLayout, profile.enabledLayouts, context)
-    },
+  function buildFlowlaryKey(
+    word: string,
+    profile: UserLayoutProfile,
+    sourceLayout: string,
+    context?: string,
+  ): string {
+    return coordinator.buildKey({
+      operation: 'FIX_LAYOUT',
+      text: word,
+      layoutSource: sourceLayout,
+      layoutCandidates: [...profile.enabledLayouts],
+      layoutContext: relevantContext(word, context),
+    })
+  }
 
-    buildFlowlaryKey(word, profile, sourceLayout) {
-      return coordinator.buildKey({
-        operation: 'FIX_LAYOUT',
-        text: word,
-        layoutSource: sourceLayout,
-        layoutCandidates: [...profile.enabledLayouts],
-      })
-    },
+  function flowKeyFor(
+    word: string,
+    profile: UserLayoutProfile,
+    sourceLayout: string,
+    context?: string,
+  ): string {
+    return buildFlowlaryKey(word, profile, sourceLayout, context)
+  }
+
+  return {
+    flowKeyFor,
+    getFlowKey: flowKeyFor,
+    buildFlowlaryKey,
 
     get(key) {
       const local = memory.get(key)
@@ -34,9 +72,31 @@ export function createLayoutCache(coordinator: CacheCoordinator): LayoutCache {
       return coordinator.get<CacheRecord>(key)
     },
 
-    set(key, record) {
+    async getWithL2(word, profile, sourceLayout, context) {
+      const key = flowKeyFor(word, profile, sourceLayout, context)
+      const local = memory.get(key)
+      if (local) return local
+      const sync = coordinator.get<CacheRecord>(key)
+      if (sync) {
+        memory.set(key, sync)
+        return sync
+      }
+      if ('getWithL2' in coordinator) {
+        const persisted = await coordinator.getWithL2<CacheRecord>(key)
+        if (persisted) memory.set(key, persisted)
+        return persisted
+      }
+      return undefined
+    },
+
+    set(word, profile, sourceLayout, record, context) {
+      const key = flowKeyFor(word, profile, sourceLayout, context)
       memory.set(key, record)
-      coordinator.set(key, record, WORD_CACHE_TTL_MS)
+      if ('setWithL2' in coordinator) {
+        coordinator.setWithL2(key, record, 'FIX_LAYOUT', WORD_CACHE_TTL_MS)
+      } else {
+        coordinator.set(key, record, WORD_CACHE_TTL_MS)
+      }
     },
 
     decide(key) {
@@ -45,5 +105,5 @@ export function createLayoutCache(coordinator: CacheCoordinator): LayoutCache {
   }
 }
 
-export { toCacheRecord, decideHotPath, classificationCacheKey }
+export { toCacheRecord, decideHotPath }
 export type { CacheRecord }

@@ -14,6 +14,7 @@ describe('FlowlaryStorage', () => {
     expect(STORAGE_KEYS.entitlement).toBe('flowlary.entitlement')
     expect(STORAGE_KEYS.entitlementLicenseKey).toBe('flowlary.entitlement.licenseKey')
     expect(STORAGE_KEYS.migrations).toBe('flowlary.migrations.v1')
+    expect(STORAGE_KEYS.cache).toBe('flowlary.cache')
   })
 
   it('keys do not collide with legacy prefixes', () => {

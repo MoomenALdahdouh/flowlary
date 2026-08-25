@@ -1,5 +1,5 @@
 import type { Command, CommandResult, TranslationFeature } from '@flowlary/shared'
-import { createMemoryCacheCoordinator } from '@flowlary/shared'
+import { getFlowlaryCache } from '../../storage/cache/index.ts'
 import type { InputEngine } from '../../core/input/InputEngine.ts'
 import { readFieldText, readSelectionRange } from '../../core/dom/read.ts'
 import { writeReplacement } from '../../core/dom/editor.ts'
@@ -36,7 +36,8 @@ export type TranslationModule = TranslationFeature & {
 }
 
 export function createTranslationFeature(options: TranslationModuleOptions): TranslationModule {
-  const cacheCoordinator = createMemoryCacheCoordinator(60_000)
+  const cacheCoordinator = getFlowlaryCache()
+  void cacheCoordinator.initialize()
   const translationCache = createTranslationCache(cacheCoordinator)
   const metrics = createTranslationMetrics()
 
@@ -50,6 +51,18 @@ export function createTranslationFeature(options: TranslationModuleOptions): Tra
       if (cached) {
         if (request.mode === 'live') metrics.translation_live_cache_hits += 1
         return { ok: true, translation: cached }
+      }
+
+      const cacheKey = cacheCoordinator.buildKey({
+        operation: 'TRANSLATE',
+        text: request.text,
+        sourceLanguage: request.sourceLanguage,
+        targetLanguage: request.targetLanguage,
+      })
+      const persisted = await cacheCoordinator.getWithL2<string>(cacheKey)
+      if (persisted) {
+        if (request.mode === 'live') metrics.translation_live_cache_hits += 1
+        return { ok: true, translation: persisted }
       }
 
       const remote = options.provider

@@ -1,4 +1,5 @@
-import { vi } from 'vitest'
+import { afterEach, vi } from 'vitest'
+import { resetFlowlaryCacheForTests } from './src/storage/cache/index.ts'
 
 vi.stubGlobal('chrome', {
   runtime: {
@@ -25,4 +26,8 @@ vi.stubGlobal('chrome', {
       remove: vi.fn().mockResolvedValue(undefined),
     },
   },
+})
+
+afterEach(() => {
+  resetFlowlaryCacheForTests()
 })

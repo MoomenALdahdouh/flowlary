@@ -5,6 +5,7 @@ describe('CacheCoordinator', () => {
   it('uses operation-specific keys for CORRECT', () => {
     const key = buildCacheKey({ operation: 'CORRECT', text: 'hello' })
     expect(key.startsWith('CORRECT:')).toBe(true)
+    expect(key.endsWith(':0')).toBe(true)
   })
 
   it('uses operation-specific keys for TRANSLATE', () => {

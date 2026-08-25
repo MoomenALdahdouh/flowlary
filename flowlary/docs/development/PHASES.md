@@ -14,7 +14,7 @@
 | **9** | Unified popup UX | ✅ Complete |
 | **10** | Unified storage + migration from legacy keys | ✅ Complete |
 | **11** | Unified history | ✅ Complete |
-| **12** | Performance / cost optimization (CacheCoordinator persistent) | Pending |
+| **12** | Performance / cost optimization (CacheCoordinator persistent) | ✅ Complete |
 | **13** | Security / privacy review | Pending |
 | **14** | Full regression testing | Pending |
 

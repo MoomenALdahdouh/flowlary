@@ -1,13 +1,12 @@
+import { normalizeCacheText } from '@flowlary/shared'
 import type { CacheCoordinator } from '@flowlary/shared'
-
-const TTL_MS = 60_000
 
 export function createTranslationCache(coordinator: CacheCoordinator) {
   return {
     get(sourceLanguage: string, targetLanguage: string, text: string): string | undefined {
       const key = coordinator.buildKey({
         operation: 'TRANSLATE',
-        text,
+        text: normalizeCacheText('TRANSLATE', text),
         sourceLanguage,
         targetLanguage,
       })
@@ -17,11 +16,15 @@ export function createTranslationCache(coordinator: CacheCoordinator) {
     set(sourceLanguage: string, targetLanguage: string, text: string, translation: string): void {
       const key = coordinator.buildKey({
         operation: 'TRANSLATE',
-        text,
+        text: normalizeCacheText('TRANSLATE', text),
         sourceLanguage,
         targetLanguage,
       })
-      coordinator.set(key, translation, TTL_MS)
+      if ('setWithL2' in coordinator) {
+        coordinator.setWithL2(key, translation, 'TRANSLATE')
+      } else {
+        coordinator.set(key, translation)
+      }
     },
   }
 }
