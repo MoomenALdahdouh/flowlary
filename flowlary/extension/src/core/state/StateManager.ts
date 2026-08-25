@@ -12,6 +12,7 @@ export type CorrectionSettings = {
   mode: 'box' | 'direct'
   highlights: boolean
   consentAccepted: boolean
+  groqApiKey: string
 }
 
 export type TranslationSettings = {
@@ -38,9 +39,10 @@ export const DEFAULT_SETTINGS: FlowlarySettings = {
 
 export const DEFAULT_CORRECTION: CorrectionSettings = {
   enabled: true,
-  mode: 'box',
+  mode: 'direct',
   highlights: true,
   consentAccepted: false,
+  groqApiKey: '',
 }
 
 export const DEFAULT_TRANSLATION: TranslationSettings = {

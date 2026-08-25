@@ -4,6 +4,7 @@ import type { ExtensionStatus } from '../messaging/types.ts'
 
 export function App() {
   const [status, setStatus] = useState<ExtensionStatus | null>(null)
+  const [groqKey, setGroqKey] = useState('')
 
   useEffect(() => {
     void chrome.runtime.sendMessage({ type: 'GET_STATUS' }).then((response) => {
@@ -13,14 +14,36 @@ export function App() {
 
   const active = status?.active ?? true
   const liveEnabled = status?.translation?.liveEnabled ?? false
+  const correctionEnabled = status?.correction?.enabled ?? true
+  const consentAccepted = status?.correction?.consentAccepted ?? false
+
+  async function refreshStatus(response: ExtensionStatus): Promise<void> {
+    setStatus(response)
+  }
 
   async function toggleLiveTranslation(): Promise<void> {
-    const next = !liveEnabled
     const response = (await chrome.runtime.sendMessage({
       type: 'SET_TRANSLATION',
-      patch: { liveEnabled: next },
+      patch: { liveEnabled: !liveEnabled },
     })) as ExtensionStatus
-    setStatus(response)
+    await refreshStatus(response)
+  }
+
+  async function toggleCorrection(): Promise<void> {
+    const response = (await chrome.runtime.sendMessage({
+      type: 'SET_CORRECTION',
+      patch: { enabled: !correctionEnabled },
+    })) as ExtensionStatus
+    await refreshStatus(response)
+  }
+
+  async function saveGroqKey(): Promise<void> {
+    const response = (await chrome.runtime.sendMessage({
+      type: 'SET_CORRECTION',
+      patch: { groqApiKey: groqKey, consentAccepted: true },
+    })) as ExtensionStatus
+    await refreshStatus(response)
+    setGroqKey('')
   }
 
   return (
@@ -40,7 +63,27 @@ export function App() {
         <ul className="fl-feature-list">
           <li>
             Writing
-            <div className="fl-placeholder">Improve English — Phase 7</div>
+            <label className="fl-toggle">
+              <span>English correction</span>
+              <button type="button" onClick={() => void toggleCorrection()}>
+                {correctionEnabled ? 'ON' : 'OFF'}
+              </button>
+            </label>
+            <label className="fl-toggle">
+              <span>Groq API key (BYOK)</span>
+              <input
+                type="password"
+                value={groqKey}
+                placeholder={status?.correction?.hasGroqKey ? '••••••••' : 'Paste key'}
+                onChange={(e) => setGroqKey(e.target.value)}
+              />
+              <button type="button" onClick={() => void saveGroqKey()}>
+                Save
+              </button>
+            </label>
+            <div className="fl-placeholder">
+              Consent: {consentAccepted ? 'Accepted' : 'Required on save'}
+            </div>
           </li>
           <li>
             Translation

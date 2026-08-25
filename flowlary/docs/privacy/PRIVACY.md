@@ -10,11 +10,11 @@ Flowlary is privacy-first by design. Phase 1 establishes architecture only; enfo
 4. Correction sends only relevant writing context (EWA segment limits).
 5. Safety gate runs **before** any network call.
 
-## Phase 1 Status
+## Phase 7 Status
 
-- Unified safety module created (field + token probes).
-- No AI calls implemented yet.
-- Storage namespaces isolated under `flowlary.*`.
-- No analytics SDKs.
+- English correction uses BYOK Groq via service worker only.
+- Text is sent only after safety passes and English eligibility is confirmed.
+- API keys stored in local extension storage (`flowlary.correction.groqKey`).
+- No correction text or keys are logged or sent to Flowlary servers.
 
 See `FL0_AUDIT.md` §13 and source `PRIVACY.md` files for full requirements.

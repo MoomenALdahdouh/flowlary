@@ -7,11 +7,11 @@ Tests to port in Phase 2+ from source repositories. Source paths refer to audit 
 | Test file | Port phase | Coverage |
 |-----------|------------|----------|
 | `extension/src/adapters/index.test.ts` | 2–3 | textarea, input, contenteditable, password ignore |
-| `extension/src/content/mergeCorrection.test.ts` | 7–8 | stale merge, suffix append |
-| `extension/src/content/debounce.test.ts` | 7 | IntelligentDebouncer boundaries |
-| `extension/src/content/instantSpell.test.ts` | 7 | local typo fixes |
-| `extension/src/content/segment.test.ts` | 7 | writing context extraction |
-| `extension/src/language/detect.test.ts` | 7 | English/non-English gate |
+| `extension/src/content/mergeCorrection.test.ts` | 7 ✅ | stale merge → `tests/unit/correction/mergeCorrection.test.ts` |
+| `extension/src/content/debounce.test.ts` | 7 ✅ | IntelligentDebouncer → `tests/unit/correction/debounce.test.ts` |
+| `extension/src/content/instantSpell.test.ts` | 7 ✅ | local typo fixes → `tests/unit/correction/instantSpell.test.ts` |
+| `extension/src/content/segment.test.ts` | 7 ✅ | writing context → `tests/unit/correction/segment.test.ts` |
+| `extension/src/language/detect.test.ts` | 7 ✅ | English gate → `tests/unit/correction/language.test.ts` |
 | `extension/src/ui/correction-card/CorrectionCard.test.ts` | 8 | overlay UX |
 | `extension/src/ui/correction-card/hostStyleAdapter.test.ts` | 8 | theme mirroring |
 | `extension/src/storage/settings.test.ts` | 10 | settings persistence |
@@ -66,6 +66,13 @@ Tests to port in Phase 2+ from source repositories. Source paths refer to audit 
 | Lingo `background/commands.test.ts` | `tests/unit/backgroundCommands.test.ts` | SW forwards RUN_COMMAND to active tab |
 | Phase 3 spec TESTs 1–22 | `tests/integration/phase3.test.ts` | focus, multi-field, shortcuts, safety, mutex, no auto-chain, speed box infra |
 | InputEngine isolation | `tests/unit/inputEngine.test.ts` | input does not emit shortcut/commands |
+
+## Phase 7 Tests (Completed)
+
+| Source / spec | Flowlary test | Behavior |
+|---------------|---------------|----------|
+| EWA debounce/merge/segment/instantSpell/detect | `tests/unit/correction/*.test.ts` | Ported EWA unit behavior |
+| Phase 7 spec | `tests/integration/phase7-correction.test.ts` | debounce, safety, English gate, BYOK, stale, no chain, instant spell |
 
 ## Phase 6 Tests (Completed)
 

@@ -8,7 +8,8 @@ import { createLayoutFeature } from './features/layout/index.ts'
 const engine = new InputEngine()
 const router = new CommandRouter()
 
-router.registerCorrection(createCorrectionFeature())
+const correction = createCorrectionFeature({ engine })
+router.registerCorrection(correction)
 
 const translation = createTranslationFeature({ engine })
 router.registerTranslation(translation)
@@ -23,8 +24,9 @@ const orchestrator = new CommandOrchestrator({
 })
 
 engine.start()
+correction.start()
 layout.start()
 translation.start()
 orchestrator.start()
 
-export { engine, router, orchestrator, layout, translation }
+export { engine, router, orchestrator, correction, layout, translation }

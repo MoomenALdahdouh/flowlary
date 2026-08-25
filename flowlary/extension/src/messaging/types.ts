@@ -5,6 +5,7 @@ export type MessageType =
   | 'GET_STATUS'
   | 'SET_SETTINGS'
   | 'SET_TRANSLATION'
+  | 'SET_CORRECTION'
   | 'PAUSE_TEMPORARILY'
   | 'CAN_INTERVENE'
   | 'NOTE_USAGE_ACTIVITY'
@@ -29,6 +30,12 @@ export type ExtensionStatus = {
     sourceLanguage: string
     targetLanguage: string
   }
+  correction: {
+    enabled: boolean
+    mode: 'box' | 'direct'
+    consentAccepted: boolean
+    hasGroqKey: boolean
+  }
   version: string
 }
 
@@ -43,6 +50,25 @@ export type SetTranslationMessage = {
     targetLanguage: string
   }>
 }
+export type SetCorrectionMessage = {
+  type: 'SET_CORRECTION'
+  patch: Partial<{
+    enabled: boolean
+    mode: 'box' | 'direct'
+    highlights: boolean
+    consentAccepted: boolean
+    groqApiKey: string
+  }>
+}
+export type CorrectTextMessage = {
+  type: 'CORRECT_TEXT'
+  requestId: string
+  text: string
+  fieldType?: string
+  previousText?: string
+  groqApiKey: string
+}
+export type CancelCorrectMessage = { type: 'CANCEL_CORRECT'; requestId: string }
 export type PauseTemporarilyMessage = { type: 'PAUSE_TEMPORARILY'; ms?: number }
 export type CanInterveneMessage = { type: 'CAN_INTERVENE' }
 export type NoteUsageMessage = { type: 'NOTE_USAGE_ACTIVITY' }
@@ -72,6 +98,7 @@ export type ExtensionRequest =
   | GetStatusMessage
   | SetSettingsMessage
   | SetTranslationMessage
+  | SetCorrectionMessage
   | PauseTemporarilyMessage
   | CanInterveneMessage
   | NoteUsageMessage
@@ -80,6 +107,8 @@ export type ExtensionRequest =
   | RunCommandMessage
   | CheckWordMessage
   | TranslateTextMessage
+  | CorrectTextMessage
+  | CancelCorrectMessage
 
 export type ExtensionResponse = ExtensionStatus | CommandResult | { ok: boolean; error?: string }
 
