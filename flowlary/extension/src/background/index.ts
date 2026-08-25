@@ -37,8 +37,14 @@ export function buildStatus(): ExtensionStatus {
     correction: {
       enabled: stateManager.correction.enabled,
       mode: stateManager.correction.mode,
+      highlights: stateManager.correction.highlights,
       consentAccepted: stateManager.correction.consentAccepted,
       hasGroqKey: Boolean(stateManager.correction.groqApiKey.trim()),
+    },
+    layout: {
+      autoEnabled: stateManager.layout.autoEnabled,
+      manualConversionEnabled: stateManager.layout.manualConversionEnabled,
+      directShortcutEnabled: stateManager.layout.directShortcutEnabled,
     },
     version: BRAND.version,
   }
@@ -86,8 +92,19 @@ export async function handleMessage(
         consentAccepted: stateManager.correction.consentAccepted,
       })
       if (message.patch.groqApiKey !== undefined) {
-        await flowlaryStorage.set(`${flowlaryStorage.keys.correction}.groqKey`, message.patch.groqApiKey, 'local')
+        const key = message.patch.groqApiKey
+        if (key.trim()) {
+          await flowlaryStorage.set(`${flowlaryStorage.keys.correction}.groqKey`, key, 'local')
+        } else {
+          await flowlaryStorage.remove(`${flowlaryStorage.keys.correction}.groqKey`, 'local')
+        }
       }
+      return buildStatus()
+    }
+
+    case 'SET_LAYOUT': {
+      Object.assign(stateManager.layout, message.patch)
+      await flowlaryStorage.set(flowlaryStorage.keys.layout, stateManager.layout)
       return buildStatus()
     }
 

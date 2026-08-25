@@ -70,6 +70,8 @@ Phase 7: **CorrectionScheduler** subscribes to EventBus with EWA IntelligentDebo
 
 Phase 8: **CorrectionCard** (Shadow DOM, hostStyleAdapter, tokenDiff highlights). One card per field. Accept/dismiss with stale binding verification. Direct-edit and orchestrator-dispatch mutex integration. All commits use `WriteOrigin.CORRECT`.
 
+Phase 9: **Unified popup** — single Flowlary control center (correction, translation, layout, global pause, Groq BYOK UX, quick actions). Popup uses `GET_STATUS` / `SET_*` / `RUN_COMMAND` only; never calls AI APIs directly.
+
 See [PHASE3_INPUT_ROUTING.md](./PHASE3_INPUT_ROUTING.md), [PHASE4_LAYOUT.md](./PHASE4_LAYOUT.md), [PHASE5_TRANSLATION.md](./PHASE5_TRANSLATION.md), [PHASE6_LIVE_TRANSLATION.md](./PHASE6_LIVE_TRANSLATION.md), [PHASE7_CORRECTION.md](./PHASE7_CORRECTION.md).
 
 ## FieldSession (Phase 2 hardened)

@@ -6,6 +6,7 @@ export type MessageType =
   | 'SET_SETTINGS'
   | 'SET_TRANSLATION'
   | 'SET_CORRECTION'
+  | 'SET_LAYOUT'
   | 'PAUSE_TEMPORARILY'
   | 'CAN_INTERVENE'
   | 'NOTE_USAGE_ACTIVITY'
@@ -33,8 +34,14 @@ export type ExtensionStatus = {
   correction: {
     enabled: boolean
     mode: 'box' | 'direct'
+    highlights: boolean
     consentAccepted: boolean
     hasGroqKey: boolean
+  }
+  layout: {
+    autoEnabled: boolean
+    manualConversionEnabled: boolean
+    directShortcutEnabled: boolean
   }
   version: string
 }
@@ -58,6 +65,16 @@ export type SetCorrectionMessage = {
     highlights: boolean
     consentAccepted: boolean
     groqApiKey: string
+  }>
+}
+export type SetLayoutMessage = {
+  type: 'SET_LAYOUT'
+  patch: Partial<{
+    autoEnabled: boolean
+    manualConversionEnabled: boolean
+    directShortcutEnabled: boolean
+    sourceLayout: string
+    targetLayouts: string[]
   }>
 }
 export type CorrectTextMessage = {
@@ -99,6 +116,7 @@ export type ExtensionRequest =
   | SetSettingsMessage
   | SetTranslationMessage
   | SetCorrectionMessage
+  | SetLayoutMessage
   | PauseTemporarilyMessage
   | CanInterveneMessage
   | NoteUsageMessage

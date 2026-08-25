@@ -11,7 +11,7 @@
 | **6** | Port Lingo live translation (default OFF) | ✅ Complete |
 | **7** | Port EWA correction + BYOK Groq | ✅ Complete |
 | **8** | CorrectionCard + direct-edit integration | ✅ Complete |
-| **9** | Unified popup UX | Pending |
+| **9** | Unified popup UX | ✅ Complete |
 | **10** | Unified storage + migration from legacy keys | Pending |
 | **11** | Unified history | Pending |
 | **12** | Performance / cost optimization (CacheCoordinator persistent) | Pending |
