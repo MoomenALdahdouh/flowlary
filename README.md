@@ -33,7 +33,7 @@ npm install
 npm run dev           # Extension dev server (localhost APIs)
 npm run build         # Dev build → extension/dist/
 npm run dev:api       # Local AI gateway → http://127.0.0.1:8787
-npm test              # 470 tests
+npm test              # 477 tests
 ```
 
 Load unpacked from `extension/dist/` in Chrome.
@@ -64,10 +64,13 @@ See `release/RELEASE_CHECKLIST.md` before Chrome Web Store submission.
 - [Security](docs/security/SECURITY_ARCHITECTURE.md)
 - [Release notes](RELEASE_NOTES.md)
 - [Store description draft](docs/release/CHROME_WEB_STORE_DESCRIPTION.md)
-- [Phase 15 report](PHASE15_REPORT.md)
+- [Production readiness audit](docs/production/PRODUCTION_READINESS_AUDIT.md)
+- [AI production architecture](docs/production/AI_PRODUCTION_ARCHITECTURE.md)
+- [Release readiness](docs/release/RELEASE_READINESS.md)
+- [Phase 16 report](PHASE16_REPORT.md)
 
 ## Status
 
-**Version 1.0.0** — Phases 0–15 complete. Release ZIP prepared; **not published** to Chrome Web Store.
+**Version 1.0.0** — Phases 0–16 complete. Local AI gateway + entitlement gating. **Not production-ready** — see [Production Readiness Audit](docs/production/PRODUCTION_READINESS_AUDIT.md).
 
-Release blockers: public privacy policy URL, support contact, store screenshots, production API verification.
+Release blockers: server-verified entitlement, payment, account auth, privacy URL, support contact, store assets, production API deployment verification.

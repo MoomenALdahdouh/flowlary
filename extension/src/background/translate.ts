@@ -11,6 +11,7 @@ import {
   getFlowlaryCache,
   getTranslateCoalescer,
 } from '../storage/cache/index.ts'
+import { getEntitlementService } from '../entitlement/service.ts'
 import { flowlaryStorage, getEntitlement, resolveEntitlementStatus } from '../storage/index.ts'
 import { FLOWLARY_API_BASE } from '../config/endpoints.ts'
 import {
@@ -54,6 +55,17 @@ export async function handleTranslateText(
   })
   if (blocked && !blocked.ok) {
     return { type: 'TRANSLATE_TEXT_ERROR', ok: false, code: blocked.code }
+  }
+
+  const entitlement = await getEntitlementService(flowlaryStorage).canUseFeature(
+    message.mode === 'live' ? 'live_translation' : 'translation',
+  )
+  if (!entitlement.allowed) {
+    return {
+      type: 'TRANSLATE_TEXT_ERROR',
+      ok: false,
+      code: getEntitlementService(flowlaryStorage).errorCodeFor(entitlement) as 'entitlement_denied',
+    }
   }
 
   const cache = getFlowlaryCache()

@@ -16,6 +16,7 @@ import {
   getFlowlaryCache,
 } from '../storage/cache/index.ts'
 import { stateManager } from '../core/state/StateManager.ts'
+import { getEntitlementService } from '../entitlement/service.ts'
 import { flowlaryStorage, getEntitlement, resolveEntitlementStatus } from '../storage/index.ts'
 import { FLOWLARY_API_BASE } from '../config/endpoints.ts'
 import {
@@ -177,6 +178,18 @@ export async function handleCorrectText(message: CorrectTextMessage): Promise<Co
       ok: false,
       requestId,
       error: useManaged ? 'consent_required' : 'missing_api_key',
+    }
+  }
+
+  if (useManaged) {
+    const entitlement = await getEntitlementService(flowlaryStorage).canUseFeature('correction')
+    if (!entitlement.allowed) {
+      return {
+        type: 'CORRECT_TEXT_RESULT',
+        ok: false,
+        requestId,
+        error: 'entitlement_denied',
+      }
     }
   }
 
