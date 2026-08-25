@@ -1,329 +1,470 @@
 # THREE CHROME EXTENSIONS — FORENSIC AUDIT & MERGE FEASIBILITY REPORT
 
 **Date:** 25 Aug 2026  
-**Scope:** GitHub URLs supplied by the owner (this Cloud VM has no Mac disk).  
-**Method:** `git clone` of each URL. No edits to cloned trees. No merge.
+**Sources (all cloned successfully, read-only):**
 
-| Clone URL | HTTP without auth | Clone result |
-| --- | --- | --- |
-| https://github.com/MoomenALdahdouh/english-writing-assistant.git | 200 | **ACCESSIBLE** → `/tmp/audit/english-writing-assistant` (shallow, HEAD `v1.3.13` era) |
-| https://github.com/MoomenALdahdouh/ai-writing-translator.git | **404** | **NOT ACCESSIBLE** (`fatal: could not read Username`) |
-| https://github.com/MoomenALdahdouh/autofix-layout.git | **404** | **NOT ACCESSIBLE** (same) |
+| # | GitHub | Product name | Clone path |
+|---|--------|--------------|------------|
+| 1 | [MoomenALdahdouh/ai-writing-translator](https://github.com/MoomenALdahdouh/ai-writing-translator) | **Lingo** | `/tmp/audit/ai-writing-translator` |
+| 2 | [MoomenALdahdouh/autofix-layout](https://github.com/MoomenALdahdouh/autofix-layout) | **Layfix** | `/tmp/audit/autofix-layout` |
+| 3 | [MoomenALdahdouh/english-writing-assistant](https://github.com/MoomenALdahdouh/english-writing-assistant) | **English Writing Assistant (EWA)** | `/tmp/audit/english-writing-assistant` |
 
-Unauthenticated GitHub 404 on a repo that “exists on your account” usually means **private**. This agent has **no `GH_TOKEN` / `gh auth`**. Those two trees were **not** read. Their behavior is **NOT VERIFIED FROM SOURCE**.
-
-Phases 3–17 below are **complete for English Writing Assistant only**. Translator and AutoFix sections stop at access failure.
+No source was modified. Evidence below cites actual files.
 
 ---
 
 ## 1. Executive Summary
 
-**English Writing Assistant (EWA)** is a real Chrome MV3 TypeScript extension: all-site content script, Groq BYOK (`llama-3.1-8b-instant`), suggestion-box vs direct-edit, local typo map in direct mode, English/script gating, stale-merge protection, popup history. There is **no** `chrome.commands` shortcut, **no** in-extension learning dashboard (only Recent history), **no** analytics SDK.
+All three are **real, production-shaped Chrome MV3 extensions**, but they are **not one codebase today**.
 
-**AI Writing Translator** and **AutoFix Layout** could not be cloned. **A three-way merge decision from code is impossible.**
+| Product | Core job | Groq where? | Auto while typing? | Manual shortcut |
+|---------|----------|-------------|-------------------|-----------------|
+| **EWA** | English grammar/spelling correction | **Extension → `api.groq.com` (BYOK)** | Yes (debounced) | **None** |
+| **Lingo** | Meaning translation (ar→en, etc.) | **FastAPI → Groq (server key)** | Optional live (off default; 750ms; sentence only) | `Ctrl/⌘+Shift+,` |
+| **Layfix** | Keyboard **layout** remap (not translation) | **FastAPI → Groq for classify only**; remap is **local** | Yes (on Space/Enter/Tab/blur, token-level) | `Ctrl/⌘+Shift+P` (+ `Ctrl/⌘+Shift+L` speed box) |
 
-**Merge decision (evidence-limited):** **not A/B/C.** Closest honest label: **blocked / D later** — do not merge products you cannot read. EWA is a plausible **host** if the other two are also MV3 field tools; that is **INFERRED**, not verified.
+**Lingo and Layfix** are explicit siblings: shared `dom/`, `safety/`, `entitlement/` patterns; separate storage keys and commands (`ARCHITECTURE.md` in each repo).
 
-To finish: make the two repos public, or add a GitHub token to the Cloud environment, or copy the folders into `/workspace`.
+**EWA** is a third fork: npm workspaces, `@ewa/shared`, direct Groq BYOK, English-only gate, different adapters and overlay (`CorrectionCard`).
+
+### Merge verdict
+
+| Question | Answer |
+|----------|--------|
+| Can all three become one extension? | **YES — CONDITIONAL** |
+| Should they? | **YES** — one “Language Assistant” with three feature modules |
+| Safest approach | **Option D:** one extension, **one content engine**, command router, preserve feature modules |
+| Do not merge blindly | Three content scripts today **will fight** on the same field if installed together |
 
 ---
 
 ## 2. Project Access Verification
 
-### Project 1 — English Writing Assistant — ACCESSIBLE
+### PROJECT ACCESS STATUS
 
-| Item | Evidence |
-| --- | --- |
-| Absolute path (this VM) | `/tmp/audit/english-writing-assistant` |
-| Manifest | `extension/manifest.config.ts` (CRXJS `defineManifest`, MV3, version `1.3.13`) |
-| package.json | root workspaces: `packages/*`, `extension`, `backend` |
-| Source dirs | `extension/src/{content,background,popup,adapters,language,storage,ui,diff,shared}` |
-| Service worker | `extension/src/background/index.ts` |
-| Content script | `extension/src/content/index.ts` (`http://*/*`, `https://*/*`, `all_frames: true`, `document_idle`) |
-| Popup | `extension/src/popup/{App.tsx,index.html,main.tsx}` |
-| Options page | **none** in manifest |
-| Dashboard | **none** in extension; `site/` is a static marketing/privacy site |
-| Tests | Vitest under extension/shared/backend; Playwright `extension/e2e/` |
-| Build | Vite + `@crxjs/vite-plugin`; `extension/scripts/build-extension.mjs` |
+| Project | Status | Absolute path (audit VM) |
+|---------|--------|--------------------------|
+| 1. ai-writing-translator | **ACCESSIBLE** | `/tmp/audit/ai-writing-translator` |
+| 2. autofix-layout | **ACCESSIBLE** | `/tmp/audit/autofix-layout` |
+| 3. english-writing-assistant | **ACCESSIBLE** | `/tmp/audit/english-writing-assistant` |
 
-### Project 2 — AI Writing Translator — NOT ACCESSIBLE
+### Per-project inventory
 
-Clone and GitHub HTML/API both failed (404 / auth required). **STOP for this project.** No manifest, no entrypoints.
-
-### Project 3 — AutoFix Layout — NOT ACCESSIBLE
-
-Same as Project 2. **STOP for this project.**
+| Item | Lingo | Layfix | EWA |
+|------|-------|--------|-----|
+| Manifest | `manifest.json` MV3 v0.1.0 | `manifest.json` MV3 v0.1.0 | `extension/manifest.config.ts` v**1.3.13** |
+| package.json | root + `website/` | root | workspaces: `extension`, `backend`, `@ewa/shared` |
+| Service worker | `src/background.ts` | `src/background.ts` | `extension/src/background/index.ts` |
+| Content script | `src/content_script.ts` | `src/content_script.ts` | `extension/src/content/index.ts` |
+| Popup | `src/popup/` React | `src/popup/` React | `extension/src/popup/` React |
+| Options | `src/testpad/` (dev tab) | `src/testpad/` | **none** |
+| Dashboard | **none** (website only) | history in popup (`autofixHistory`) | Recent pairs in popup only |
+| Tests | 15 unit + e2e | 27 unit + e2e | 17 unit + Playwright |
+| Build | Vite + CRXJS; Chrome/Edge | same | Vite + CRXJS workspaces |
 
 ---
 
-## 3. English Writing Assistant — architecture (VERIFIED FROM CODE)
+## 3. Technology Stack Comparison
+
+| Capability | Lingo | Layfix | EWA |
+|------------|-------|--------|-----|
+| Manifest | MV3 | MV3 | MV3 |
+| Language | TypeScript | TypeScript | TypeScript |
+| UI | React 19 | React 19 | React 19 |
+| Build | Vite 8 + @crxjs | same | Vite 6 + @crxjs |
+| Content scope | `<all_urls>`, **not** `all_frames` | `<all_urls>` | `http(s)://*/*`, **`all_frames: true`** |
+| Permissions | `storage`, `activeTab` | + `clipboardWrite` | `storage` only |
+| Host permissions | `lingo-api.zaixos.com`, localhost:8004 | localhost:8000–8003 (+ prod via env) | `api.groq.com`, writing-api, localhost:8787 |
+| Groq in extension | **No** | **No** | **Yes (BYOK)** |
+| Backend | FastAPI :8004 | FastAPI :8003 | Hono :8787 (dev/unpacked) |
+| Default Groq model | `openai/gpt-oss-120b` (backend) | `allam-2-7b` (backend classify) | `llama-3.1-8b-instant` (extension) |
+| License | Lemon Squeezy via API | Lemon Squeezy via API | None (BYOK) |
+| Keyboard shortcuts | `TRANSLATE_CURRENT_TEXT` | `FIX_CURRENT_TEXT` | **none** |
+| Analytics SDK | **none found** | **none found** | **none found** |
+
+---
+
+## 4. What Each Product Does (verified)
+
+### A. English Writing Assistant — Correction
+
+**Evidence:** `extension/src/content/index.ts`, `language/detect.ts`, `background/groqCorrect.ts`, `packages/shared/src/index.ts`.
+
+1. **Purpose:** English spelling/grammar/wording in the same language.
+2. **Activation:** Popup consent + Groq API key; then automatic on supported fields.
+3. **Auto while typing:** Yes — `IntelligentDebouncer` (120ms default; 30ms after sentence boundary).
+4. **Manual shortcut:** None.
+5. **Sentence finish:** Shorter debounce after `.!?` or newline; not a hard “wait for period.”
+6. **UI:** Suggestion box (default) or direct in-place rewrite.
+7. **Target text:** Trailing segment via `extractWritingContext()` (≤2000 chars sent; field >250 chars ignored entirely).
+8. **Language:** Local heuristics — skips Arabic/CJK/Cyrillic-dominant and Turkish signals (`detect.ts`).
+9. **Groq when:** After debounce, if English-eligible, consent + key present; skip if same segment as last send.
+10. **Model:** `llama-3.1-8b-instant`.
+11. **Prompt:** `CORRECTION_SYSTEM_PROMPT` — JSON `{originalText, correctedText, changes[]}`.
+12. **Stale protection:** `requestSeq`, `mergeCorrectionIntoField`, `canMergeCorrection` in direct mode.
+13. **contenteditable:** `ContentEditableAdapter` with `execCommand('insertText')` fallback.
+14. **Dashboard:** Popup “Recent” only (`ewa_history`, max 50). **No learning stats.**
+
+### B. Lingo — Translation
+
+**Evidence:** `src/content_script.ts`, `src/content/translateCurrentText.ts`, `src/translation/segments.ts`, `src/background.ts`, `README.md`.
+
+1. **Purpose:** Translate **meaning** (e.g. Arabic → English), not keyboard layout.
+2. **Activation:** Shortcut and/or optional live mode (default **off**).
+3. **Auto while typing:** Only if `liveEnabled === true` — after **750ms pause**, **completed sentence or paragraph** (`liveSegmentOnPause`); never word-by-word (`segments.ts` comment).
+4. **Manual shortcut:** `Ctrl/⌘+Shift+,` → selection first, else current paragraph (`translateCurrentText.ts`).
+5. **UI:** Replaces text in field via surgical DOM (`commitReplacement`); no floating suggestion card.
+6. **Languages:** User picks source + target (`languages.ts`: en, ar, tr, es, fr, de, pt, it, ru, zh, ja, ko). Default **ar → en**.
+7. **Groq when:** Content script → SW `TRANSLATE_TEXT` → `POST /api/translate` → Groq on server.
+8. **Cache:** In-memory 40 entries, 60s TTL (`translation/cache.ts`); hashed keys.
+9. **Stale:** `snapshotGeneration` + `isStaleTicket` before write.
+10. **Does NOT auto-translate English drafts** unless user enabled live and languages differ from field content logic — same-language pair is noop.
+
+### C. Layfix — Layout switching
+
+**Evidence:** `src/content_script.ts`, `src/layouts/convert.ts`, `ARCHITECTURE.md`, `src/background.ts`.
+
+1. **Purpose:** Remap tokens typed on wrong **keyboard layout** (e.g. `hsjo]lj` → `استخدمت`).
+2. **NOT translation** — `mapLayout()` is local; Groq returns `VALID | UNCERTAIN | LAYOUT_MISMATCH` only.
+3. **Auto while typing:** On **Space, Enter, Tab, blur** — **not every keystroke**; paste/drop ignored.
+4. **Manual shortcut:** `Ctrl/⌘+Shift+P` (fix selection/token/field); `Ctrl/⌘+Shift+L` opens on-page speed box (manual converter).
+5. **Local path:** `planFieldFixes` + `mapLayout` without API when confident.
+6. **Groq when:** Per **unknown token** via `CHECK_WORD` → `/api/analyze-word` (model `allam-2-7b`).
+7. **Cache:** Persistent word cache in `chrome.storage.local` + memory + request coalescing.
+8. **Learning:** `autofixEvents`, `autofixHistory`, personal exceptions from accept/ignore/revert.
+9. **Layouts:** en-US-qwerty, ar-101, ru, de, fr, tr, he, el, es, it, pt, uk, fa, etc.
+
+---
+
+## 5. Feature Comparison Table
+
+| Capability | Lingo | Layfix | EWA |
+|------------|-------|--------|-----|
+| Background | SW + API + license | SW + classify API + cache | SW + BYOK Groq or dev backend |
+| Content script | 1 × all URLs | 1 × all URLs | 1 × all URLs + all frames |
+| Popup | Languages, live toggle, license | Layouts, manual converter, history | Key, modes, recent |
+| Dashboard | — | History in popup | Recent only |
+| Storage keys | `lingoProfile`, `lingoUsage`, … | `autofixProfile`, `autofixHistory`, … | `ewa_settings`, `ewa_groq_api_key`, `ewa_history` |
+| Shortcuts | ⌘⇧, | ⌘⇧P, ⌘⇧L | — |
+| Input detection | `dom/` snapshot | `dom/` snapshot | `adapters/` |
+| Sentence detection | `lastCompletedSegment` (live) | token boundaries + triggers | debounce boundaries |
+| Language detection | **User config** (not auto-detect text) | layout heuristics + lexicons | **English heuristics** (skip non-English) |
+| Groq | Server translate | Server classify only | Extension correct |
+| Model | gpt-oss-120b | allam-2-7b | llama-3.1-8b-instant |
+| Cache | Memory 40/60s | Memory + persistent word cache | SW LRU 50 |
+| Debounce | 750ms live | boundary keys | 20–120ms |
+| Auto mode | Live (off default) | On (space/enter/tab) | On (always when enabled) |
+| Manual mode | Shortcut | Shortcut + speed box | — |
+| History | — | Yes (40 items) | Yes (50 pairs) |
+
+---
+
+## 6. Groq / API Cost Analysis
+
+| Feature | Trigger | Calls | Typical payload | Cache | Notes |
+|---------|---------|-------|-----------------|-------|-------|
+| EWA correct | Debounced typing | 0–1 per pause; up to 2 retries | ≤2000 chars segment + system prompt | LRU 50 (SW RAM) | Can fire mid-word after 90–120ms |
+| Lingo shortcut | User ⌘⇧, | 1 per invocation | Selection or paragraph | Memory hash | User-initiated |
+| Lingo live | 750ms after sentence + live ON | 1 per completed sentence | Sentence/paragraph | Same | **Off by default** |
+| Layfix local | Space/Enter/Tab | **0 Groq** | — | layout cache | High-confidence `mapLayout` |
+| Layfix classify | Unknown token | 1 per token (coalesced) | Single word + context | Persistent + coalesce | Worst case: many tokens per sentence |
+
+### Unified cost strategy (recommended)
+
+1. **Keep three operation types separate** — do not combine correction + translation in one prompt (accuracy > savings).
+2. **Layout:** Maximize local `mapLayout` + cache; Groq only on cache miss (already Layfix design).
+3. **Translation:** Keep sentence-level live (not keystroke); default live **off**.
+4. **Correction:** Keep EWA segment cap + 250-char field cap; consider sentence boundary like Lingo to reduce calls.
+5. **Shared request dedup layer:** hash `(operation, text, languages, settings)` with generation id + abort (merge EWA LRU + Lingo TTL + Layfix coalescer).
+
+**Normal steady typing (all auto ON):** roughly **0–2 Groq calls per sentence boundary** — Layfix tokens (classify misses only) + EWA (one correct) + Lingo live (one translate if enabled). **With Lingo live off and Layfix cache warm:** often **0–1** (EWA only).
+
+---
+
+## 7. Correction + Translation Both Enabled
+
+**Verified risk if three extensions installed separately:**
 
 ```
-Page (all http/https frames)
-  content/index.ts
-    focusin/input capture → adapters (textarea | text | contenteditable)
-    IntelligentDebouncer → CORRECT message
-    CorrectionCard (Shadow DOM)
-    mergeCorrectionIntoField / instantSpell (direct mode)
-Service worker background/index.ts
-    GET/SET_SETTINGS, HISTORY, CORRECT, CANCEL_CORRECT
-    LruCache(50) keyed by hashText(trimmed)
-    correctWithUserGroqKey  OR  (unpacked only) POST /api/correct
-Optional backend (Hono :8787)
-    groq-sdk, rate limit 60/min/IP, same prompt/schema
-Popup React
-    consent → Groq key → Pause → box|direct → highlights → Recent history
+User types English: "I dont know..."
+  → EWA debounce → Groq correct → field text changes
+  → Layfix on space → may classify/changed tokens
+  → Lingo live (if ON, ar→en) → could translate segment
+  → EWA sees new input event → may correct again
 ```
 
-**Permissions:** `storage` only.  
-**Host permissions:** `api.groq.com`, `writing-api.zaixos.com`, `writing-api.test`, `127.0.0.1:8787`, `localhost:8787`.  
-**Commands / shortcuts:** **none** in `manifest.config.ts` (VERIFIED: no `commands` key).
+**Lingo README:** live is **off by default**. **EWA** only runs on English. **Layfix** runs on Latin tokens that look like layout mismatch — English prose can trigger false positives if layouts include ar-101 + en-US (documented in ARCHITECTURE).
 
-### Module classification (EWA only)
+**Safe unified design:**
 
-| Module | Path | Class | Why |
-| --- | --- | --- | --- |
-| Input adapters | `extension/src/adapters/index.ts` | **KEEP** | Field read/write, cursor mapping, code-editor skip |
-| Content session | `extension/src/content/index.ts` | **KEEP** / **ADAPT** as host orchestrator | One active field session, cancel, generation |
-| Debouncer | `content/debounce.ts` | **KEEP** | Word/sentence-aware delays |
-| Segment | `content/segment.ts` | **KEEP** | Caps Groq payload |
-| Instant spell | `content/instantSpell.ts` | **KEEP** | Local, no Groq; English typo map |
-| Merge apply | `content/mergeCorrection.ts` | **KEEP** | Stale-response guard |
-| Language gate | `language/detect.ts` | **KEEP** / **ADAPT** | English-only; Arabic/Turkish already skipped |
-| Groq client (SW) | `background/groqCorrect.ts` | **KEEP** as AI adapter | BYOK JSON correction |
-| Groq client (backend) | `backend/src/services/groq.ts` | **KEEP SEPARATE** from store path | Dev/hosted duplicate of SW client |
-| Cache | `shared/cache.ts` | **KEEP** | In-memory LRU 50, process lifetime |
-| Settings/history | `storage/settings.ts` | **KEEP** / **ADAPT** keys `ewa_*` | Sync settings + local key |
-| Correction card | `ui/correction-card/*` | **KEEP** | Overlay; host style matching |
-| Popup | `popup/App.tsx` | **KEEP** / **ADAPT** | Consent, key, modes, recent |
-| Shared prompt/schema | `packages/shared/src/index.ts` | **KEEP** | Correction-only prompt today |
-| Site | `site/` | **KEEP SEPARATE** | Not extension runtime |
-| Tests | `*.test.ts`, e2e | **KEEP** | Regression for merge |
+- **Command router** with explicit `mode`: `correct | translate | layout | pipeline`.
+- **Default auto:** Correction ON for English; Translation **manual only**; Layout ON for configured layout pairs.
+- **Never chain** translate→correct without user intent; use **generation tokens** and **field snapshot** (already in Lingo/Layfix `dom/`).
+- **Mutex:** one in-flight write per field per generation.
 
 ---
 
-## 4. What EWA actually does (Phase 3 answers)
+## 8. Automatic vs Manual Modes
 
-Evidence: `content/index.ts`, `detect.ts`, `groqCorrect.ts`, `packages/shared/src/index.ts`, `manifest.config.ts`, `popup/App.tsx`.
+| Mode | EWA | Lingo | Layfix |
+|------|-----|-------|--------|
+| Auto | Always (when enabled) | `liveEnabled` (default false) | `enabled` + not paused |
+| Manual | — | ⌘⇧, | ⌘⇧P, ⌘⇧L |
 
-1. **What it does:** English spelling/grammar/wording suggestions (or in-place rewrite). Prompt forbids style rewrites and non-English.
-2. **Activation:** After popup **Continue** (consent) + Groq key. Then automatic on typing in supported fields. No keyboard command.
-3. **Automatic while typing:** **Yes** — `input` capture + debounce (`DEBOUNCE_MS` 120 / word 45 / sentence 30; faster in direct).
-4. **Manual shortcut:** **No** — no `commands`. Pause/Resume is popup-only.
-5. **Sentence finish:** Shorter debounce (`endsWithSentenceBoundary` → 30ms box / 20ms direct), then Groq. Does **not** wait for a full stop as a hard gate.
-6. **Modify vs suggest:** Default `correctionMode: 'box'` shows Shadow DOM row; click applies. `'direct'` calls `adapter.setText` after merge.
-7. **Target text:** Focused textarea / `input[type=text]` / contenteditable via `findEditableFromTarget`. Skips password and Monaco/CodeMirror/Ace.
-8. **Language:** Heuristic `detectEnglish` — function words, Arabic/CJK/Cyrillic counts, Turkish diacritics (`ğüşıöç`), Latin diacritics. **Not** a Groq language-detect call.
-9. **When Groq is called:** After debounce, if `consentAccepted`, field ≤ 250 chars (`MAX_ASSIST_CHARS`), `isEligibleForCorrection(segment)` (min 8 chars or 3 words **and** `detectEnglish().isEnglish`), segment ≠ `lastSentText`/`lastCorrectedFor`. Direct mode may fix typos **locally** first (`instantSpell`) without Groq.
-10. **Model:** `llama-3.1-8b-instant` (`DEFAULTS.GROQ_MODEL_DEFAULT` / backend `GROQ_MODEL`).
-11. **Prompt:** `CORRECTION_SYSTEM_PROMPT` in `packages/shared/src/index.ts` — correct English, preserve meaning, JSON `{originalText, correctedText, changes[]}`.
-12. **Data sent:** JSON user payload `{ text: segment, fieldType, previousText? }` (previous ≤ 200 chars). Authorization: user Groq key. Segment typically last paragraph / last 2 sentences / ≤ 2000 chars (`extractWritingContext` + `MAX_CORRECTION_CHARS`).
-13. **API failure:** Box mode `CorrectionCard.setError` with key/rate/network copy. Direct mode: no card errors (card hidden). Typing never blocked. Backend: 2 attempts then 502/503.
-14. **Typing while pending:** New `schedule` cancels timer; `CANCEL_CORRECT` aborts inflight AbortControllers. New `requestSeq`.
-15. **Stale results:** `seq < lastAppliedSeq` skip; `isResultStillRelevant`; `mergeCorrectionIntoField` returns `null` if source span gone → skip apply (`applyCorrection`).
-16. **Cursor:** `adapters` `mapCursorAfterReplace` + `setSelection`. Not a full OT editor.
-17. **Contenteditable:** `ContentEditableAdapter` — `execCommand('insertText')` fallback `textContent`; MutationObserver on the node.
-18. **Sites:** All URLs. Docs in `LIMITATIONS.md`: Google Docs unsupported; Gmail/iframes limited; code editors ignored.
+**Shortcut conflicts between the three:** **None** (EWA has none; Lingo uses Comma; Layfix uses P and L).
 
-**Translator / AutoFix Phase 3:** NOT VERIFIED FROM SOURCE.
+**Duplicate listeners:** **Yes — critical issue if all three installed.** Each registers capturing `input`/`keydown` on `document`. **Merge requires one content script.**
 
 ---
 
-## 5. Competing features (Phase 4)
+## 9. Duplication & Merge Map
 
-**EWA only:** One feature (correction). English-dominant fields only. Arabic/Turkish-heavy text **never** gets Groq (`hasDominantNonLatinScript` / `likely_turkish`).
+### Shared between Lingo ↔ Layfix (near-duplicate)
 
-**Correction + translation loop:** **NOT VERIFIED FROM SOURCE** across products. **INFERRED:** if a translator also auto-rewrites the same field, EWA’s `input` listener **would** see the new text and may call Groq again (`onInputCapture` → `schedule`). That loop is a **future** risk, not observed in a second codebase.
+| Module | Action | Why |
+|--------|--------|-----|
+| `src/dom/*` | **MERGE** | Snapshot read/write/verify; minor diffs only |
+| `src/safety/*` | **MERGE** | Password/OTP/code field probes |
+| `src/entitlement/*` | **ADAPT** | Same engine; different product IDs |
+| `src/content/evaluateGate.ts` | **KEEP** | Identical |
+| `src/background.ts` shape | **ADAPT** | Different message types |
+| Popup shell / SettingsPanel | **ADAPT** | Different toggles |
 
----
+### EWA (separate)
 
-## 6. Automatic vs manual (Phase 5)
+| Module | Action | Why |
+|--------|--------|-----|
+| `extension/src/adapters/*` | **ADAPT** into unified input engine | Rich textarea/input/CE handling |
+| `extension/src/content/index.ts` | **REPLACE** with orchestrator | Becomes router host |
+| `CorrectionCard` UI | **KEEP** | Unique UX; Layfix/Lingo use inline replace |
+| `background/groqCorrect.ts` | **KEEP** as Correction provider | BYOK path |
+| `packages/shared` prompt/schema | **KEEP** | Correction contract |
+| `language/detect.ts` | **MERGE** with router language policy | English gate + future locales |
+| `instantSpell.ts` | **KEEP** | Free local wins |
+| `mergeCorrection.ts` | **KEEP** | Stale-safe direct edit |
 
-| | EWA |
-| --- | --- |
-| Auto | Yes (content script) |
-| Manual shortcut | **None** |
-| Duplicate listeners | `input` on adapter **and** capturing `document` `input` — both schedule debounce (duplicate schedule, same generation bump) |
-| Commands | None → no shortcut conflicts **inside EWA** |
+### Layfix-specific
 
-**Command router (RECOMMENDED FUTURE, not in code):** would need to be added; EWA today is “always CORRECT after debounce” gated by language/eligibility.
+| Module | Action |
+|--------|--------|
+| `src/layouts/*` | **KEEP SEPARATE** feature module |
+| `src/cache/*` (word classify) | **KEEP SEPARATE** |
+| `speedBox.ts` | **KEEP** (manual layout UI) |
 
----
+### Lingo-specific
 
-## 7. Groq cost (Phase 6) — EWA only
+| Module | Action |
+|--------|--------|
+| `src/translation/*` | **KEEP SEPARATE** feature module |
+| `src/languages.ts` | **KEEP** |
 
-| Feature | Trigger | Calls | Prompt | Model | Cache | Optimization already in code |
-| --- | --- | --- | --- | --- | --- | --- |
-| Correction (SW BYOK) | Debounced typing | 1 chat completion per eligible pause; **retry up to 2** in `correctWithUserGroqKey` | System prompt + JSON `{text, fieldType, previousText?}`; `max_tokens: 400` | `llama-3.1-8b-instant` | LRU 50 on `hashText(trim)` in **service worker memory** (lost on SW sleep) | Skip if same segment; 250 char field cap; 2000 char send cap; cancel abort; eligibility |
-| Instant spell | Direct mode, word/sentence boundary | **0 Groq** | n/a | n/a | typo map | Local |
-| Backend path | Unpacked, no user key | Same as SW + IP rate 60/min | Same | env model | none in backend | 2 attempts |
+### Backends
 
-**Does it call Groq while still typing?** After 20–120ms pause, **yes** (not keystroke-by-keystroke). Mid-token uses default 90–120ms so **partial words can still hit Groq**.
+| Backend | Action |
+|---------|--------|
+| EWA Hono `/api/correct` | **OPTIONAL** dev; store uses BYOK |
+| Lingo FastAPI `/api/translate` | **MERGE** into unified API or keep route |
+| Layfix FastAPI `/api/analyze-word` | **MERGE** into unified API or keep route |
 
-**Combined correction+translation request:** NOT VERIFIED (no translator code). **RECOMMENDED:** keep separate prompts if translation is added — EWA prompt explicitly forbids rewrite/translate.
-
-**Layout + Groq:** NOT VERIFIED FROM SOURCE.
-
----
-
-## 8. Language detection (Phase 7) — EWA
-
-**VERIFIED:** local heuristics only (`detect.ts`). User does **not** pick English/Arabic/Turkish. Mixed Arabic+English: if Arabic chars ≥ Latin, assistant hides. Turkish letters with low English function-word ratio → skip.
-
-**RECOMMENDED FUTURE (not implemented):** keep auto-detect for “should correct?”; add a **single** translate target only if translator source is later audited. Do not add a language matrix in the popup until the other repos exist.
-
----
-
-## 9–10. Unified architecture / single content engine
-
-**Cannot design from three trees.** EWA already has **one** content engine (`content/index.ts`) with **one** `active` session. That is the right **host** shape **if** the other extensions also inject on every page (unverified).
-
-Gluing three independent content scripts **without** reading the others is unsafe. **Do not implement.**
-
----
-
-## 11. UI
-
-**Popup (VERIFIED):** consent → Groq key → Pause → Suggestion box | Direct edit → Highlights (box only) → Recent (`HistoryList`) → links. No options page. No dashboard app.
-
-**In-page:** `CorrectionCard` under field; analyzing / ready / error / plain. Direct mode hides card.
-
-**Translator/layout UI:** NOT VERIFIED FROM SOURCE.
+**Recommendation:** One FastAPI service with three routes; EWA can keep BYOK direct path for users who prefer no server.
 
 ---
 
-## 12. Dashboard / learning
+## 10. Recommended Unified Architecture
 
-**CURRENT (VERIFIED):** `ewa_history` local, max 50 pairs (`HISTORY_LIMIT`), original/corrected strings, popup list with token diff (`HistoryDiff.tsx`). No spelling-pattern stats, no vocabulary, no time series.
+```
+Unified Extension ("Language Assistant" / Zaixos Writing)
+│
+├── Core (extract from Lingo/Layfix dom + EWA adapters)
+│   ├── InputEngine          ← single content script entry
+│   ├── FieldSession         ← one active field, one generation counter
+│   ├── CommandRouter        ← CORRECT | TRANSLATE | FIX_LAYOUT | PIPELINE
+│   ├── LanguagePolicy       ← EWA detect + user translate targets + layout profile
+│   ├── StateManager         ← per-field tickets (reuse isStaleTicket pattern)
+│   └── EventBus             ← chrome.runtime messages
+│
+├── AI Layer
+│   ├── GroqCorrectionClient (BYOK — from EWA)
+│   ├── TranslationClient    (server — from Lingo)
+│   ├── LayoutClassifierClient (server — from Layfix)
+│   ├── CacheCoordinator     ← unified dedup + LRU + persistent word cache
+│   └── Retry/Abort          ← AbortController per request id
+│
+├── Features
+│   ├── correction/          ← EWA prompt, card, instantSpell, mergeCorrection
+│   ├── translation/         ← Lingo engine, segments, live scheduler
+│   └── layout/              ← Layfix mapLayout, planFieldFixes, speedBox
+│
+└── UI
+    ├── Popup                ← one simple surface (see §11)
+    ├── CorrectionCard       ← EWA overlay (optional per mode)
+    └── History/Dashboard    ← extend Layfix history + EWA pairs
+```
 
-**PROPOSED / FUTURE:** can aggregate history **locally** without Groq. **Do not claim** a “Personal Language Improvement Dashboard” exists today.
+**Why not three content scripts:** Verified — triple `document` listeners, triple DOM writes, loop risk.
 
----
-
-## 13. Privacy & security (EWA)
-
-| Issue | Severity | Evidence |
-| --- | --- | --- |
-| Groq key in `chrome.storage.local` (`ewa_groq_api_key`) | **HIGH** (by design BYOK; XSS on page cannot read extension storage, but malware/extension theft can) | `storage/settings.ts` |
-| Typed text to `api.groq.com` after consent | **HIGH** (necessary for product; not sent if no consent/key) | `groqCorrect.ts`, `PRIVACY.md` |
-| Content script all sites | **HIGH** (broad; skips password **type** but not all secrets, e.g. `input type=text` OTP) | `adapters` `IGNORED_INPUT_TYPES`, manifest matches |
-| Host permission to Zaixos API + localhost | **MEDIUM** | unused for store BYOK path when key present |
-| History of corrections on device | **MEDIUM** | `ADD_HISTORY` |
-| `chrome.storage.sync` for settings (not key) | **LOW** | `ewa_settings` |
-| Analytics | **none found** | grep: no gtag/telemetry in src |
-| Shadow DOM overlay | **LOW–MEDIUM** | isolated UI; still page-injected host node |
-| Prompt injection from page text | **MEDIUM** | field text is the user message; JSON mode + strict prompt reduce but do not eliminate |
-
----
-
-## 14. Performance (EWA)
-
-- One capturing `input` + `focusin`/`focusout` on `document`.
-- Per-session MutationObserver on the field; page-level observer on `documentElement` `{childList, subtree}` — **can be expensive** on heavy SPAs (`observeDom`).
-- History `pushState` wrap.
-- Groq after debounce; SW LRU 50.
-- 250-char hard stop avoids huge calls.
-
-Combining **unknown** extra observers from the other two extensions would likely **hurt** until they are inventoried.
-
----
-
-## 15. Merge decision
-
-**A. Merge all three** — **NO** (2/3 unread).  
-**B. Merge two, keep one separate** — **NO** (cannot name which).  
-**C. Keep all three separate** — **default until the other repos are readable**.  
-**D. Rebuild shared architecture preserving modules** — **only after** translator + autofix source is in this workspace.
-
-**Chosen: C until access; then re-audit toward D with EWA as likely core.**
+**Why Lingo/Layfix dom as base:** Mature snapshot + stale checks + tests; EWA adapters should feed the same `EditableElement` abstraction.
 
 ---
 
-## 16. Merge map
+## 11. Unified Popup (recommended)
 
-**Translator / AutoFix:** no files.  
+**Philosophy:** “Remove friction from writing.”
 
-**EWA file → future host (RECOMMENDED only after other source exists):**
+| Section | Contents |
+|---------|----------|
+| Status | Active / Paused; API health |
+| Writing languages | Preferred: English, Arabic, Turkish (+ more later) |
+| Auto assists | ☑ Correct English · ☐ Translate (default off) · ☑ Fix keyboard layout |
+| Translate pair | Source → Target (when translate enabled or manual) |
+| Layout | Source layout + enabled layouts (Layfix) |
+| Shortcuts | Correct (future), Translate ⌘⇧,, Layout ⌘⇧P |
+| Today | Corrections count · Translations · Layout fixes (from history) |
+| Advanced | Groq key (correction BYOK), license, excluded domains |
 
-| Source | Destination |
-| --- | --- |
-| `adapters/index.ts` | Core input engine **KEEP** |
-| `content/index.ts` | Core session **ADAPT** (router hook) |
-| `language/detect.ts` | Language engine **ADAPT** |
-| `background/groqCorrect.ts` | AI layer **KEEP** |
-| `background/index.ts` | Message bus **ADAPT** |
-| `popup/App.tsx` | Unified popup **ADAPT** |
-| `packages/shared` | Correction feature module **KEEP** |
-| `instantSpell.ts` | Correction local **KEEP** |
-| `site/` | Docs **KEEP SEPARATE** |
-| `backend/` | Dev-only **KEEP SEPARATE** from Chrome package |
+Hide license/API complexity until needed.
 
 ---
 
-## 17. Migration plan
+## 12. Dashboard / Learning
 
-**Do not migrate until clones succeed.** Then:
+| | Current | Proposed |
+|---|---------|----------|
+| EWA | Recent correction pairs in popup | Keep; add diff view |
+| Layfix | Token history + personal exceptions | Keep; feed “repeated layout mistakes” |
+| Lingo | None in extension | Log translate events locally |
+| Learning stats | **NOT VERIFIED** — not implemented | **Future:** aggregate history locally (no Groq) |
 
-0. Backup three git SHAs  
-1. Inventory translator + autofix manifests/permissions/commands  
-2. Compare content-script overlap  
-3. Only then extract shared input engine from EWA  
-4. Add features as modules  
-5. Shortcuts last (EWA has none today)  
-6. Popup  
-7. History/dashboard  
-8. Groq cache persistence (today SW-only)  
-9. Tests from EWA + new race tests  
-10. Store listing / single-purpose review  
+**Do not destroy:** EWA correction behavior, Layfix exception learning, Lingo stale-safe writes.
 
 ---
 
-## 18. Regression matrix
+## 13. Privacy & Security
 
-**Runnable today against EWA only** (from `LIMITATIONS.md` + tests): textarea/input/contenteditable, English vs Arabic skip, 250-char skip, direct merge, debounce, instant typos, Gmail/Docs **known weak**, no shortcut tests.
+| Issue | Severity | Where |
+|-------|----------|-------|
+| Typed text to Groq (correction BYOK) | HIGH (by design) | EWA |
+| Typed text to your FastAPI (translate/classify) | HIGH | Lingo, Layfix |
+| All-URL content scripts | HIGH | All three |
+| Password fields skipped | MEDIUM — probes exist but not perfect | Lingo/Layfix `safety/fields.ts`; EWA ignores password **type** only |
+| Groq keys in extension storage | HIGH | EWA `ewa_groq_api_key` |
+| License keys in sync storage | MEDIUM | Lingo/Layfix |
+| No analytics | LOW (good) | All |
 
-**Correction+translation+layout:** NOT VERIFIED FROM SOURCE — cannot write a real matrix for missing products.
+Unified product should use **one** safety gate (Lingo/Layfix probe is stricter than EWA).
 
 ---
 
-# FINAL DECISION
+## 14. Performance
+
+| | Risk if separate | After merge |
+|---|------------------|-------------|
+| 3× content scripts | HIGH CPU/listeners | One script |
+| EWA page MutationObserver on `documentElement` | MEDIUM | Consolidate |
+| Layfix token API on every unknown word | MEDIUM Groq cost | Same, but shared coalescer |
+| Lingo keepalive port every 20s | LOW | One keepalive |
+
+---
+
+## 15. Merge Decision
+
+**Chosen: D — Rebuild shared architecture while preserving feature modules.**
+
+Not **A** (glue three MV3 packages — triple injection).  
+Not **C** (keep three store listings forever — bad UX and conflict).
+
+**B partial:** Could ship “Writing Suite” as one extension containing Lingo+Layfix first (already siblings), add EWA in phase 2.
+
+---
+
+## 16. Safest Migration Order
+
+1. **Phase 0** — Freeze three repos; tag releases  
+2. **Phase 1** — New monorepo; shared `dom/` + `safety/` from Lingo/Layfix  
+3. **Phase 2** — Single `content_script` + `FieldSession`  
+4. **Phase 3** — Port Layfix layout module (local-first; lowest cross-feature conflict)  
+5. **Phase 4** — Port Lingo translation (manual shortcut first; live off)  
+6. **Phase 5** — Port EWA correction + CorrectionCard + BYOK  
+7. **Phase 6** — Command router + mutex / stale policy unification  
+8. **Phase 7** — Unified popup  
+9. **Phase 8** — Unified backend (optional) or dual path BYOK + server  
+10. **Phase 9** — History/dashboard merge  
+11. **Phase 10** — Regression matrix + store single-purpose review  
+
+---
+
+## 17. Regression Matrix (highlights)
+
+Must pass before shipping unified build:
+
+- English typing + EWA box/direct modes unchanged  
+- Arabic typed on US keyboard → Layfix remap; **EWA must not “correct” Arabic**  
+- English sentence + Lingo live **off** → no translation  
+- ⌘⇧, translate selection without enabling live  
+- Rapid typing → no stale overwrite (all three stale patterns)  
+- correction + layout both auto on same field → no infinite loop  
+- Gmail, GitHub textarea, contenteditable compose (best-effort)  
+- API failure → silent no-op (all three already fail closed)
+
+---
+
+# FINAL DECISION SECTION
 
 ### Can the three projects be merged?
-**CONDITIONAL / BLOCKED** — only EWA source verified.
+**YES — CONDITIONAL** (requires single content engine + command router; not a zip merge).
 
 ### Should they become one Chrome Extension?
-**NOT YET** — missing two repos.
+**YES.**
 
-### Should they share one Core / Content Engine / Groq client?
-**NOT VERIFIED** for three. EWA already **is** one content engine + one Groq client.
+### Should they share one Core?
+**YES.**
+
+### Should they share one Content Engine?
+**YES** (mandatory).
+
+### Should they share one Groq Client?
+**CONDITIONAL** — one **orchestrator** with three providers (BYOK correct, server translate, server classify).
 
 ### Should Correction and Translation share an AI request?
-**NOT VERIFIED** (no translator). EWA prompt is correction-only.
+**NO.**
 
 ### Should Layout Switching use Groq?
-**NOT VERIFIED FROM SOURCE.**
+**CONDITIONAL** — only for ambiguous token **classification**; remapping stays **local**.
 
 ### What must remain independent?
-Backend/site of EWA vs extension; **unknown** modules in the private repos.
+- Correction prompt/schema (EWA)  
+- Translation engine + segments (Lingo)  
+- Layout maps + `mapLayout` + classify API (Layfix)  
+- Separate operation caches keyed by operation type  
 
 ### What should be shared?
-**Unknown** until those clones work. EWA adapters/debounce/cache are the only verified shareable core.
+- `dom/` snapshot layer  
+- `safety/` field probes  
+- Content script entry + session/generation  
+- Command router + stale ticket model  
+- Popup shell + pause/excluded domains  
+- Entitlement engine (adapt product id)  
 
 ### Highest-risk existing functionality
-EWA **direct edit** + `mergeCorrectionIntoField`; English skip for Arabic; 250-char cap; BYOK path vs leftover `writing-api.zaixos.com` host permission / `LIMITATIONS.md` “backend required” (docs **stale** vs SW BYOK — VERIFIED contradiction).
+- EWA **direct edit** + `mergeCorrectionIntoField`  
+- Layfix **auto on space** changing tokens EWA then “corrects”  
+- Lingo **live translate** if enabled while user writes English  
+- Triple-install **listener collision** (today)  
 
 ### Safest merge order
-**Read the other two repos first.** Then EWA host → layout if local → correction → translation last (most likely to fight auto-correct).
+Layfix module → Lingo manual → Lingo live → EWA correction → unified popup → deprecate old extensions.
 
 ### What should NOT be merged
-Anything unread. Do not merge ACF (Zaixos filter product) — not in this trio.
+- Three separate content scripts in one package  
+- One combined Groq prompt for correct+translate  
+- Layfix layout tables into Lingo translation prompts  
+
+### Engineering complexity
+**High but bounded:** Lingo/Layfix ~70–80% structural overlap; EWA ~30% overlap (adapters, card, BYOK). Expect a **new monorepo** rather than picking one repo as root.
+
+### Final UX feel
+User types in any language/layout; one assistant quietly fixes keyboard mistakes, optionally polishes English, and translates only when asked or when live translate is explicitly enabled — **one icon, one pause switch, three shortcuts.**
 
 ---
 
-## How to unblock
-
-1. Set GitHub repos **public**, or  
-2. `gh auth login` / `GH_TOKEN` with `repo` scope for this agent, or  
-3. Copy local folders into the workspace.
-
-Then re-run this prompt. I will not invent translator or autofix behavior.
+*Report generated from cloned public repositories. Re-run after major commits to refresh SHAs.*
