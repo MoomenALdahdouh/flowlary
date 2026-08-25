@@ -6,9 +6,7 @@ import {
   normalizeProfile,
 } from '../features/layout/layouts/index.ts'
 
-const API_BASE_URL =
-  (import.meta as ImportMeta & { env?: { VITE_LAYOUT_API_URL?: string } }).env
-    ?.VITE_LAYOUT_API_URL ?? 'http://127.0.0.1:8003'
+import { LAYOUT_API_BASE } from '../config/endpoints.ts'
 
 export type CheckWordRequest = {
   type: 'CHECK_WORD'
@@ -55,7 +53,7 @@ export async function handleCheckWord(message: CheckWordRequest): Promise<CheckW
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/analyze-word`, {
+    const response = await fetch(`${LAYOUT_API_BASE}/api/analyze-word`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

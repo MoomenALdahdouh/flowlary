@@ -1,6 +1,6 @@
 {
   "name": "flowlary",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Flowlary — Your AI Writing Companion",
   "workspaces": [
@@ -11,6 +11,8 @@
   "scripts": {
     "dev": "npm run dev -w @flowlary/extension",
     "build": "npm run build -w @flowlary/extension",
+    "build:release": "npm run build:release -w @flowlary/extension",
+    "package:release": "node scripts/package-release.mjs",
     "test": "npm run test -w @flowlary/shared && npm run test -w @flowlary/extension",
     "typecheck": "npm run typecheck -w @flowlary/shared && npm run typecheck -w @flowlary/extension"
   },

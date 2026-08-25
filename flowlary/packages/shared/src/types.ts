@@ -71,7 +71,7 @@ export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS]
 export const BRAND = {
   name: 'Flowlary',
   tagline: 'Your AI Writing Companion',
-  version: '0.1.0',
+  version: '1.0.0',
   pageMarker: 'flowlary',
 } as const
 

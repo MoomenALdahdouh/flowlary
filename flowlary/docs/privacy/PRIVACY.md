@@ -16,10 +16,10 @@ Flowlary processes writing locally in the browser extension. Selected operations
 | Operation | Destination | When | Data sent |
 |-----------|-------------|------|-----------|
 | CORRECT (BYOK) | `https://api.groq.com` | After safety; user enabled correction with Groq key | English segment + minimal context JSON |
-| TRANSLATE | Translation API (prod or local dev) | Manual shortcut or live mode (opt-in) | Text, languages, mode |
-| FIX_LAYOUT classifier | Layout API (fallback) | When local mapping cannot resolve token | Word + short context |
+| TRANSLATE | `https://lingo-api.zaixos.com` | Manual shortcut or live mode (opt-in) | Text, languages, mode |
+| FIX_LAYOUT classifier | `https://flowlary-api.zaixos.com` | When local mapping cannot resolve token | Word + short context |
 
-Production API hosts are declared in `extension/manifest.json`. Localhost entries are for development builds only.
+Development builds (`npm run dev` / `npm run build`) may use localhost APIs and include localhost host permissions in `manifest.json`. **Release builds** (`npm run build:release`) use `manifest.prod.json` with HTTPS production hosts only.
 
 ## BYOK Groq
 

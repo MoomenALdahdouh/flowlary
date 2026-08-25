@@ -4,11 +4,11 @@
 
 Flowlary is a unified Chrome MV3 extension that combines three writing capabilities:
 
-- **Improve Writing** — English grammar and spelling correction (BYOK Groq)
-- **Translate** — Meaning translation across 12 languages (manual + optional live)
-- **Fix Layout** — Keyboard layout remapping (local-first)
+- **Keyboard Layout Fix** — local-first layout remapping (13 layouts)
+- **Writing Correction** — English grammar/spelling (BYOK Groq)
+- **Translation** — manual + optional live translation (12 languages)
 
-This monorepo is the merged product. Original source extensions (`english-writing-assistant`, `ai-writing-translator`, `autofix-layout`) remain read-only references.
+Original source extensions remain read-only references; all product code lives in `flowlary/`.
 
 ## Structure
 
@@ -16,41 +16,53 @@ This monorepo is the merged product. Original source extensions (`english-writin
 flowlary/
 ├── extension/        # Chrome MV3 extension (Vite + CRXJS)
 ├── packages/shared/  # Shared types and contracts
-├── backend/          # Backend placeholder (API routes future)
-├── tests/            # Cross-package unit & integration tests
-└── docs/             # Architecture, privacy, security
+├── backend/          # Backend placeholder
+├── tests/            # Unit & integration tests
+├── release/          # Store-ready ZIP + checksum (generated)
+└── docs/             # Architecture, privacy, security, release
 ```
 
 ## Development
 
 ```bash
 npm install
-npm run dev      # Extension dev server with HMR
-npm run build    # Production extension build → extension/dist/
-npm test         # Run all tests (453)
+npm run dev           # Extension dev server (localhost APIs)
+npm run build         # Dev build → extension/dist/
+npm test              # 458 tests
 ```
 
-Load the unpacked extension from `extension/dist/` in Chrome.
+Load unpacked from `extension/dist/` in Chrome.
+
+## Release packaging
+
+```bash
+npm test
+npm run build:release   # Production manifest + HTTPS API defaults
+npm run package:release # → release/flowlary-v1.0.0.zip + .sha256
+```
+
+See `release/RELEASE_CHECKLIST.md` before Chrome Web Store submission.
 
 ## Shortcuts
 
 | Shortcut | Action |
 |----------|--------|
 | Ctrl/Cmd+Shift+, | Translate |
-| Ctrl/Cmd+Shift+P | Fix layout |
-| Ctrl/Cmd+Shift+L | Speed Box (manual layout conversion) |
+| Ctrl/Cmd+Shift+P | Fix keyboard layout |
+| Ctrl/Cmd+Shift+L | Speed Box (manual conversion) |
 
 ## Documentation
 
 - [Architecture](docs/architecture/FLOWLARY_ARCHITECTURE.md)
-- [Implementation phases](docs/development/PHASES.md)
+- [Phases](docs/development/PHASES.md)
 - [Privacy](docs/privacy/PRIVACY.md) · [Data flow](docs/privacy/DATA_FLOW.md)
-- [Security architecture](docs/security/SECURITY_ARCHITECTURE.md)
-- [Forensic audit](../FL0_AUDIT.md) (Phase 0)
-- [Phase 14 report](PHASE14_REPORT.md)
+- [Security](docs/security/SECURITY_ARCHITECTURE.md)
+- [Release notes](RELEASE_NOTES.md)
+- [Store description draft](docs/release/CHROME_WEB_STORE_DESCRIPTION.md)
+- [Phase 15 report](PHASE15_REPORT.md)
 
 ## Status
 
-Phases 0–14 complete. **453 tests passing.** Release candidate for unpacked/local use.
+**Version 1.0.0** — Phases 0–15 complete. Release ZIP prepared; **not published** to Chrome Web Store.
 
-Not yet published to Chrome Web Store. Production backend APIs and store submission are out of scope for Phase 14. See [PHASE14_REPORT.md](PHASE14_REPORT.md) for release classification and remaining blockers.
+Release blockers: public privacy policy URL, support contact, store screenshots, production API verification.

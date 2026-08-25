@@ -56,6 +56,8 @@ History record (privacy-gated, optional)
 
 **Default dev URL:** `http://127.0.0.1:8004` (override via `VITE_TRANSLATION_API_URL`).
 
+**Production release URL:** `https://lingo-api.zaixos.com` (set automatically in `npm run build:release`).
+
 ## FIX_LAYOUT
 
 | Stage | Local | Remote | Notes |

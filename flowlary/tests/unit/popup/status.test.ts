@@ -31,7 +31,7 @@ function baseStatus(overrides: Partial<ExtensionStatus> = {}): ExtensionStatus {
       manualConversionEnabled: true,
       directShortcutEnabled: true,
     },
-    version: '0.1.0',
+    version: '1.0.0',
     ...overrides,
   }
 }

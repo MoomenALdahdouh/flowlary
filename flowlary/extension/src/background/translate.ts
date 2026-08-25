@@ -12,9 +12,7 @@ import {
   getTranslateCoalescer,
 } from '../storage/cache/index.ts'
 
-const API_BASE_URL =
-  (import.meta as ImportMeta & { env?: { VITE_TRANSLATION_API_URL?: string } }).env
-    ?.VITE_TRANSLATION_API_URL ?? 'http://127.0.0.1:8004'
+import { TRANSLATION_API_BASE } from '../config/endpoints.ts'
 
 export type TranslateTextRequest = {
   type: 'TRANSLATE_TEXT'
@@ -89,7 +87,7 @@ export async function handleTranslateText(
 
     getCacheMetrics().ai_requests_translate += 1
     try {
-      const response = await fetch(`${API_BASE_URL}/api/translate`, {
+      const response = await fetch(`${TRANSLATION_API_BASE}/api/translate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

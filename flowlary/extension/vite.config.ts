@@ -1,7 +1,11 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { crx } from '@crxjs/vite-plugin'
-import manifest from './manifest.json' with { type: 'json' }
+import devManifest from './manifest.json' with { type: 'json' }
+import prodManifest from './manifest.prod.json' with { type: 'json' }
+
+const isReleaseBuild = process.env.FLOWLARY_RELEASE === '1'
+const manifest = isReleaseBuild ? prodManifest : devManifest
 
 export default defineConfig({
   plugins: [

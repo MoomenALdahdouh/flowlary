@@ -1,5 +1,7 @@
 node_modules/
 dist/
+release/*.zip
+release/.validate-tmp/
 *.local
 .env
 .env.*
