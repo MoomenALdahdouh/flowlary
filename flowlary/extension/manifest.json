@@ -1,0 +1,62 @@
+{
+  "manifest_version": 3,
+  "name": "Flowlary",
+  "description": "Your AI Writing Companion",
+  "version": "0.1.0",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_popup": "src/popup/index.html",
+    "default_title": "Flowlary",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "background": {
+    "service_worker": "src/background/index.ts",
+    "type": "module"
+  },
+  "permissions": ["storage", "activeTab", "clipboardWrite"],
+  "host_permissions": [
+    "https://api.groq.com/*",
+    "https://flowlary-api.zaixos.com/*",
+    "https://lingo-api.zaixos.com/*",
+    "http://127.0.0.1:8003/*",
+    "http://127.0.0.1:8004/*",
+    "http://127.0.0.1:8787/*",
+    "http://localhost:8003/*",
+    "http://localhost:8004/*",
+    "http://localhost:8787/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content_script.ts"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "commands": {
+    "TRANSLATE": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Comma",
+        "mac": "Command+Shift+Comma"
+      },
+      "description": "Translate selected or current writing text"
+    },
+    "FIX_LAYOUT": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+P",
+        "mac": "Command+Shift+P"
+      },
+      "description": "Fix keyboard layout for selected or current text"
+    }
+  }
+}
