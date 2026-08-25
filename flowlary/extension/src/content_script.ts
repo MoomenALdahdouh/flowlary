@@ -5,10 +5,12 @@ import { createCorrectionFeature } from './features/correction/index.ts'
 import { createTranslationFeature } from './features/translation/index.ts'
 import { createLayoutFeature } from './features/layout/index.ts'
 import { flowlaryStorage, hydrateStateFromStorage, runStorageMigration } from './storage/index.ts'
+import { ensureHistoryInitialized } from './storage/history/record.ts'
 
 void (async () => {
   await runStorageMigration()
   await hydrateStateFromStorage(flowlaryStorage)
+  await ensureHistoryInitialized()
 })()
 
 const engine = new InputEngine()

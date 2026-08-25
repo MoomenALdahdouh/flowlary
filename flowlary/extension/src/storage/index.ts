@@ -106,7 +106,23 @@ export {
   getEntitlementPublicView,
   createMigrationReader,
   ensureDefaultNamespaces,
+  getHistory,
+  getHistoryStats,
+  removeHistoryEntry,
+  clearHistory,
 } from './facade.ts'
+
+export {
+  recordHistory,
+  ensureHistoryInitialized,
+  resetHistoryServiceForTests,
+  normalizeHistoryStore,
+  sanitizeHistoryEntry,
+  isSensitiveText,
+  canRecordHistory,
+  isDuplicateHistoryEntry,
+  importLegacyHistoryArrays,
+} from './history/index.ts'
 
 export { hydrateStateFromStorage, getHydratedEntitlementView } from './hydrate.ts'
 

@@ -13,7 +13,7 @@
 | **8** | CorrectionCard + direct-edit integration | ✅ Complete |
 | **9** | Unified popup UX | ✅ Complete |
 | **10** | Unified storage + migration from legacy keys | ✅ Complete |
-| **11** | Unified history | Pending |
+| **11** | Unified history | ✅ Complete |
 | **12** | Performance / cost optimization (CacheCoordinator persistent) | Pending |
 | **13** | Security / privacy review | Pending |
 | **14** | Full regression testing | Pending |

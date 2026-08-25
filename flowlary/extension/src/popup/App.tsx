@@ -3,7 +3,10 @@ import { BRAND } from '@flowlary/shared'
 import type { ExtensionStatus } from '../messaging/types.ts'
 import { SUPPORTED_LANGUAGES } from '../features/translation/languages.ts'
 import {
+  clearAllHistory,
+  deleteHistoryEntry,
   dispatchCommand,
+  fetchHistory,
   fetchStatus,
   patchCorrection,
   patchLayout,
@@ -21,8 +24,15 @@ import {
   readinessLabel,
 } from './status.ts'
 import { getShortcutLabels } from './shortcuts.ts'
+import {
+  formatHistoryTimestamp,
+  historyMetaLine,
+  operationLabel,
+  truncateHistoryText,
+} from './history.ts'
+import type { HistoryEntry } from '@flowlary/shared'
 
-type View = 'home' | 'settings'
+type View = 'home' | 'settings' | 'history'
 
 function languageName(code: string): string {
   return SUPPORTED_LANGUAGES.find((item) => item.code === code)?.name ?? code.toUpperCase()
@@ -102,7 +112,10 @@ export function App() {
           type="button"
           className="fl-icon-btn"
           aria-label={view === 'home' ? 'Open settings' : 'Back to home'}
-          onClick={() => setView(view === 'home' ? 'settings' : 'home')}
+          onClick={() => {
+            if (view === 'history') setView('home')
+            else setView(view === 'home' ? 'settings' : 'home')
+          }}
         >
           {view === 'home' ? '⚙' : '←'}
         </button>
@@ -361,7 +374,18 @@ export function App() {
               />
             </div>
           </section>
+          <section className="fl-section" aria-labelledby="history-link-heading">
+            <h2 id="history-link-heading" className="fl-section-label">
+              History
+            </h2>
+            <button type="button" className="fl-action-btn fl-action-btn-wide" onClick={() => setView('history')}>
+              View local history
+            </button>
+            <p className="fl-card-desc">Recent corrections, translations, and layout fixes stored on this device.</p>
+          </section>
         </>
+      ) : view === 'history' ? (
+        <HistoryPanel busy={busy} setBusy={setBusy} setError={setError} />
       ) : (
         <SettingsPanel
           status={status}
@@ -381,9 +405,110 @@ export function App() {
           <button type="button" className="fl-link-btn" onClick={() => setView('settings')}>
             Settings & privacy
           </button>
+        ) : view === 'history' ? (
+          <button type="button" className="fl-link-btn" onClick={() => setView('home')}>
+            Back to home
+          </button>
         ) : null}
       </footer>
     </div>
+  )
+}
+
+type HistoryPanelProps = {
+  busy: string | null
+  setBusy: (value: string | null) => void
+  setError: (value: string | null) => void
+}
+
+function HistoryPanel({ busy, setBusy, setError }: HistoryPanelProps) {
+  const [entries, setEntries] = useState<HistoryEntry[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const reload = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await fetchHistory()
+      setEntries(response.entries)
+    } catch (err) {
+      setError(err instanceof PopupApiError ? err.message : 'Could not load history.')
+    } finally {
+      setLoading(false)
+    }
+  }, [setError])
+
+  useEffect(() => {
+    void reload()
+  }, [reload])
+
+  async function runHistoryAction(key: string, fn: () => Promise<{ entries: HistoryEntry[] }>) {
+    setBusy(key)
+    setError(null)
+    try {
+      const response = await fn()
+      setEntries(response.entries)
+    } catch (err) {
+      setError(err instanceof PopupApiError ? err.message : 'History action failed.')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <section className="fl-section fl-history" aria-labelledby="history-heading">
+      <div className="fl-history-toolbar">
+        <h2 id="history-heading" className="fl-section-label">
+          Local history
+        </h2>
+        {entries.length > 0 ? (
+          <button
+            type="button"
+            className="fl-link-btn"
+            disabled={busy === 'clear-history'}
+            onClick={() => void runHistoryAction('clear-history', clearAllHistory)}
+          >
+            Clear all
+          </button>
+        ) : null}
+      </div>
+
+      {loading ? <p className="fl-card-desc">Loading history…</p> : null}
+
+      {!loading && entries.length === 0 ? (
+        <p className="fl-history-empty">No history yet. Successful corrections, translations, and layout fixes appear here.</p>
+      ) : null}
+
+      <ul className="fl-history-list">
+        {entries.map((entry) => {
+          const meta = historyMetaLine(entry)
+          return (
+            <li key={entry.id} className="fl-history-item">
+              <div className="fl-history-item-head">
+                <strong>{operationLabel(entry.operation)}</strong>
+                <time dateTime={new Date(entry.timestamp).toISOString()}>
+                  {formatHistoryTimestamp(entry.timestamp)}
+                </time>
+              </div>
+              {meta ? <p className="fl-history-meta">{meta}</p> : null}
+              <p className="fl-history-diff">
+                <span>{truncateHistoryText(entry.sourceText)}</span>
+                <span aria-hidden> → </span>
+                <span>{truncateHistoryText(entry.resultText)}</span>
+              </p>
+              <button
+                type="button"
+                className="fl-link-btn"
+                disabled={busy === `delete-${entry.id}`}
+                onClick={() => void runHistoryAction(`delete-${entry.id}`, () => deleteHistoryEntry(entry.id))}
+              >
+                Delete
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
   )
 }
 

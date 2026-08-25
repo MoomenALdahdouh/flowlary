@@ -27,6 +27,12 @@ import {
   withVersion,
   type FlowlaryHistoryPreserve,
 } from './schemas.ts'
+import {
+  getHistoryService,
+  normalizeHistoryStore,
+  type HistoryEntry,
+  type HistoryStats,
+} from './history/index.ts'
 import type { FlowlaryStorage } from './index.ts'
 
 export async function getSettings(storage: FlowlaryStorage): Promise<FlowlarySettings> {
@@ -123,6 +129,35 @@ export async function setLicenseKey(storage: FlowlaryStorage, key: string): Prom
 
 export async function getHistoryPreserve(storage: FlowlaryStorage): Promise<FlowlaryHistoryPreserve> {
   return normalizeHistoryPreserve(await storage.get(storage.keys.history, 'local'))
+}
+
+export async function getHistory(storage: FlowlaryStorage): Promise<HistoryEntry[]> {
+  const service = getHistoryService(storage)
+  await service.initialize()
+  return service.list()
+}
+
+export async function getHistoryStats(storage: FlowlaryStorage): Promise<HistoryStats> {
+  const service = getHistoryService(storage)
+  await service.initialize()
+  return service.getStats()
+}
+
+export async function removeHistoryEntry(storage: FlowlaryStorage, id: string): Promise<boolean> {
+  const service = getHistoryService(storage)
+  await service.initialize()
+  return service.remove(id)
+}
+
+export async function clearHistory(storage: FlowlaryStorage): Promise<void> {
+  const service = getHistoryService(storage)
+  await service.initialize()
+  await service.clear()
+}
+
+export async function getUnifiedHistoryStore(storage: FlowlaryStorage) {
+  const raw = await storage.get(storage.keys.history, 'local')
+  return normalizeHistoryStore(raw)
 }
 
 export async function getMigrationState(storage: FlowlaryStorage): Promise<MigrationState> {

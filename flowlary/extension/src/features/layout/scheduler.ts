@@ -149,7 +149,7 @@ export class LayoutScheduler {
       if (!canCommitMismatch(profile, fix.word, fix.targetLayout, fix.corrected, text)) {
         continue
       }
-      if (applyLayoutFix(element, session, fix, generation)) {
+      if (applyLayoutFix(element, session, fix, generation, undefined, { historyMode: 'automatic' })) {
         this.options.metrics.layout_local_hits += 1
       }
     }
@@ -210,6 +210,8 @@ export class LayoutScheduler {
               targetLayout: cached.targetLayout,
             },
             generation,
+            undefined,
+            { historyMode: 'automatic' },
           )
         }
         continue
@@ -249,6 +251,8 @@ export class LayoutScheduler {
           targetLayout: result.verdict.targetLayout,
         },
         generation,
+        undefined,
+        { historyMode: 'automatic' },
       )
     }
   }

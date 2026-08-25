@@ -20,7 +20,12 @@ import {
   setLayoutSettings,
   setSettings,
   setTranslationSettings,
+  getHistory,
+  getHistoryStats,
+  removeHistoryEntry,
+  clearHistory,
 } from '../storage/index.ts'
+import { ensureHistoryInitialized } from '../storage/history/record.ts'
 
 const router = new CommandRouter()
 
@@ -35,6 +40,7 @@ export async function startupBackground(): Promise<void> {
     startupPromise = (async () => {
       await runStorageMigration()
       await hydrateStateFromStorage(flowlaryStorage)
+      await ensureHistoryInitialized()
     })()
   }
   return startupPromise
@@ -152,6 +158,32 @@ export async function handleMessage(
 
     case 'ACTIVATE_LICENSE':
       return { ok: false, error: 'not_implemented' }
+
+    case 'GET_HISTORY': {
+      const [entries, stats] = await Promise.all([
+        getHistory(flowlaryStorage),
+        getHistoryStats(flowlaryStorage),
+      ])
+      return { entries, stats }
+    }
+
+    case 'DELETE_HISTORY_ENTRY': {
+      const removed = await removeHistoryEntry(flowlaryStorage, message.id)
+      if (!removed) return { ok: false, error: 'not_found' }
+      const [entries, stats] = await Promise.all([
+        getHistory(flowlaryStorage),
+        getHistoryStats(flowlaryStorage),
+      ])
+      return { entries, stats }
+    }
+
+    case 'CLEAR_HISTORY': {
+      await clearHistory(flowlaryStorage)
+      return {
+        entries: [],
+        stats: { total: 0, byOperation: { CORRECT: 0, TRANSLATE: 0, FIX_LAYOUT: 0 } },
+      }
+    }
 
     case 'RUN_COMMAND':
     case 'DISPATCH_COMMAND': {

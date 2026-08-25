@@ -1,4 +1,4 @@
-import type { Command, CommandResult } from '@flowlary/shared'
+import type { Command, CommandResult, HistoryEntry, HistoryStats } from '@flowlary/shared'
 import { BRAND } from '@flowlary/shared'
 
 export type MessageType =
@@ -16,6 +16,9 @@ export type MessageType =
   | 'RUN_COMMAND'
   | 'CHECK_WORD'
   | 'TRANSLATE_TEXT'
+  | 'GET_HISTORY'
+  | 'DELETE_HISTORY_ENTRY'
+  | 'CLEAR_HISTORY'
 
 export type ExtensionStatus = {
   brand: typeof BRAND
@@ -117,6 +120,14 @@ export type TranslateTextMessage = {
   targetLanguage: string
   mode: 'shortcut' | 'live'
 }
+export type GetHistoryMessage = { type: 'GET_HISTORY' }
+export type DeleteHistoryEntryMessage = { type: 'DELETE_HISTORY_ENTRY'; id: string }
+export type ClearHistoryMessage = { type: 'CLEAR_HISTORY' }
+
+export type HistoryResponse = {
+  entries: HistoryEntry[]
+  stats: HistoryStats
+}
 
 export type ExtensionRequest =
   | GetStatusMessage
@@ -134,8 +145,15 @@ export type ExtensionRequest =
   | TranslateTextMessage
   | CorrectTextMessage
   | CancelCorrectMessage
+  | GetHistoryMessage
+  | DeleteHistoryEntryMessage
+  | ClearHistoryMessage
 
-export type ExtensionResponse = ExtensionStatus | CommandResult | { ok: boolean; error?: string }
+export type ExtensionResponse =
+  | ExtensionStatus
+  | CommandResult
+  | HistoryResponse
+  | { ok: boolean; error?: string }
 
 export function isExtensionRequest(value: unknown): value is ExtensionRequest {
   return (

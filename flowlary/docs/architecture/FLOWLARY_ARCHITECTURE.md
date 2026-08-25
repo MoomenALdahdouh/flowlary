@@ -72,6 +72,8 @@ Phase 8: **CorrectionCard** (Shadow DOM, hostStyleAdapter, tokenDiff highlights)
 
 Phase 9: **Unified popup** — single Flowlary control center (correction, translation, layout, global pause, Groq BYOK UX, quick actions). Popup uses `GET_STATUS` / `SET_*` / `RUN_COMMAND` only; never calls AI APIs directly.
 
+Phase 11: **Unified history** — local-only `HistoryService` records successful correction, translation, and layout commits under `flowlary.history`. Privacy-gated, deduplicated, bounded (50 entries). Popup history view via `GET_HISTORY`. See [PHASE11_HISTORY.md](./PHASE11_HISTORY.md).
+
 See [PHASE3_INPUT_ROUTING.md](./PHASE3_INPUT_ROUTING.md), [PHASE4_LAYOUT.md](./PHASE4_LAYOUT.md), [PHASE5_TRANSLATION.md](./PHASE5_TRANSLATION.md), [PHASE6_LIVE_TRANSLATION.md](./PHASE6_LIVE_TRANSLATION.md), [PHASE7_CORRECTION.md](./PHASE7_CORRECTION.md).
 
 ## FieldSession (Phase 2 hardened)
@@ -179,7 +181,7 @@ Returns `SafetyDecision { allowed, reason? }`.
 | `flowlary.translation` | Lingo language + live toggles |
 | `flowlary.layout` | Layfix layout toggles |
 | `flowlary.layout.profile` | Personal exceptions + trust events |
-| `flowlary.history` | Preserved legacy history (unified engine Phase 11) |
+| `flowlary.history` | Unified operation history (Phase 11) + preserved legacy arrays until cleanup |
 | `flowlary.entitlement` | License + usage (`FLOWLARY` product ID) |
 | `flowlary.migrations.v1` | Migration v1 state machine |
 

@@ -13,6 +13,7 @@ import {
 } from './mergeCorrection.ts'
 import { isEligibleForCorrection } from './language.ts'
 import { requestCorrectionRemote } from './client.ts'
+import { recordHistory } from '../../storage/history/record.ts'
 import type { CorrectionMetrics } from './metrics.ts'
 import type { CorrectionCard } from './ui/CorrectionCard.ts'
 import type { CorrectionSuggestionBinding } from './ui/types.ts'
@@ -347,6 +348,13 @@ export async function commitMergedCorrection(
   options.fieldState.lastSentText = options.fieldState.lastCorrectedFor
   options.getCard(element).hide()
   options.metrics.correction_commits += 1
+  void recordHistory({
+    operation: 'CORRECT',
+    element,
+    sourceText: segment,
+    resultText: correctedSegment,
+    mode: 'automatic',
+  })
   return 'committed'
 }
 

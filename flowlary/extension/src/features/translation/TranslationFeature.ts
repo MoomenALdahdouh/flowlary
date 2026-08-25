@@ -14,6 +14,7 @@ import type { TranslationOutcome, TranslationRequest, TranslationTicket } from '
 import { DEFAULT_SOURCE_LANGUAGE, DEFAULT_TARGET_LANGUAGE, normalizeLanguage } from './languages.ts'
 import { createTranslationMetrics, type TranslationMetrics } from './metrics.ts'
 import { TranslationScheduler } from './scheduler.ts'
+import { recordHistory } from '../../storage/history/record.ts'
 
 export type TranslationProviderFn = (
   request: TranslationRequest,
@@ -224,6 +225,15 @@ export function createTranslationFeature(options: TranslationModuleOptions): Tra
       if (write.verdict !== 'written') {
         return { ok: false, operation: 'TRANSLATE', stale: true, error: write.reason ?? 'stale' }
       }
+
+      void recordHistory({
+        operation: 'TRANSLATE',
+        element: editable,
+        sourceText: target.text,
+        resultText: outcome.translation,
+        mode: 'manual',
+        metadata: { sourceLanguage, targetLanguage },
+      })
 
       return { ok: true, operation: 'TRANSLATE', data: { applied: true, mode: target.mode } }
     },

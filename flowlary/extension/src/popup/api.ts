@@ -1,4 +1,4 @@
-import type { ExtensionStatus } from '../messaging/types.ts'
+import type { ExtensionStatus, HistoryResponse } from '../messaging/types.ts'
 
 export class PopupApiError extends Error {
   constructor(message: string) {
@@ -87,4 +87,16 @@ export async function saveGroqKey(key: string): Promise<ExtensionStatus> {
 
 export async function removeGroqKey(): Promise<ExtensionStatus> {
   return patchCorrection({ groqApiKey: '', consentAccepted: false })
+}
+
+export async function fetchHistory(): Promise<HistoryResponse> {
+  return sendMessage<HistoryResponse>({ type: 'GET_HISTORY' })
+}
+
+export async function deleteHistoryEntry(id: string): Promise<HistoryResponse> {
+  return sendMessage<HistoryResponse>({ type: 'DELETE_HISTORY_ENTRY', id })
+}
+
+export async function clearAllHistory(): Promise<HistoryResponse> {
+  return sendMessage<HistoryResponse>({ type: 'CLEAR_HISTORY' })
 }

@@ -12,6 +12,7 @@ import type { TranslationMetrics } from './metrics.ts'
 import type { LanguageCode, TranslationTicket } from './types.ts'
 import { MAX_TRANSLATION_CHARS } from './types.ts'
 import { DEFAULT_SOURCE_LANGUAGE, DEFAULT_TARGET_LANGUAGE, normalizeLanguage } from './languages.ts'
+import { recordHistory } from '../../storage/history/record.ts'
 
 export type FieldLiveState = {
   lastRequestedKey: string | null
@@ -191,6 +192,14 @@ export async function runLiveTranslation(
 
     options.fieldState.lastTranslatedKey = requestKey
     options.metrics.translation_live_commits += 1
+    void recordHistory({
+      operation: 'TRANSLATE',
+      element,
+      sourceText: segment.text,
+      resultText: outcome.translation,
+      mode: 'live',
+      metadata: { sourceLanguage, targetLanguage },
+    })
     return 'committed'
   } catch {
     options.metrics.translation_live_errors += 1

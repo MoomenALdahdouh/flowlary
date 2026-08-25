@@ -13,6 +13,8 @@ import { isExceptedToken } from './profile/exceptions.ts'
 import { isInsideMarkdownCode, isSafeToken, tokenizeText } from '../../core/safety/index.ts'
 import type { LayoutClassifier } from './classifier/LayoutClassifier.ts'
 import type { LayoutMetrics } from './metrics.ts'
+import type { HistoryMode } from '../../storage/history/types.ts'
+import { recordHistory } from '../../storage/history/record.ts'
 
 export type FixTarget = {
   start: number
@@ -116,7 +118,7 @@ export function applyLayoutFix(
   fix: FieldFix,
   generation: number,
   requestId?: number,
-  options: { placeCaretAfter?: boolean } = {},
+  options: { placeCaretAfter?: boolean; historyMode?: HistoryMode } = {},
 ): boolean {
   const result = writeReplacement(element, fix.start, fix.end, fix.corrected, {
     origin: 'FIX_LAYOUT',
@@ -125,6 +127,19 @@ export function applyLayoutFix(
     expectedGeneration: generation,
     placeCaretAfter: options.placeCaretAfter,
   })
+  if (result.verdict === 'written' && options.historyMode) {
+    void recordHistory({
+      operation: 'FIX_LAYOUT',
+      element,
+      sourceText: fix.word,
+      resultText: fix.corrected,
+      mode: options.historyMode,
+      metadata: {
+        sourceLayout: fix.sourceLayout,
+        targetLayout: fix.targetLayout,
+      },
+    })
+  }
   return result.verdict === 'written'
 }
 
@@ -175,7 +190,7 @@ export async function fixCurrentText(
     if (!canCommitMismatch(profile, fix.word, fix.targetLayout, fix.corrected, text)) {
       continue
     }
-    if (applyLayoutFix(element, session, fix, generation, requestId, { placeCaretAfter: true })) {
+    if (applyLayoutFix(element, session, fix, generation, requestId, { placeCaretAfter: true, historyMode: 'manual' })) {
       applied = true
     }
   }
@@ -234,7 +249,7 @@ export async function fixCurrentText(
       targetLayout: result.verdict.targetLayout,
     }
 
-    if (applyLayoutFix(element, session, fix, generation, requestId, { placeCaretAfter: true })) {
+    if (applyLayoutFix(element, session, fix, generation, requestId, { placeCaretAfter: true, historyMode: 'manual' })) {
       applied = true
     }
   }
