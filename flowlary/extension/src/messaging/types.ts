@@ -43,6 +43,13 @@ export type ExtensionStatus = {
     manualConversionEnabled: boolean
     directShortcutEnabled: boolean
   }
+  entitlement: {
+    status: 'trial' | 'free' | 'pro' | 'unknown'
+    hasLicenseKey: boolean
+    isPro: boolean
+    inTrial: boolean
+    remainingMs: number
+  }
   version: string
 }
 

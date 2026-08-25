@@ -51,12 +51,18 @@ export type SafetyDecision = {
 export const STORAGE_KEYS = {
   settings: 'flowlary.settings',
   correction: 'flowlary.correction',
+  correctionGroqKey: 'flowlary.correction.groqKey',
   translation: 'flowlary.translation',
   layout: 'flowlary.layout',
+  layoutProfile: 'flowlary.layout.profile',
   history: 'flowlary.history',
   entitlement: 'flowlary.entitlement',
+  entitlementLicenseKey: 'flowlary.entitlement.licenseKey',
   migrations: 'flowlary.migrations.v1',
 } as const
+
+/** Unified product identifier for entitlement and licensing. */
+export const FLOWLARY_PRODUCT_ID = 'FLOWLARY' as const
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS]
 

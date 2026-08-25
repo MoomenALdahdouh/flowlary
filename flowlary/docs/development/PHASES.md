@@ -12,7 +12,7 @@
 | **7** | Port EWA correction + BYOK Groq | ✅ Complete |
 | **8** | CorrectionCard + direct-edit integration | ✅ Complete |
 | **9** | Unified popup UX | ✅ Complete |
-| **10** | Unified storage + migration from legacy keys | Pending |
+| **10** | Unified storage + migration from legacy keys | ✅ Complete |
 | **11** | Unified history | Pending |
 | **12** | Performance / cost optimization (CacheCoordinator persistent) | Pending |
 | **13** | Security / privacy review | Pending |

@@ -25,15 +25,43 @@ async function writeArea(area: StorageArea, key: string, value: unknown): Promis
   await chrome.storage[area].set({ [key]: value })
 }
 
+function unwrapStored<T>(raw: unknown): T | undefined {
+  if (raw == null) return undefined
+  if (typeof raw !== 'object' || Array.isArray(raw)) return raw as T
+  const record = raw as Record<string, unknown>
+  if ('_v' in record && 'value' in record && Object.keys(record).length === 2) {
+    return record.value as T
+  }
+  if ('_v' in record) {
+    const { _v: _ignored, ...rest } = record
+    return rest as T
+  }
+  return raw as T
+}
+
+function wrapStored(value: unknown): unknown {
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return { value, _v: DEFAULT_VERSION }
+  }
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return { ...(value as object), _v: DEFAULT_VERSION }
+  }
+  return { value, _v: DEFAULT_VERSION }
+}
+
 export class FlowlaryStorage {
   async get<T>(key: string, area: StorageArea = 'local'): Promise<T | undefined> {
     if (typeof chrome === 'undefined' || !chrome.storage) return undefined
     const result = await chrome.storage[area].get(key)
-    return result[key] as T | undefined
+    return unwrapStored<T>(result[key])
   }
 
-  async set<T>(key: string, value: T, area: StorageArea = 'local'): Promise<void> {
-    await writeArea(area, key, { ...(value as object), _v: DEFAULT_VERSION })
+  async set<T extends Record<string, unknown>>(key: string, value: T, area: StorageArea = 'local'): Promise<void> {
+    await writeArea(area, key, wrapStored(value))
+  }
+
+  async setPrimitive(key: string, value: string, area: StorageArea = 'local'): Promise<void> {
+    await writeArea(area, key, wrapStored(value.trim()))
   }
 
   async remove(key: string, area: StorageArea = 'local'): Promise<void> {
@@ -58,15 +86,71 @@ export class FlowlaryStorage {
 
 export const flowlaryStorage = new FlowlaryStorage()
 
-/** Migration stubs — implemented in Phase 10. */
+export {
+  getSettings,
+  setSettings,
+  getCorrectionSettings,
+  setCorrectionSettings,
+  getTranslationSettings,
+  setTranslationSettings,
+  getLayoutSettings,
+  setLayoutSettings,
+  getLayoutProfile,
+  setLayoutProfile,
+  getEntitlement,
+  setEntitlement,
+  getLicenseKey,
+  setLicenseKey,
+  getMigrationState,
+  setMigrationState,
+  getEntitlementPublicView,
+  createMigrationReader,
+  ensureDefaultNamespaces,
+} from './facade.ts'
+
+export { hydrateStateFromStorage, getHydratedEntitlementView } from './hydrate.ts'
+
+export {
+  runStorageMigration,
+  getMigrationDiagnostics,
+  resetMigrationRunnerForTests,
+} from './migration/runner.ts'
+
+export { LEGACY_EWA, LEGACY_LINGO, LEGACY_LAYFIX, ALL_LEGACY_KEYS } from './legacyKeys.ts'
+
+export {
+  normalizeSettings,
+  normalizeCorrection,
+  normalizeTranslation,
+  normalizeLayout,
+  normalizeLayoutProfile,
+  readStoredString,
+} from './schemas.ts'
+
+export {
+  normalizeEntitlement,
+  createDefaultEntitlement,
+  resolveEntitlementStatus,
+  canFeatureUseEntitlement,
+  toPublicView,
+  type FlowlaryEntitlement,
+  type EntitlementPublicView,
+} from './entitlement.ts'
+
+/** @deprecated Use runStorageMigration — kept for compatibility. */
 export async function migrateEWASettings(): Promise<void> {
-  /* Phase 10 */
+  const { runStorageMigration } = await import('./migration/runner.ts')
+  await runStorageMigration()
 }
 
+/** @deprecated Use runStorageMigration — kept for compatibility. */
 export async function migrateLingoSettings(): Promise<void> {
-  /* Phase 10 */
+  const { runStorageMigration } = await import('./migration/runner.ts')
+  await runStorageMigration()
 }
 
+/** @deprecated Use runStorageMigration — kept for compatibility. */
 export async function migrateLayfixSettings(): Promise<void> {
-  /* Phase 10 */
+  const { runStorageMigration } = await import('./migration/runner.ts')
+  await runStorageMigration()
 }

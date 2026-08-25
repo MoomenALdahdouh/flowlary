@@ -16,7 +16,7 @@ vi.mock('../../extension/src/background/commands.ts', async (importOriginal) => 
 
 const mockSendCommand = vi.mocked(sendCommandToActiveTab)
 
-function mockChrome(initialStatus: ReturnType<typeof buildStatus>) {
+function mockChrome() {
   const handler = vi.fn(async (message: { type: string; patch?: Record<string, unknown>; operation?: string }) => {
     return handleMessage(message)
   })
@@ -73,7 +73,7 @@ describe('Phase 9 — Popup UX integration', () => {
 
   it('D — global pause disables active state', async () => {
     await handleMessage({ type: 'SET_SETTINGS', patch: { enabled: false } })
-    const status = buildStatus()
+    const status = await buildStatus()
     expect(status.active).toBe(false)
   })
 
@@ -85,7 +85,7 @@ describe('Phase 9 — Popup UX integration', () => {
 
   it('F — removing Groq key clears connected state', async () => {
     await handleMessage({ type: 'SET_CORRECTION', patch: { groqApiKey: '', consentAccepted: false } })
-    const status = buildStatus()
+    const status = await buildStatus()
     expect(status.correction.hasGroqKey).toBe(false)
   })
 })
@@ -101,7 +101,7 @@ describe('Popup rendering', () => {
     stateManager.translation.shortcutEnabled = true
     stateManager.translation.liveEnabled = false
     stateManager.layout.autoEnabled = true
-    mockChrome(buildStatus())
+    mockChrome()
     container = document.createElement('div')
     document.body.append(container)
   })

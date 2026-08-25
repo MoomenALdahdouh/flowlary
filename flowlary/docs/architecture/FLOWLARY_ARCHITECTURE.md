@@ -175,14 +175,15 @@ Returns `SafetyDecision { allowed, reason? }`.
 | Key | Purpose |
 |-----|---------|
 | `flowlary.settings` | Master toggles, pause, exclusions |
-| `flowlary.correction` | EWA settings |
+| `flowlary.correction` | Correction settings (Groq key in `flowlary.correction.groqKey`) |
 | `flowlary.translation` | Lingo language + live toggles |
-| `flowlary.layout` | Layfix layout profile |
-| `flowlary.history` | Unified local history |
-| `flowlary.entitlement` | License + usage |
-| `flowlary.migrations.v1` | Migration completion flags |
+| `flowlary.layout` | Layfix layout toggles |
+| `flowlary.layout.profile` | Personal exceptions + trust events |
+| `flowlary.history` | Preserved legacy history (unified engine Phase 11) |
+| `flowlary.entitlement` | License + usage (`FLOWLARY` product ID) |
+| `flowlary.migrations.v1` | Migration v1 state machine |
 
-Legacy keys (`ewa_*`, `lingo*`, `autofix*`) migrated in Phase 10 — not deleted until verified.
+Legacy keys (`ewa_*`, `lingo*`, `autofix*`, `licenseKey`, `wordCacheV2`) migrated in Phase 10 — **not deleted** until explicit cleanup after verification. See [PHASE10_STORAGE_MIGRATION.md](./PHASE10_STORAGE_MIGRATION.md).
 
 ## Cache Isolation
 

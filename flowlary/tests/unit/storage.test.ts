@@ -6,10 +6,13 @@ describe('FlowlaryStorage', () => {
   it('uses isolated flowlary namespaces', () => {
     expect(STORAGE_KEYS.settings).toBe('flowlary.settings')
     expect(STORAGE_KEYS.correction).toBe('flowlary.correction')
+    expect(STORAGE_KEYS.correctionGroqKey).toBe('flowlary.correction.groqKey')
     expect(STORAGE_KEYS.translation).toBe('flowlary.translation')
     expect(STORAGE_KEYS.layout).toBe('flowlary.layout')
+    expect(STORAGE_KEYS.layoutProfile).toBe('flowlary.layout.profile')
     expect(STORAGE_KEYS.history).toBe('flowlary.history')
     expect(STORAGE_KEYS.entitlement).toBe('flowlary.entitlement')
+    expect(STORAGE_KEYS.entitlementLicenseKey).toBe('flowlary.entitlement.licenseKey')
     expect(STORAGE_KEYS.migrations).toBe('flowlary.migrations.v1')
   })
 

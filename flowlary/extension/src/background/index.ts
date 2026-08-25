@@ -1,7 +1,6 @@
 import { BRAND } from '@flowlary/shared'
 import { CommandRouter } from '../core/router/CommandRouter.ts'
 import { stateManager } from '../core/state/StateManager.ts'
-import { flowlaryStorage } from '../storage/index.ts'
 import type {
   ExtensionRequest,
   ExtensionResponse,
@@ -12,14 +11,41 @@ import { commandFromChromeCommand, sendCommandToActiveTab } from './commands.ts'
 import { handleCheckWord } from './classify.ts'
 import { handleTranslateText } from './translate.ts'
 import { cancelCorrectRequest, handleCorrectText } from './correct.ts'
+import {
+  flowlaryStorage,
+  getEntitlementPublicView,
+  hydrateStateFromStorage,
+  runStorageMigration,
+  setCorrectionSettings,
+  setLayoutSettings,
+  setSettings,
+  setTranslationSettings,
+} from '../storage/index.ts'
 
 const router = new CommandRouter()
+
+let startupPromise: Promise<void> | null = null
+
+export function resetBackgroundStartupForTests(): void {
+  startupPromise = null
+}
+
+export async function startupBackground(): Promise<void> {
+  if (!startupPromise) {
+    startupPromise = (async () => {
+      await runStorageMigration()
+      await hydrateStateFromStorage(flowlaryStorage)
+    })()
+  }
+  return startupPromise
+}
 
 export function getRouter(): CommandRouter {
   return router
 }
 
-export function buildStatus(): ExtensionStatus {
+export async function buildStatus(): Promise<ExtensionStatus> {
+  const entitlement = await getEntitlementPublicView(flowlaryStorage)
   return {
     brand: BRAND,
     active: stateManager.isActive(),
@@ -46,6 +72,7 @@ export function buildStatus(): ExtensionStatus {
       manualConversionEnabled: stateManager.layout.manualConversionEnabled,
       directShortcutEnabled: stateManager.layout.directShortcutEnabled,
     },
+    entitlement,
     version: BRAND.version,
   }
 }
@@ -63,6 +90,8 @@ export function buildStatus(): ExtensionStatus {
 export async function handleMessage(
   message: unknown,
 ): Promise<ExtensionResponse | undefined> {
+  await startupBackground()
+
   if (!isExtensionRequest(message)) {
     return { ok: false, error: 'unknown_message' }
   }
@@ -73,38 +102,25 @@ export async function handleMessage(
 
     case 'SET_SETTINGS': {
       Object.assign(stateManager.settings, message.patch)
-      await flowlaryStorage.set(flowlaryStorage.keys.settings, stateManager.settings)
+      await setSettings(flowlaryStorage, stateManager.settings)
       return buildStatus()
     }
 
     case 'SET_TRANSLATION': {
       Object.assign(stateManager.translation, message.patch)
-      await flowlaryStorage.set(flowlaryStorage.keys.translation, stateManager.translation)
+      await setTranslationSettings(flowlaryStorage, stateManager.translation)
       return buildStatus()
     }
 
     case 'SET_CORRECTION': {
       Object.assign(stateManager.correction, message.patch)
-      await flowlaryStorage.set(flowlaryStorage.keys.correction, {
-        enabled: stateManager.correction.enabled,
-        mode: stateManager.correction.mode,
-        highlights: stateManager.correction.highlights,
-        consentAccepted: stateManager.correction.consentAccepted,
-      })
-      if (message.patch.groqApiKey !== undefined) {
-        const key = message.patch.groqApiKey
-        if (key.trim()) {
-          await flowlaryStorage.set(`${flowlaryStorage.keys.correction}.groqKey`, key, 'local')
-        } else {
-          await flowlaryStorage.remove(`${flowlaryStorage.keys.correction}.groqKey`, 'local')
-        }
-      }
+      await setCorrectionSettings(flowlaryStorage, stateManager.correction)
       return buildStatus()
     }
 
     case 'SET_LAYOUT': {
       Object.assign(stateManager.layout, message.patch)
-      await flowlaryStorage.set(flowlaryStorage.keys.layout, stateManager.layout)
+      await setLayoutSettings(flowlaryStorage, stateManager.layout)
       return buildStatus()
     }
 
@@ -118,7 +134,7 @@ export async function handleMessage(
     case 'PAUSE_TEMPORARILY': {
       const ms = message.ms ?? 60 * 60 * 1000
       stateManager.settings.pausedUntil = Date.now() + ms
-      await flowlaryStorage.set(flowlaryStorage.keys.settings, stateManager.settings)
+      await setSettings(flowlaryStorage, stateManager.settings)
       return buildStatus()
     }
 
@@ -163,6 +179,7 @@ export function registerBackgroundListeners(): void {
 
   chrome.runtime.onInstalled.addListener(() => {
     console.info('[Flowlary] installed', BRAND.version)
+    void startupBackground()
   })
 
   chrome.commands?.onCommand.addListener((command) => {
@@ -170,6 +187,8 @@ export function registerBackgroundListeners(): void {
     if (!operation) return
     void sendCommandToActiveTab(operation)
   })
+
+  void startupBackground()
 }
 
 registerBackgroundListeners()

@@ -4,6 +4,12 @@ import { CommandOrchestrator } from './core/router/CommandOrchestrator.ts'
 import { createCorrectionFeature } from './features/correction/index.ts'
 import { createTranslationFeature } from './features/translation/index.ts'
 import { createLayoutFeature } from './features/layout/index.ts'
+import { flowlaryStorage, hydrateStateFromStorage, runStorageMigration } from './storage/index.ts'
+
+void (async () => {
+  await runStorageMigration()
+  await hydrateStateFromStorage(flowlaryStorage)
+})()
 
 const engine = new InputEngine()
 const router = new CommandRouter()
