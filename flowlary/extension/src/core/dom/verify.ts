@@ -1,5 +1,5 @@
 import { readCaret, readFieldText, selectionOverlaps } from './read.ts'
-import type { DiscardReason, EditableElement, ReplacementSnapshot } from './types.ts'
+import type { DiscardReason, EditableElement, FieldSnapshot, ReplacementSnapshot } from './types.ts'
 
 export function currentGeneration(
   generations: WeakMap<Element, number>,
@@ -11,6 +11,20 @@ export function currentGeneration(
 export type VerifyOptions = {
   allowActiveEdit?: boolean
   expectedGeneration?: number
+}
+
+export function verifyFieldSnapshot(
+  snapshot: FieldSnapshot,
+  expectedGeneration: number,
+): DiscardReason | 'stale-generation' | null {
+  if (!snapshot.element.isConnected) return 'disconnected'
+
+  const currentText = readFieldText(snapshot.element)
+  if (currentText !== snapshot.text) return 'text-mismatch'
+
+  if (expectedGeneration !== snapshot.generation) return 'stale-generation'
+
+  return null
 }
 
 export function verifyReplacement(

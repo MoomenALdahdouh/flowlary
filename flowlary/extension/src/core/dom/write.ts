@@ -8,6 +8,8 @@ import {
 } from './read.ts'
 import type { EditableElement, ReplacementSnapshot, WriteVerdict } from './types.ts'
 import { verifyReplacement } from './verify.ts'
+import { isControlledWriteActive, isProgrammaticInputType, withWriteOrigin } from './writeOrigin.ts'
+import type { WriteOrigin } from '@flowlary/shared'
 
 const generations = new WeakMap<Element, number>()
 let writing = false
@@ -17,8 +19,12 @@ export function getGenerationMap(): WeakMap<Element, number> {
 }
 
 export function bumpGeneration(element: Element, inputType?: string): void {
-  if (writing || inputType === 'insertReplacementText') return
+  if (writing || isControlledWriteActive() || isProgrammaticInputType(inputType)) return
   generations.set(element, (generations.get(element) ?? 0) + 1)
+}
+
+export function setDomGeneration(element: Element, generation: number): void {
+  generations.set(element, generation)
 }
 
 export function snapshotGeneration(element: Element): number {
@@ -181,6 +187,7 @@ export function commitReplacement(
   mappingStillValid = true,
   expectedElement?: EditableElement,
   options?: CommitOptions,
+  origin: WriteOrigin = 'SYSTEM',
 ): WriteVerdict {
   if (!mappingStillValid) return 'discarded'
   if (
@@ -194,9 +201,14 @@ export function commitReplacement(
     return 'discarded'
   }
 
-  return snapshot.kind === 'value'
-    ? writeValue(snapshot, replacement, options)
-    : writeContentEditable(snapshot, replacement, options)
+  let verdict: WriteVerdict = 'discarded'
+  withWriteOrigin(origin, () => {
+    verdict =
+      snapshot.kind === 'value'
+        ? writeValue(snapshot, replacement, options)
+        : writeContentEditable(snapshot, replacement, options)
+  })
+  return verdict
 }
 
 export function isWriting(): boolean {

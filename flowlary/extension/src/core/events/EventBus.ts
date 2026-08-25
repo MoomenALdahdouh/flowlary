@@ -1,7 +1,15 @@
+import type { WriteOrigin } from '@flowlary/shared'
+
 export type NormalizedInputEvent =
   | { type: 'focus-in'; target: Element }
   | { type: 'focus-out'; target: Element }
-  | { type: 'input'; target: Element; inputType?: string; generation: number }
+  | {
+      type: 'input'
+      target: Element
+      inputType?: string
+      generation: number
+      origin?: WriteOrigin
+    }
   | { type: 'keydown'; target: Element; key: string; code: string }
   | { type: 'keyup'; target: Element; key: string; code: string }
   | { type: 'composition-start'; target: Element }

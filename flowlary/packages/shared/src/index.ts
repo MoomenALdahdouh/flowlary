@@ -1,4 +1,6 @@
+export type { WriteOrigin, WriterTag } from './types.ts'
 export * from './types.ts'
 export * from './ai.ts'
 export * from './features.ts'
 export * from './cache.ts'
+export * from './writeOrigin.ts'

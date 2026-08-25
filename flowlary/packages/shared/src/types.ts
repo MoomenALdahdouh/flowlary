@@ -1,6 +1,12 @@
 /** Supported writing operations routed through CommandRouter. */
 export type OperationType = 'CORRECT' | 'TRANSLATE' | 'FIX_LAYOUT' | 'PIPELINE'
 
+/** Origin of a DOM write or synthetic input event. */
+export type WriteOrigin = 'USER' | 'CORRECT' | 'TRANSLATE' | 'FIX_LAYOUT' | 'SYSTEM'
+
+/** Tracks which actor last committed a field write (diagnostic only). */
+export type WriterTag = OperationType | 'SYSTEM'
+
 /** Reference to an editable field in the page. */
 export type FieldRef = {
   /** Stable identity for the field within a document frame. */

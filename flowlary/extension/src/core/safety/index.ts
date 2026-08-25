@@ -3,6 +3,7 @@ import { probeElement, skipReasonForField } from './fields.ts'
 import { isExcludedHost } from './domains.ts'
 import { isInsideMarkdownCode } from './markdown.ts'
 import { skipReasonForToken } from './tokenKind.ts'
+import { looksLikeCodeEditor } from './codeEditor.ts'
 
 export type SafetyContext = {
   hostname?: string
@@ -17,6 +18,10 @@ export function evaluateFieldSafety(element: Element, context: SafetyContext = {
     if (isExcludedHost(context.hostname, context.excludedDomains)) {
       return { allowed: false, reason: 'excluded-domain' }
     }
+  }
+
+  if (element instanceof HTMLElement && looksLikeCodeEditor(element)) {
+    return { allowed: false, reason: 'code-region' }
   }
 
   const probe = probeElement(element)
@@ -47,3 +52,5 @@ export * from './fields.ts'
 export * from './domains.ts'
 export * from './markdown.ts'
 export * from './tokenKind.ts'
+export * from './codeEditor.ts'
+export * from './tokenize.ts'

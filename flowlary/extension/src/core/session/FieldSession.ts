@@ -1,4 +1,4 @@
-import type { Command, FieldRef, OperationType } from '@flowlary/shared'
+import type { WriterTag } from '@flowlary/shared'
 import type { FieldSnapshot } from '../dom/types.ts'
 import { resolveEditableKind } from '../dom/read.ts'
 
@@ -14,49 +14,47 @@ export function fieldIdentity(element: Element): string {
   return id
 }
 
-export function toFieldRef(element: Element): FieldRef {
+export function toFieldRef(element: Element) {
   const kind = resolveEditableKind(element)
   return {
     id: fieldIdentity(element),
     tag: element.tagName,
     kind: kind === 'value'
       ? element instanceof HTMLTextAreaElement
-        ? 'textarea'
-        : 'text'
+        ? 'textarea' as const
+        : 'text' as const
       : kind === 'contenteditable'
-        ? 'contenteditable'
+        ? 'contenteditable' as const
         : undefined,
   }
 }
 
-export type FieldSessionState = {
-  field: FieldRef
-  element: Element
+export type ActiveRequest = {
+  operation: WriterTag
+  requestId: number
   generation: number
-  requestSequence: number
-  activeOperation: OperationType | null
-  currentOperation: OperationType | null
-  lastCommittedSnapshot: FieldSnapshot | null
-  abortController: AbortController | null
-  composing: boolean
-  pendingCommand: Command | null
-  lastWriter: OperationType | null
-  lastInputAt: number
+  signal: AbortSignal
+  controller: AbortController
 }
 
+export type AcquireResult =
+  | { ok: true; requestId: number; generation: number; signal: AbortSignal }
+  | { ok: false; reason: 'mutex-held' | 'composing' }
+
+export type CommitVerdict =
+  | { ok: true }
+  | { ok: false; reason: 'stale-generation' | 'stale-request' | 'composing' | 'aborted' | 'mutex' }
+
 export class FieldSession {
-  readonly field: FieldRef
+  readonly field: ReturnType<typeof toFieldRef>
   readonly element: Element
 
   private generation = 0
   private requestSequence = 0
-  private activeOperation: OperationType | null = null
-  private currentOperation: OperationType | null = null
+  private activeRequest: ActiveRequest | null = null
   private lastCommittedSnapshot: FieldSnapshot | null = null
-  private abortController: AbortController | null = null
   private composing = false
-  private pendingCommand: Command | null = null
-  private lastWriter: OperationType | null = null
+  private lastWriter: WriterTag | null = null
   private lastInputAt = 0
 
   constructor(element: Element) {
@@ -70,7 +68,7 @@ export class FieldSession {
 
   bumpGeneration(): number {
     this.generation += 1
-    this.abortActive()
+    this.abortActiveRequest()
     return this.generation
   }
 
@@ -89,46 +87,76 @@ export class FieldSession {
     return false
   }
 
-  beginOperation(operation: OperationType): AbortController {
-    this.abortActive()
-    this.activeOperation = operation
-    this.currentOperation = operation
-    this.abortController = new AbortController()
-    return this.abortController
+  getActiveRequest(): ActiveRequest | null {
+    return this.activeRequest
   }
 
-  completeOperation(operation: OperationType, snapshot?: FieldSnapshot): void {
-    if (this.activeOperation === operation) {
-      this.activeOperation = null
-      this.abortController = null
+  tryAcquireWrite(operation: WriterTag): AcquireResult {
+    if (this.composing) return { ok: false, reason: 'composing' }
+    if (this.activeRequest !== null) return { ok: false, reason: 'mutex-held' }
+
+    const requestId = this.nextRequestId()
+    const generation = this.getGeneration()
+    const controller = new AbortController()
+    this.activeRequest = {
+      operation,
+      requestId,
+      generation,
+      signal: controller.signal,
+      controller,
     }
-    if (snapshot) {
-      this.lastCommittedSnapshot = snapshot
-    }
-    this.lastWriter = operation
-    this.pendingCommand = null
+    return { ok: true, requestId, generation, signal: controller.signal }
   }
 
+  releaseWrite(operation: WriterTag, requestId: number): void {
+    if (!this.activeRequest) return
+    if (this.activeRequest.requestId !== requestId) return
+    if (this.activeRequest.operation !== operation) return
+    this.activeRequest = null
+  }
+
+  abortActiveRequest(): void {
+    if (this.activeRequest) {
+      this.activeRequest.controller.abort()
+      this.nextRequestId()
+      this.activeRequest = null
+    }
+  }
+
+  /** @deprecated use abortActiveRequest */
   abortActive(): void {
-    this.abortController?.abort()
-    this.abortController = null
-    this.activeOperation = null
+    this.abortActiveRequest()
+  }
+
+  canCommit(operationGeneration: number, requestId: number): CommitVerdict {
+    if (this.composing) return { ok: false, reason: 'composing' }
+    const active = this.activeRequest
+    if (active) {
+      if (active.signal.aborted) return { ok: false, reason: 'aborted' }
+      if (active.requestId !== requestId) return { ok: false, reason: 'mutex' }
+    }
+    if (this.isStale(operationGeneration, requestId)) {
+      return {
+        ok: false,
+        reason: operationGeneration !== this.generation ? 'stale-generation' : 'stale-request',
+      }
+    }
+    return { ok: true }
+  }
+
+  noteWrite(writer: WriterTag, requestId: number, snapshot?: FieldSnapshot): void {
+    this.lastWriter = writer
+    if (snapshot) this.lastCommittedSnapshot = snapshot
+    this.releaseWrite(writer, requestId)
   }
 
   setComposing(value: boolean): void {
     this.composing = value
+    if (value) this.abortActiveRequest()
   }
 
   isComposing(): boolean {
     return this.composing
-  }
-
-  setPendingCommand(command: Command | null): void {
-    this.pendingCommand = command
-  }
-
-  getPendingCommand(): Command | null {
-    return this.pendingCommand
   }
 
   noteInput(): void {
@@ -139,7 +167,7 @@ export class FieldSession {
     return this.lastInputAt
   }
 
-  getLastWriter(): OperationType | null {
+  getLastWriter(): WriterTag | null {
     return this.lastWriter
   }
 
@@ -147,20 +175,21 @@ export class FieldSession {
     return this.lastCommittedSnapshot
   }
 
-  snapshot(): FieldSessionState {
-    return {
-      field: this.field,
-      element: this.element,
-      generation: this.generation,
-      requestSequence: this.requestSequence,
-      activeOperation: this.activeOperation,
-      currentOperation: this.currentOperation,
-      lastCommittedSnapshot: this.lastCommittedSnapshot,
-      abortController: this.abortController,
-      composing: this.composing,
-      pendingCommand: this.pendingCommand,
-      lastWriter: this.lastWriter,
-      lastInputAt: this.lastInputAt,
+  /** Legacy API — prefer tryAcquireWrite */
+  beginOperation(operation: WriterTag): AbortController {
+    const acquired = this.tryAcquireWrite(operation)
+    if (!acquired.ok) {
+      const controller = new AbortController()
+      controller.abort()
+      return controller
+    }
+    return this.activeRequest!.controller
+  }
+
+  completeOperation(operation: WriterTag, snapshot?: FieldSnapshot): void {
+    const active = this.activeRequest
+    if (active && active.operation === operation) {
+      this.noteWrite(operation, active.requestId, snapshot)
     }
   }
 }
@@ -183,7 +212,7 @@ export class FieldSessionRegistry {
 
   delete(element: Element): void {
     const session = this.sessions.get(element)
-    session?.abortActive()
+    session?.abortActiveRequest()
     this.sessions.delete(element)
   }
 }

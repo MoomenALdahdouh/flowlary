@@ -1,5 +1,6 @@
 import { BRAND } from '@flowlary/shared'
-import { bumpGeneration } from '../dom/write.ts'
+import { isControlledWriteActive, shouldIgnoreInputForGeneration } from '../dom/writeOrigin.ts'
+import { bumpUserGeneration, syncDomGeneration } from '../dom/generation.ts'
 import { isEditableElement, resolveEditableKind } from '../dom/read.ts'
 import { markPageActive, shouldProcessFrame } from '../dom/frameGuard.ts'
 import { beginComposition, endComposition } from '../dom/composition.ts'
@@ -114,16 +115,29 @@ export class InputEngine {
     if (!target || !this.shouldAssist(target)) return
 
     const inputEvent = event as InputEvent
-    bumpGeneration(target, inputEvent.inputType)
     const session = this.sessions.getOrCreate(target)
     session.noteInput()
-    const generation = session.bumpGeneration()
+
+    if (shouldIgnoreInputForGeneration(inputEvent.inputType)) {
+      syncDomGeneration(target, session)
+      this.emit({
+        type: 'input',
+        target,
+        inputType: inputEvent.inputType,
+        generation: session.getGeneration(),
+        origin: isControlledWriteActive() ? 'SYSTEM' : 'USER',
+      })
+      return
+    }
+
+    const generation = bumpUserGeneration(target, session)
 
     this.emit({
       type: 'input',
       target,
       inputType: inputEvent.inputType,
       generation,
+      origin: 'USER',
     })
   }
 
