@@ -73,11 +73,13 @@ The interactive version of this report is the Next.js app in this repository.
 The unified Chrome extension lives at:
 
 ```text
-Moomen/Projects/flowlary/
+/Moomen/Projects/flowlary
 ```
+
+(Same folder as `Moomen/Projects/flowlary` in this repo.)
 
 Load unpacked extension from:
 
 ```text
-Moomen/Projects/flowlary/extension/dist
+/Moomen/Projects/flowlary/extension/dist
 ```
