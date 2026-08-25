@@ -67,3 +67,17 @@ This codebase is the natural merge host: adapters, debounce, Groq client, consen
 Do not combine this with Adaptive Content Filter.
 
 The interactive version of this report is the Next.js app in this repository.
+
+## Flowlary (merged extension)
+
+The unified Chrome extension lives at:
+
+```text
+Moomen/Projects/flowlary/
+```
+
+Load unpacked extension from:
+
+```text
+Moomen/Projects/flowlary/extension/dist
+```

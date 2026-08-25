@@ -1,0 +1,431 @@
+========== 1. git -C /workspace status ==========
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	renamed:    flowlary/.gitignore -> Moomen/Projects/flowlary/.gitignore
+	renamed:    flowlary/PHASE10_REPORT.md -> Moomen/Projects/flowlary/PHASE10_REPORT.md
+	renamed:    flowlary/PHASE11_REPORT.md -> Moomen/Projects/flowlary/PHASE11_REPORT.md
+	renamed:    flowlary/PHASE12_REPORT.md -> Moomen/Projects/flowlary/PHASE12_REPORT.md
+	renamed:    flowlary/PHASE13_REPORT.md -> Moomen/Projects/flowlary/PHASE13_REPORT.md
+	renamed:    flowlary/PHASE14_REPORT.md -> Moomen/Projects/flowlary/PHASE14_REPORT.md
+	renamed:    flowlary/PHASE15_REPORT.md -> Moomen/Projects/flowlary/PHASE15_REPORT.md
+	renamed:    flowlary/PHASE1_REPORT.md -> Moomen/Projects/flowlary/PHASE1_REPORT.md
+	renamed:    flowlary/PHASE2_REPORT.md -> Moomen/Projects/flowlary/PHASE2_REPORT.md
+	renamed:    flowlary/PHASE3_REPORT.md -> Moomen/Projects/flowlary/PHASE3_REPORT.md
+	renamed:    flowlary/PHASE4_REPORT.md -> Moomen/Projects/flowlary/PHASE4_REPORT.md
+	renamed:    flowlary/PHASE5_REPORT.md -> Moomen/Projects/flowlary/PHASE5_REPORT.md
+	renamed:    flowlary/PHASE6_REPORT.md -> Moomen/Projects/flowlary/PHASE6_REPORT.md
+	renamed:    flowlary/PHASE7_REPORT.md -> Moomen/Projects/flowlary/PHASE7_REPORT.md
+	renamed:    flowlary/PHASE8_REPORT.md -> Moomen/Projects/flowlary/PHASE8_REPORT.md
+	renamed:    flowlary/PHASE9_REPORT.md -> Moomen/Projects/flowlary/PHASE9_REPORT.md
+	renamed:    flowlary/README.md -> Moomen/Projects/flowlary/README.md
+	renamed:    flowlary/RELEASE_NOTES.md -> Moomen/Projects/flowlary/RELEASE_NOTES.md
+	renamed:    flowlary/backend/package.json -> Moomen/Projects/flowlary/backend/package.json
+	renamed:    flowlary/backend/src/index.ts -> Moomen/Projects/flowlary/backend/src/index.ts
+	renamed:    flowlary/backend/tsconfig.json -> Moomen/Projects/flowlary/backend/tsconfig.json
+	renamed:    flowlary/docs/architecture/FLOWLARY_ARCHITECTURE.md -> Moomen/Projects/flowlary/docs/architecture/FLOWLARY_ARCHITECTURE.md
+	renamed:    flowlary/docs/architecture/PHASE10_STORAGE_MIGRATION.md -> Moomen/Projects/flowlary/docs/architecture/PHASE10_STORAGE_MIGRATION.md
+	renamed:    flowlary/docs/architecture/PHASE11_HISTORY.md -> Moomen/Projects/flowlary/docs/architecture/PHASE11_HISTORY.md
+	renamed:    flowlary/docs/architecture/PHASE12_CACHE_PERFORMANCE.md -> Moomen/Projects/flowlary/docs/architecture/PHASE12_CACHE_PERFORMANCE.md
+	renamed:    flowlary/docs/architecture/PHASE2_DOM_SAFETY.md -> Moomen/Projects/flowlary/docs/architecture/PHASE2_DOM_SAFETY.md
+	renamed:    flowlary/docs/architecture/PHASE2_GAP_ANALYSIS.md -> Moomen/Projects/flowlary/docs/architecture/PHASE2_GAP_ANALYSIS.md
+	renamed:    flowlary/docs/architecture/PHASE3_INPUT_ROUTING.md -> Moomen/Projects/flowlary/docs/architecture/PHASE3_INPUT_ROUTING.md
+	renamed:    flowlary/docs/architecture/PHASE4_LAYOUT.md -> Moomen/Projects/flowlary/docs/architecture/PHASE4_LAYOUT.md
+	renamed:    flowlary/docs/architecture/PHASE4_SOURCE_MAPPING.md -> Moomen/Projects/flowlary/docs/architecture/PHASE4_SOURCE_MAPPING.md
+	renamed:    flowlary/docs/architecture/PHASE5_TRANSLATION.md -> Moomen/Projects/flowlary/docs/architecture/PHASE5_TRANSLATION.md
+	renamed:    flowlary/docs/architecture/PHASE6_LIVE_TRANSLATION.md -> Moomen/Projects/flowlary/docs/architecture/PHASE6_LIVE_TRANSLATION.md
+	renamed:    flowlary/docs/architecture/PHASE7_CORRECTION.md -> Moomen/Projects/flowlary/docs/architecture/PHASE7_CORRECTION.md
+	renamed:    flowlary/docs/architecture/PHASE7_GAP_ANALYSIS.md -> Moomen/Projects/flowlary/docs/architecture/PHASE7_GAP_ANALYSIS.md
+	renamed:    flowlary/docs/architecture/PHASE8_CORRECTION_UI.md -> Moomen/Projects/flowlary/docs/architecture/PHASE8_CORRECTION_UI.md
+	renamed:    flowlary/docs/architecture/PHASE9_POPUP_UX.md -> Moomen/Projects/flowlary/docs/architecture/PHASE9_POPUP_UX.md
+	renamed:    flowlary/docs/architecture/TEST_MIGRATION.md -> Moomen/Projects/flowlary/docs/architecture/TEST_MIGRATION.md
+	renamed:    flowlary/docs/development/PHASES.md -> Moomen/Projects/flowlary/docs/development/PHASES.md
+	renamed:    flowlary/docs/privacy/DATA_FLOW.md -> Moomen/Projects/flowlary/docs/privacy/DATA_FLOW.md
+	renamed:    flowlary/docs/privacy/PRIVACY.md -> Moomen/Projects/flowlary/docs/privacy/PRIVACY.md
+	renamed:    flowlary/docs/release/CHROME_WEB_STORE_DESCRIPTION.md -> Moomen/Projects/flowlary/docs/release/CHROME_WEB_STORE_DESCRIPTION.md
+	renamed:    flowlary/docs/release/CHROME_WEB_STORE_PRIVACY.md -> Moomen/Projects/flowlary/docs/release/CHROME_WEB_STORE_PRIVACY.md
+	renamed:    flowlary/docs/security/SECURITY_ARCHITECTURE.md -> Moomen/Projects/flowlary/docs/security/SECURITY_ARCHITECTURE.md
+	renamed:    flowlary/extension/.env.example -> Moomen/Projects/flowlary/extension/.env.example
+	renamed:    flowlary/extension/icons/icon-128.png -> Moomen/Projects/flowlary/extension/icons/icon-128.png
+	renamed:    flowlary/extension/icons/icon-16.png -> Moomen/Projects/flowlary/extension/icons/icon-16.png
+	renamed:    flowlary/extension/icons/icon-32.png -> Moomen/Projects/flowlary/extension/icons/icon-32.png
+	renamed:    flowlary/extension/icons/icon-48.png -> Moomen/Projects/flowlary/extension/icons/icon-48.png
+	renamed:    flowlary/extension/manifest.json -> Moomen/Projects/flowlary/extension/manifest.json
+	renamed:    flowlary/extension/manifest.prod.json -> Moomen/Projects/flowlary/extension/manifest.prod.json
+	renamed:    flowlary/extension/package.json -> Moomen/Projects/flowlary/extension/package.json
+	renamed:    flowlary/extension/src/background/classify.ts -> Moomen/Projects/flowlary/extension/src/background/classify.ts
+	renamed:    flowlary/extension/src/background/commands.ts -> Moomen/Projects/flowlary/extension/src/background/commands.ts
+	renamed:    flowlary/extension/src/background/correct.ts -> Moomen/Projects/flowlary/extension/src/background/correct.ts
+	renamed:    flowlary/extension/src/background/index.ts -> Moomen/Projects/flowlary/extension/src/background/index.ts
+	renamed:    flowlary/extension/src/background/translate.ts -> Moomen/Projects/flowlary/extension/src/background/translate.ts
+	renamed:    flowlary/extension/src/config/endpoints.ts -> Moomen/Projects/flowlary/extension/src/config/endpoints.ts
+	renamed:    flowlary/extension/src/content_script.ts -> Moomen/Projects/flowlary/extension/src/content_script.ts
+	renamed:    flowlary/extension/src/core/dom/adapter.ts -> Moomen/Projects/flowlary/extension/src/core/dom/adapter.ts
+	renamed:    flowlary/extension/src/core/dom/caret.ts -> Moomen/Projects/flowlary/extension/src/core/dom/caret.ts
+	renamed:    flowlary/extension/src/core/dom/composition.ts -> Moomen/Projects/flowlary/extension/src/core/dom/composition.ts
+	renamed:    flowlary/extension/src/core/dom/editor.ts -> Moomen/Projects/flowlary/extension/src/core/dom/editor.ts
+	renamed:    flowlary/extension/src/core/dom/frameGuard.ts -> Moomen/Projects/flowlary/extension/src/core/dom/frameGuard.ts
+	renamed:    flowlary/extension/src/core/dom/generation.ts -> Moomen/Projects/flowlary/extension/src/core/dom/generation.ts
+	renamed:    flowlary/extension/src/core/dom/index.ts -> Moomen/Projects/flowlary/extension/src/core/dom/index.ts
+	renamed:    flowlary/extension/src/core/dom/read.ts -> Moomen/Projects/flowlary/extension/src/core/dom/read.ts
+	renamed:    flowlary/extension/src/core/dom/types.ts -> Moomen/Projects/flowlary/extension/src/core/dom/types.ts
+	renamed:    flowlary/extension/src/core/dom/verify.ts -> Moomen/Projects/flowlary/extension/src/core/dom/verify.ts
+	renamed:    flowlary/extension/src/core/dom/write.ts -> Moomen/Projects/flowlary/extension/src/core/dom/write.ts
+	renamed:    flowlary/extension/src/core/dom/writeOrigin.ts -> Moomen/Projects/flowlary/extension/src/core/dom/writeOrigin.ts
+	renamed:    flowlary/extension/src/core/events/EventBus.ts -> Moomen/Projects/flowlary/extension/src/core/events/EventBus.ts
+	renamed:    flowlary/extension/src/core/input/InputEngine.ts -> Moomen/Projects/flowlary/extension/src/core/input/InputEngine.ts
+	renamed:    flowlary/extension/src/core/input/resolveTarget.ts -> Moomen/Projects/flowlary/extension/src/core/input/resolveTarget.ts
+	renamed:    flowlary/extension/src/core/input/shortcuts.ts -> Moomen/Projects/flowlary/extension/src/core/input/shortcuts.ts
+	renamed:    flowlary/extension/src/core/router/CommandOrchestrator.ts -> Moomen/Projects/flowlary/extension/src/core/router/CommandOrchestrator.ts
+	renamed:    flowlary/extension/src/core/router/CommandRouter.ts -> Moomen/Projects/flowlary/extension/src/core/router/CommandRouter.ts
+	renamed:    flowlary/extension/src/core/router/dispatch.ts -> Moomen/Projects/flowlary/extension/src/core/router/dispatch.ts
+	renamed:    flowlary/extension/src/core/safety/codeEditor.ts -> Moomen/Projects/flowlary/extension/src/core/safety/codeEditor.ts
+	renamed:    flowlary/extension/src/core/safety/domains.ts -> Moomen/Projects/flowlary/extension/src/core/safety/domains.ts
+	renamed:    flowlary/extension/src/core/safety/fields.ts -> Moomen/Projects/flowlary/extension/src/core/safety/fields.ts
+	renamed:    flowlary/extension/src/core/safety/index.ts -> Moomen/Projects/flowlary/extension/src/core/safety/index.ts
+	renamed:    flowlary/extension/src/core/safety/markdown.ts -> Moomen/Projects/flowlary/extension/src/core/safety/markdown.ts
+	renamed:    flowlary/extension/src/core/safety/tokenKind.ts -> Moomen/Projects/flowlary/extension/src/core/safety/tokenKind.ts
+	renamed:    flowlary/extension/src/core/safety/tokenize.ts -> Moomen/Projects/flowlary/extension/src/core/safety/tokenize.ts
+	renamed:    flowlary/extension/src/core/session/FieldSession.ts -> Moomen/Projects/flowlary/extension/src/core/session/FieldSession.ts
+	renamed:    flowlary/extension/src/core/state/StateManager.ts -> Moomen/Projects/flowlary/extension/src/core/state/StateManager.ts
+	renamed:    flowlary/extension/src/features/correction/CorrectionFeature.ts -> Moomen/Projects/flowlary/extension/src/features/correction/CorrectionFeature.ts
+	renamed:    flowlary/extension/src/features/correction/applyCorrection.ts -> Moomen/Projects/flowlary/extension/src/features/correction/applyCorrection.ts
+	renamed:    flowlary/extension/src/features/correction/cache.ts -> Moomen/Projects/flowlary/extension/src/features/correction/cache.ts
+	renamed:    flowlary/extension/src/features/correction/client.ts -> Moomen/Projects/flowlary/extension/src/features/correction/client.ts
+	renamed:    flowlary/extension/src/features/correction/debounce.ts -> Moomen/Projects/flowlary/extension/src/features/correction/debounce.ts
+	renamed:    flowlary/extension/src/features/correction/diff/tokenDiff.ts -> Moomen/Projects/flowlary/extension/src/features/correction/diff/tokenDiff.ts
+	renamed:    flowlary/extension/src/features/correction/index.ts -> Moomen/Projects/flowlary/extension/src/features/correction/index.ts
+	renamed:    flowlary/extension/src/features/correction/instantSpell.ts -> Moomen/Projects/flowlary/extension/src/features/correction/instantSpell.ts
+	renamed:    flowlary/extension/src/features/correction/language.ts -> Moomen/Projects/flowlary/extension/src/features/correction/language.ts
+	renamed:    flowlary/extension/src/features/correction/mergeCorrection.ts -> Moomen/Projects/flowlary/extension/src/features/correction/mergeCorrection.ts
+	renamed:    flowlary/extension/src/features/correction/metrics.ts -> Moomen/Projects/flowlary/extension/src/features/correction/metrics.ts
+	renamed:    flowlary/extension/src/features/correction/scheduler.ts -> Moomen/Projects/flowlary/extension/src/features/correction/scheduler.ts
+	renamed:    flowlary/extension/src/features/correction/segment.ts -> Moomen/Projects/flowlary/extension/src/features/correction/segment.ts
+	renamed:    flowlary/extension/src/features/correction/ui/CorrectionCard.ts -> Moomen/Projects/flowlary/extension/src/features/correction/ui/CorrectionCard.ts
+	renamed:    flowlary/extension/src/features/correction/ui/hostStyleAdapter.ts -> Moomen/Projects/flowlary/extension/src/features/correction/ui/hostStyleAdapter.ts
+	renamed:    flowlary/extension/src/features/correction/ui/types.ts -> Moomen/Projects/flowlary/extension/src/features/correction/ui/types.ts
+	renamed:    flowlary/extension/src/features/layout/LayoutFeature.ts -> Moomen/Projects/flowlary/extension/src/features/layout/LayoutFeature.ts
+	renamed:    flowlary/extension/src/features/layout/cache/LayoutCache.ts -> Moomen/Projects/flowlary/extension/src/features/layout/cache/LayoutCache.ts
+	renamed:    flowlary/extension/src/features/layout/cache/coalesce.ts -> Moomen/Projects/flowlary/extension/src/features/layout/cache/coalesce.ts
+	renamed:    flowlary/extension/src/features/layout/cache/key.ts -> Moomen/Projects/flowlary/extension/src/features/layout/cache/key.ts
+	renamed:    flowlary/extension/src/features/layout/cache/records.ts -> Moomen/Projects/flowlary/extension/src/features/layout/cache/records.ts
+	renamed:    flowlary/extension/src/features/layout/classifier/LayoutClassifier.ts -> Moomen/Projects/flowlary/extension/src/features/layout/classifier/LayoutClassifier.ts
+	renamed:    flowlary/extension/src/features/layout/copyText.ts -> Moomen/Projects/flowlary/extension/src/features/layout/copyText.ts
+	renamed:    flowlary/extension/src/features/layout/fixCurrentText.ts -> Moomen/Projects/flowlary/extension/src/features/layout/fixCurrentText.ts
+	renamed:    flowlary/extension/src/features/layout/index.ts -> Moomen/Projects/flowlary/extension/src/features/layout/index.ts
+	renamed:    flowlary/extension/src/features/layout/layouts/ar-101.ts -> Moomen/Projects/flowlary/extension/src/features/layout/layouts/ar-101.ts
+	renamed:    flowlary/extension/src/features/layout/layouts/catalog.json -> Moomen/Projects/flowlary/extension/src/features/layout/layouts/catalog.json
+	renamed:    flowlary/extension/src/features/layout/layouts/convert.ts -> Moomen/Projects/flowlary/extension/src/features/layout/layouts/convert.ts
+	renamed:    flowlary/extension/src/features/layout/layouts/en-US-qwerty.ts -> Moomen/Projects/flowlary/extension/src/features/layout/layouts/en-US-qwerty.ts
+	renamed:    flowlary/extension/src/features/layout/layouts/heuristics.ts -> Moomen/Projects/flowlary/extension/src/features/layout/layouts/heuristics.ts
+	renamed:    flowlary/extension/src/features/layout/layouts/index.ts -> Moomen/Projects/flowlary/extension/src/features/layout/layouts/index.ts
+	renamed:    flowlary/extension/src/features/layout/layouts/languages.ts -> Moomen/Projects/flowlary/extension/src/features/layout/layouts/languages.ts
+	renamed:    flowlary/extension/src/features/layout/layouts/lexicons/ar-words.ts -> Moomen/Projects/flowlary/extension/src/features/layout/layouts/lexicons/ar-words.ts
+	renamed:    flowlary/extension/src/features/layout/layouts/lexicons/en-words.ts -> Moomen/Projects/flowlary/extension/src/features/layout/layouts/lexicons/en-words.ts
+	renamed:    flowlary/extension/src/features/layout/layouts/profile.ts -> Moomen/Projects/flowlary/extension/src/features/layout/layouts/profile.ts
+	renamed:    flowlary/extension/src/features/layout/layouts/registry.ts -> Moomen/Projects/flowlary/extension/src/features/layout/layouts/registry.ts
+	renamed:    flowlary/extension/src/features/layout/layouts/ru-standard.ts -> Moomen/Projects/flowlary/extension/src/features/layout/layouts/ru-standard.ts
+	renamed:    flowlary/extension/src/features/layout/layouts/sentence.ts -> Moomen/Projects/flowlary/extension/src/features/layout/layouts/sentence.ts
+	renamed:    flowlary/extension/src/features/layout/layouts/types.ts -> Moomen/Projects/flowlary/extension/src/features/layout/layouts/types.ts
+	renamed:    flowlary/extension/src/features/layout/layouts/world.ts -> Moomen/Projects/flowlary/extension/src/features/layout/layouts/world.ts
+	renamed:    flowlary/extension/src/features/layout/metrics.ts -> Moomen/Projects/flowlary/extension/src/features/layout/metrics.ts
+	renamed:    flowlary/extension/src/features/layout/profile/exceptions.ts -> Moomen/Projects/flowlary/extension/src/features/layout/profile/exceptions.ts
+	renamed:    flowlary/extension/src/features/layout/profile/index.ts -> Moomen/Projects/flowlary/extension/src/features/layout/profile/index.ts
+	renamed:    flowlary/extension/src/features/layout/profile/trust.ts -> Moomen/Projects/flowlary/extension/src/features/layout/profile/trust.ts
+	renamed:    flowlary/extension/src/features/layout/profile/types.ts -> Moomen/Projects/flowlary/extension/src/features/layout/profile/types.ts
+	renamed:    flowlary/extension/src/features/layout/scheduler.ts -> Moomen/Projects/flowlary/extension/src/features/layout/scheduler.ts
+	renamed:    flowlary/extension/src/features/layout/speedBox.css -> Moomen/Projects/flowlary/extension/src/features/layout/speedBox.css
+	renamed:    flowlary/extension/src/features/layout/speedBox.ts -> Moomen/Projects/flowlary/extension/src/features/layout/speedBox.ts
+	renamed:    flowlary/extension/src/features/translation/TranslationFeature.ts -> Moomen/Projects/flowlary/extension/src/features/translation/TranslationFeature.ts
+	renamed:    flowlary/extension/src/features/translation/cache.ts -> Moomen/Projects/flowlary/extension/src/features/translation/cache.ts
+	renamed:    flowlary/extension/src/features/translation/client.ts -> Moomen/Projects/flowlary/extension/src/features/translation/client.ts
+	renamed:    flowlary/extension/src/features/translation/eligibility.ts -> Moomen/Projects/flowlary/extension/src/features/translation/eligibility.ts
+	renamed:    flowlary/extension/src/features/translation/engine.ts -> Moomen/Projects/flowlary/extension/src/features/translation/engine.ts
+	renamed:    flowlary/extension/src/features/translation/index.ts -> Moomen/Projects/flowlary/extension/src/features/translation/index.ts
+	renamed:    flowlary/extension/src/features/translation/languages.ts -> Moomen/Projects/flowlary/extension/src/features/translation/languages.ts
+	renamed:    flowlary/extension/src/features/translation/liveTranslate.ts -> Moomen/Projects/flowlary/extension/src/features/translation/liveTranslate.ts
+	renamed:    flowlary/extension/src/features/translation/metrics.ts -> Moomen/Projects/flowlary/extension/src/features/translation/metrics.ts
+	renamed:    flowlary/extension/src/features/translation/scheduler.ts -> Moomen/Projects/flowlary/extension/src/features/translation/scheduler.ts
+	renamed:    flowlary/extension/src/features/translation/segments.ts -> Moomen/Projects/flowlary/extension/src/features/translation/segments.ts
+	renamed:    flowlary/extension/src/features/translation/selection.ts -> Moomen/Projects/flowlary/extension/src/features/translation/selection.ts
+	renamed:    flowlary/extension/src/features/translation/stale.ts -> Moomen/Projects/flowlary/extension/src/features/translation/stale.ts
+	renamed:    flowlary/extension/src/features/translation/types.ts -> Moomen/Projects/flowlary/extension/src/features/translation/types.ts
+	renamed:    flowlary/extension/src/messaging/sender.ts -> Moomen/Projects/flowlary/extension/src/messaging/sender.ts
+	renamed:    flowlary/extension/src/messaging/types.ts -> Moomen/Projects/flowlary/extension/src/messaging/types.ts
+	renamed:    flowlary/extension/src/messaging/validate.ts -> Moomen/Projects/flowlary/extension/src/messaging/validate.ts
+	renamed:    flowlary/extension/src/popup/App.tsx -> Moomen/Projects/flowlary/extension/src/popup/App.tsx
+	renamed:    flowlary/extension/src/popup/api.ts -> Moomen/Projects/flowlary/extension/src/popup/api.ts
+	renamed:    flowlary/extension/src/popup/components.tsx -> Moomen/Projects/flowlary/extension/src/popup/components.tsx
+	renamed:    flowlary/extension/src/popup/history.ts -> Moomen/Projects/flowlary/extension/src/popup/history.ts
+	renamed:    flowlary/extension/src/popup/index.html -> Moomen/Projects/flowlary/extension/src/popup/index.html
+	renamed:    flowlary/extension/src/popup/main.tsx -> Moomen/Projects/flowlary/extension/src/popup/main.tsx
+	renamed:    flowlary/extension/src/popup/shortcuts.ts -> Moomen/Projects/flowlary/extension/src/popup/shortcuts.ts
+	renamed:    flowlary/extension/src/popup/status.ts -> Moomen/Projects/flowlary/extension/src/popup/status.ts
+	renamed:    flowlary/extension/src/popup/tokens.css -> Moomen/Projects/flowlary/extension/src/popup/tokens.css
+	renamed:    flowlary/extension/src/storage/cache/coalesce.ts -> Moomen/Projects/flowlary/extension/src/storage/cache/coalesce.ts
+	renamed:    flowlary/extension/src/storage/cache/index.ts -> Moomen/Projects/flowlary/extension/src/storage/cache/index.ts
+	renamed:    flowlary/extension/src/storage/cache/persistentStore.ts -> Moomen/Projects/flowlary/extension/src/storage/cache/persistentStore.ts
+	renamed:    flowlary/extension/src/storage/cache/privacy.ts -> Moomen/Projects/flowlary/extension/src/storage/cache/privacy.ts
+	renamed:    flowlary/extension/src/storage/cache/tieredCoordinator.ts -> Moomen/Projects/flowlary/extension/src/storage/cache/tieredCoordinator.ts
+	renamed:    flowlary/extension/src/storage/entitlement.ts -> Moomen/Projects/flowlary/extension/src/storage/entitlement.ts
+	renamed:    flowlary/extension/src/storage/facade.ts -> Moomen/Projects/flowlary/extension/src/storage/facade.ts
+	renamed:    flowlary/extension/src/storage/history/dedupe.ts -> Moomen/Projects/flowlary/extension/src/storage/history/dedupe.ts
+	renamed:    flowlary/extension/src/storage/history/index.ts -> Moomen/Projects/flowlary/extension/src/storage/history/index.ts
+	renamed:    flowlary/extension/src/storage/history/legacyImport.ts -> Moomen/Projects/flowlary/extension/src/storage/history/legacyImport.ts
+	renamed:    flowlary/extension/src/storage/history/privacy.ts -> Moomen/Projects/flowlary/extension/src/storage/history/privacy.ts
+	renamed:    flowlary/extension/src/storage/history/record.ts -> Moomen/Projects/flowlary/extension/src/storage/history/record.ts
+	renamed:    flowlary/extension/src/storage/history/service.ts -> Moomen/Projects/flowlary/extension/src/storage/history/service.ts
+	renamed:    flowlary/extension/src/storage/history/types.ts -> Moomen/Projects/flowlary/extension/src/storage/history/types.ts
+	renamed:    flowlary/extension/src/storage/history/validation.ts -> Moomen/Projects/flowlary/extension/src/storage/history/validation.ts
+	renamed:    flowlary/extension/src/storage/hydrate.ts -> Moomen/Projects/flowlary/extension/src/storage/hydrate.ts
+	renamed:    flowlary/extension/src/storage/index.ts -> Moomen/Projects/flowlary/extension/src/storage/index.ts
+	renamed:    flowlary/extension/src/storage/legacyKeys.ts -> Moomen/Projects/flowlary/extension/src/storage/legacyKeys.ts
+	renamed:    flowlary/extension/src/storage/migration/runner.ts -> Moomen/Projects/flowlary/extension/src/storage/migration/runner.ts
+	renamed:    flowlary/extension/src/storage/migration/steps/ewa.ts -> Moomen/Projects/flowlary/extension/src/storage/migration/steps/ewa.ts
+	renamed:    flowlary/extension/src/storage/migration/steps/layfix.ts -> Moomen/Projects/flowlary/extension/src/storage/migration/steps/layfix.ts
+	renamed:    flowlary/extension/src/storage/migration/steps/lingo.ts -> Moomen/Projects/flowlary/extension/src/storage/migration/steps/lingo.ts
+	renamed:    flowlary/extension/src/storage/migration/types.ts -> Moomen/Projects/flowlary/extension/src/storage/migration/types.ts
+	renamed:    flowlary/extension/src/storage/schemas.ts -> Moomen/Projects/flowlary/extension/src/storage/schemas.ts
+	renamed:    flowlary/extension/tsconfig.json -> Moomen/Projects/flowlary/extension/tsconfig.json
+	renamed:    flowlary/extension/vite.config.ts -> Moomen/Projects/flowlary/extension/vite.config.ts
+	renamed:    flowlary/extension/vitest.config.ts -> Moomen/Projects/flowlary/extension/vitest.config.ts
+	renamed:    flowlary/extension/vitest.setup.ts -> Moomen/Projects/flowlary/extension/vitest.setup.ts
+	renamed:    flowlary/package-lock.json -> Moomen/Projects/flowlary/package-lock.json
+	renamed:    flowlary/package.json -> Moomen/Projects/flowlary/package.json
+	renamed:    flowlary/packages/shared/package.json -> Moomen/Projects/flowlary/packages/shared/package.json
+	renamed:    flowlary/packages/shared/src/ai.ts -> Moomen/Projects/flowlary/packages/shared/src/ai.ts
+	renamed:    flowlary/packages/shared/src/cache.test.ts -> Moomen/Projects/flowlary/packages/shared/src/cache.test.ts
+	renamed:    flowlary/packages/shared/src/cache.ts -> Moomen/Projects/flowlary/packages/shared/src/cache.ts
+	renamed:    flowlary/packages/shared/src/correction/index.ts -> Moomen/Projects/flowlary/packages/shared/src/correction/index.ts
+	renamed:    flowlary/packages/shared/src/features.ts -> Moomen/Projects/flowlary/packages/shared/src/features.ts
+	renamed:    flowlary/packages/shared/src/history.ts -> Moomen/Projects/flowlary/packages/shared/src/history.ts
+	renamed:    flowlary/packages/shared/src/index.ts -> Moomen/Projects/flowlary/packages/shared/src/index.ts
+	renamed:    flowlary/packages/shared/src/security/index.ts -> Moomen/Projects/flowlary/packages/shared/src/security/index.ts
+	renamed:    flowlary/packages/shared/src/security/limits.ts -> Moomen/Projects/flowlary/packages/shared/src/security/limits.ts
+	renamed:    flowlary/packages/shared/src/types.ts -> Moomen/Projects/flowlary/packages/shared/src/types.ts
+	renamed:    flowlary/packages/shared/tsconfig.json -> Moomen/Projects/flowlary/packages/shared/tsconfig.json
+	renamed:    flowlary/packages/shared/vitest.config.ts -> Moomen/Projects/flowlary/packages/shared/vitest.config.ts
+	renamed:    flowlary/release/RELEASE_CHECKLIST.md -> Moomen/Projects/flowlary/release/RELEASE_CHECKLIST.md
+	renamed:    flowlary/release/flowlary-v1.0.0.zip.sha256 -> Moomen/Projects/flowlary/release/flowlary-v1.0.0.zip.sha256
+	renamed:    flowlary/scripts/package-release.mjs -> Moomen/Projects/flowlary/scripts/package-release.mjs
+	renamed:    flowlary/tests/characterization/adapters.test.ts -> Moomen/Projects/flowlary/tests/characterization/adapters.test.ts
+	renamed:    flowlary/tests/characterization/dom-replace.test.ts -> Moomen/Projects/flowlary/tests/characterization/dom-replace.test.ts
+	renamed:    flowlary/tests/characterization/safety-fields.test.ts -> Moomen/Projects/flowlary/tests/characterization/safety-fields.test.ts
+	renamed:    flowlary/tests/characterization/safety-tokens.test.ts -> Moomen/Projects/flowlary/tests/characterization/safety-tokens.test.ts
+	renamed:    flowlary/tests/helpers/mockChromeStorage.ts -> Moomen/Projects/flowlary/tests/helpers/mockChromeStorage.ts
+	renamed:    flowlary/tests/integration/manifest.test.ts -> Moomen/Projects/flowlary/tests/integration/manifest.test.ts
+	renamed:    flowlary/tests/integration/phase10-migration.test.ts -> Moomen/Projects/flowlary/tests/integration/phase10-migration.test.ts
+	renamed:    flowlary/tests/integration/phase11-history.test.tsx -> Moomen/Projects/flowlary/tests/integration/phase11-history.test.tsx
+	renamed:    flowlary/tests/integration/phase12-cache.test.ts -> Moomen/Projects/flowlary/tests/integration/phase12-cache.test.ts
+	renamed:    flowlary/tests/integration/phase13-security.test.ts -> Moomen/Projects/flowlary/tests/integration/phase13-security.test.ts
+	renamed:    flowlary/tests/integration/phase14-api-failures.test.ts -> Moomen/Projects/flowlary/tests/integration/phase14-api-failures.test.ts
+	renamed:    flowlary/tests/integration/phase14-regression.test.ts -> Moomen/Projects/flowlary/tests/integration/phase14-regression.test.ts
+	renamed:    flowlary/tests/integration/phase14-release.test.ts -> Moomen/Projects/flowlary/tests/integration/phase14-release.test.ts
+	renamed:    flowlary/tests/integration/phase15-release-manifest.test.ts -> Moomen/Projects/flowlary/tests/integration/phase15-release-manifest.test.ts
+	renamed:    flowlary/tests/integration/phase2.test.ts -> Moomen/Projects/flowlary/tests/integration/phase2.test.ts
+	renamed:    flowlary/tests/integration/phase3.test.ts -> Moomen/Projects/flowlary/tests/integration/phase3.test.ts
+	renamed:    flowlary/tests/integration/phase4-layout.test.ts -> Moomen/Projects/flowlary/tests/integration/phase4-layout.test.ts
+	renamed:    flowlary/tests/integration/phase5-translation.test.ts -> Moomen/Projects/flowlary/tests/integration/phase5-translation.test.ts
+	renamed:    flowlary/tests/integration/phase6-live-translation.test.ts -> Moomen/Projects/flowlary/tests/integration/phase6-live-translation.test.ts
+	renamed:    flowlary/tests/integration/phase7-correction.test.ts -> Moomen/Projects/flowlary/tests/integration/phase7-correction.test.ts
+	renamed:    flowlary/tests/integration/phase8-correction-ui.test.ts -> Moomen/Projects/flowlary/tests/integration/phase8-correction-ui.test.ts
+	renamed:    flowlary/tests/integration/phase9-popup.test.tsx -> Moomen/Projects/flowlary/tests/integration/phase9-popup.test.tsx
+	renamed:    flowlary/tests/unit/backgroundCommands.test.ts -> Moomen/Projects/flowlary/tests/unit/backgroundCommands.test.ts
+	renamed:    flowlary/tests/unit/backgroundTranslate.test.ts -> Moomen/Projects/flowlary/tests/unit/backgroundTranslate.test.ts
+	renamed:    flowlary/tests/unit/commandRouter.test.ts -> Moomen/Projects/flowlary/tests/unit/commandRouter.test.ts
+	renamed:    flowlary/tests/unit/correction/CorrectionCard.test.ts -> Moomen/Projects/flowlary/tests/unit/correction/CorrectionCard.test.ts
+	renamed:    flowlary/tests/unit/correction/applyCorrection.test.ts -> Moomen/Projects/flowlary/tests/unit/correction/applyCorrection.test.ts
+	renamed:    flowlary/tests/unit/correction/debounce.test.ts -> Moomen/Projects/flowlary/tests/unit/correction/debounce.test.ts
+	renamed:    flowlary/tests/unit/correction/hostStyleAdapter.test.ts -> Moomen/Projects/flowlary/tests/unit/correction/hostStyleAdapter.test.ts
+	renamed:    flowlary/tests/unit/correction/instantSpell.test.ts -> Moomen/Projects/flowlary/tests/unit/correction/instantSpell.test.ts
+	renamed:    flowlary/tests/unit/correction/language.test.ts -> Moomen/Projects/flowlary/tests/unit/correction/language.test.ts
+	renamed:    flowlary/tests/unit/correction/mergeCorrection.test.ts -> Moomen/Projects/flowlary/tests/unit/correction/mergeCorrection.test.ts
+	renamed:    flowlary/tests/unit/correction/segment.test.ts -> Moomen/Projects/flowlary/tests/unit/correction/segment.test.ts
+	renamed:    flowlary/tests/unit/dom.test.ts -> Moomen/Projects/flowlary/tests/unit/dom.test.ts
+	renamed:    flowlary/tests/unit/endpoints.test.ts -> Moomen/Projects/flowlary/tests/unit/endpoints.test.ts
+	renamed:    flowlary/tests/unit/fieldSession.test.ts -> Moomen/Projects/flowlary/tests/unit/fieldSession.test.ts
+	renamed:    flowlary/tests/unit/history/dedupe.test.ts -> Moomen/Projects/flowlary/tests/unit/history/dedupe.test.ts
+	renamed:    flowlary/tests/unit/history/legacyImport.test.ts -> Moomen/Projects/flowlary/tests/unit/history/legacyImport.test.ts
+	renamed:    flowlary/tests/unit/history/privacy.test.ts -> Moomen/Projects/flowlary/tests/unit/history/privacy.test.ts
+	renamed:    flowlary/tests/unit/history/service.test.ts -> Moomen/Projects/flowlary/tests/unit/history/service.test.ts
+	renamed:    flowlary/tests/unit/history/validation.test.ts -> Moomen/Projects/flowlary/tests/unit/history/validation.test.ts
+	renamed:    flowlary/tests/unit/inputEngine.test.ts -> Moomen/Projects/flowlary/tests/unit/inputEngine.test.ts
+	renamed:    flowlary/tests/unit/layout/convert.test.ts -> Moomen/Projects/flowlary/tests/unit/layout/convert.test.ts
+	renamed:    flowlary/tests/unit/layout/layoutCache.test.ts -> Moomen/Projects/flowlary/tests/unit/layout/layoutCache.test.ts
+	renamed:    flowlary/tests/unit/layout/layoutFeature.test.ts -> Moomen/Projects/flowlary/tests/unit/layout/layoutFeature.test.ts
+	renamed:    flowlary/tests/unit/layout/mapLayout.test.ts -> Moomen/Projects/flowlary/tests/unit/layout/mapLayout.test.ts
+	renamed:    flowlary/tests/unit/layout/mixedLanguage.test.ts -> Moomen/Projects/flowlary/tests/unit/layout/mixedLanguage.test.ts
+	renamed:    flowlary/tests/unit/layout/trust.test.ts -> Moomen/Projects/flowlary/tests/unit/layout/trust.test.ts
+	renamed:    flowlary/tests/unit/messaging.test.ts -> Moomen/Projects/flowlary/tests/unit/messaging.test.ts
+	renamed:    flowlary/tests/unit/popup/history.test.ts -> Moomen/Projects/flowlary/tests/unit/popup/history.test.ts
+	renamed:    flowlary/tests/unit/popup/shortcuts.test.ts -> Moomen/Projects/flowlary/tests/unit/popup/shortcuts.test.ts
+	renamed:    flowlary/tests/unit/popup/status.test.ts -> Moomen/Projects/flowlary/tests/unit/popup/status.test.ts
+	renamed:    flowlary/tests/unit/safety.test.ts -> Moomen/Projects/flowlary/tests/unit/safety.test.ts
+	renamed:    flowlary/tests/unit/security/validate.test.ts -> Moomen/Projects/flowlary/tests/unit/security/validate.test.ts
+	renamed:    flowlary/tests/unit/security/xss.test.ts -> Moomen/Projects/flowlary/tests/unit/security/xss.test.ts
+	renamed:    flowlary/tests/unit/storage.test.ts -> Moomen/Projects/flowlary/tests/unit/storage.test.ts
+	renamed:    flowlary/tests/unit/storage/schemas.test.ts -> Moomen/Projects/flowlary/tests/unit/storage/schemas.test.ts
+	renamed:    flowlary/tests/unit/translation/engine.test.ts -> Moomen/Projects/flowlary/tests/unit/translation/engine.test.ts
+	renamed:    flowlary/tests/unit/translation/segments.test.ts -> Moomen/Projects/flowlary/tests/unit/translation/segments.test.ts
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   Moomen/Projects/flowlary/PHASE1_REPORT.md
+	modified:   Moomen/Projects/flowlary/README.md
+	modified:   README.md
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.agent-command-output.txt
+	.agent-run-commands.sh
+
+
+========== 2. git -C /workspace log --oneline -5 ==========
+e3ecb78 Add Phase 15 report
+d1c1214 Phase 15: release packaging and Chrome Web Store readiness
+63aa773 Add Phase 14 report
+4d9afe8 Phase 14: full regression testing and release readiness
+5e330bd Add Phase 13 report
+
+========== 3. ls -la /workspace/flowlary ==========
+ls: cannot access '/workspace/flowlary': No such file or directory
+
+========== 4. npm test ==========
+
+> flowlary@1.0.0 test
+> npm run test -w @flowlary/shared && npm run test -w @flowlary/extension
+
+
+> @flowlary/shared@1.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 /workspace/Moomen/Projects/flowlary/packages/shared
+
+ ✓ src/cache.test.ts (5 tests) 3ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  04:11:35
+   Duration  186ms (transform 40ms, setup 0ms, collect 35ms, tests 3ms, environment 0ms, prepare 48ms)
+
+
+> @flowlary/extension@1.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 /workspace/Moomen/Projects/flowlary/extension
+
+ ✓ ../tests/integration/phase4-layout.test.ts (16 tests) 155ms
+ ✓ ../tests/integration/phase8-correction-ui.test.ts (14 tests) 108ms
+ ✓ ../tests/unit/correction/CorrectionCard.test.ts (12 tests) 93ms
+ ✓ ../tests/integration/phase3.test.ts (26 tests) 80ms
+ ✓ ../tests/integration/phase14-release.test.ts (6 tests) 2263ms
+   ✓ Phase 14 — release readiness > production build completes  2255ms
+ ✓ ../tests/unit/security/xss.test.ts (3 tests) 56ms
+ ✓ ../tests/integration/phase5-translation.test.ts (17 tests) 81ms
+ ✓ ../tests/integration/phase7-correction.test.ts (10 tests) 56ms
+ ✓ ../tests/integration/phase6-live-translation.test.ts (28 tests) 53ms
+ ✓ ../tests/unit/translation/segments.test.ts (4 tests) 3914ms
+   ✓ latency must not mutate newer text > treats delayed results as stale after the user keeps typing  3910ms
+ ✓ ../tests/integration/phase14-regression.test.ts (15 tests) 38ms
+ ✓ ../tests/integration/phase11-history.test.tsx (9 tests) 46ms
+ ✓ ../tests/unit/layout/mapLayout.test.ts (45 tests) 34ms
+ ✓ ../tests/unit/history/service.test.ts (12 tests) 37ms
+stderr | ../tests/integration/phase9-popup.test.tsx > Popup rendering > renders header, feature cards, and shortcuts
+The current testing environment is not configured to support act(...)
+
+stderr | ../tests/integration/phase9-popup.test.tsx > Popup rendering > renders header, feature cards, and shortcuts
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+ ✓ ../tests/integration/phase9-popup.test.tsx (7 tests) 46ms
+ ✓ ../tests/integration/phase13-security.test.ts (14 tests) 26ms
+ ✓ ../tests/unit/correction/hostStyleAdapter.test.ts (5 tests) 17ms
+ ✓ ../tests/integration/phase12-cache.test.ts (15 tests) 25ms
+ ✓ ../tests/unit/layout/mixedLanguage.test.ts (7 tests) 24ms
+ ✓ ../tests/integration/phase10-migration.test.ts (15 tests) 19ms
+ ✓ ../tests/unit/correction/applyCorrection.test.ts (1 test) 16ms
+ ✓ ../tests/integration/phase2.test.ts (8 tests) 15ms
+ ✓ ../tests/unit/history/validation.test.ts (7 tests) 11ms
+ ✓ ../tests/unit/layout/layoutFeature.test.ts (3 tests) 18ms
+ ✓ ../tests/unit/popup/history.test.ts (4 tests) 13ms
+ ✓ ../tests/integration/phase14-api-failures.test.ts (10 tests) 15ms
+ ✓ ../tests/unit/layout/convert.test.ts (16 tests) 24ms
+ ✓ ../tests/unit/history/privacy.test.ts (9 tests) 12ms
+ ✓ ../tests/unit/inputEngine.test.ts (5 tests) 11ms
+ ✓ ../tests/characterization/dom-replace.test.ts (6 tests) 9ms
+ ✓ ../tests/characterization/adapters.test.ts (4 tests) 8ms
+ ✓ ../tests/characterization/safety-fields.test.ts (2 tests) 10ms
+ ✓ ../tests/unit/correction/debounce.test.ts (4 tests) 5ms
+ ✓ ../tests/unit/dom.test.ts (4 tests) 10ms
+ ✓ ../tests/unit/backgroundTranslate.test.ts (2 tests) 12ms
+ ✓ ../tests/unit/history/legacyImport.test.ts (5 tests) 8ms
+ ✓ ../tests/unit/safety.test.ts (3 tests) 7ms
+ ✓ ../tests/unit/translation/engine.test.ts (7 tests) 4ms
+ ✓ ../tests/characterization/safety-tokens.test.ts (4 tests) 4ms
+ ✓ ../tests/integration/manifest.test.ts (6 tests) 3ms
+ ✓ ../tests/unit/security/validate.test.ts (11 tests) 4ms
+ ✓ ../tests/unit/storage/schemas.test.ts (6 tests) 4ms
+ ✓ ../tests/unit/popup/status.test.ts (5 tests) 3ms
+ ✓ ../tests/unit/backgroundCommands.test.ts (2 tests) 3ms
+ ✓ ../tests/unit/fieldSession.test.ts (6 tests) 4ms
+ ✓ ../tests/unit/commandRouter.test.ts (6 tests) 3ms
+ ✓ ../tests/unit/layout/trust.test.ts (3 tests) 3ms
+ ✓ ../tests/unit/correction/language.test.ts (4 tests) 4ms
+ ✓ ../tests/unit/layout/layoutCache.test.ts (3 tests) 6ms
+ ✓ ../tests/unit/messaging.test.ts (1 test) 3ms
+ ✓ ../tests/integration/phase15-release-manifest.test.ts (4 tests) 3ms
+ ✓ ../tests/unit/storage.test.ts (3 tests) 3ms
+ ✓ ../tests/unit/history/dedupe.test.ts (4 tests) 3ms
+ ✓ ../tests/unit/popup/shortcuts.test.ts (2 tests) 2ms
+ ✓ ../tests/unit/correction/instantSpell.test.ts (2 tests) 2ms
+ ✓ ../tests/unit/correction/segment.test.ts (2 tests) 2ms
+ ✓ ../tests/unit/correction/mergeCorrection.test.ts (3 tests) 4ms
+ ✓ ../tests/unit/endpoints.test.ts (1 test) 2ms
+
+ Test Files  58 passed (58)
+      Tests  458 passed (458)
+   Start at  04:11:36
+   Duration  12.46s (transform 919ms, setup 3.51s, collect 1.66s, tests 7.44s, environment 15.53s, prepare 3.36s)
+
+
+========== 5. npm run build ==========
+
+> flowlary@1.0.0 build
+> npm run build -w @flowlary/extension
+
+
+> @flowlary/extension@1.0.0 build
+> vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 164 modules transformed.
+rendering chunks...
+[plugin vite:reporter] 
+(!) /workspace/Moomen/Projects/flowlary/extension/src/storage/migration/runner.ts is dynamically imported by /workspace/Moomen/Projects/flowlary/extension/src/storage/index.ts, /workspace/Moomen/Projects/flowlary/extension/src/storage/index.ts, /workspace/Moomen/Projects/flowlary/extension/src/storage/index.ts but also statically imported by /workspace/Moomen/Projects/flowlary/extension/src/storage/index.ts, dynamic import will not move module into another chunk.
+
+computing gzip size...
+dist/service-worker-loader.js                       0.04 kB
+dist/assets/content_script.ts-loader-Ca1lxfb2.js    0.35 kB
+dist/src/popup/index.html                           0.48 kB │ gzip:  0.30 kB
+dist/icons/icon-16.png                              0.66 kB
+dist/icons/icon-32.png                              1.24 kB
+dist/icons/icon-48.png                              1.93 kB
+dist/manifest.json                                  2.06 kB │ gzip:  0.77 kB
+dist/icons/icon-128.png                             4.67 kB
+dist/assets/index-JlKx_89r.css                      6.79 kB │ gzip:  1.68 kB
+dist/assets/languages-BAfr7SeP.js                   1.50 kB │ gzip:  0.68 kB
+dist/assets/index.ts-C4mzqxyD.js                    9.59 kB │ gzip:  3.50 kB
+dist/assets/index-CzfsP0nH.js                      80.08 kB │ gzip: 23.82 kB
+dist/assets/content_script.ts-P_0pH8qr.js          90.81 kB │ gzip: 26.94 kB
+dist/assets/index.html-COXd17_g.js                212.78 kB │ gzip: 65.76 kB
+✓ built in 919ms
+
+========== 6. rg stale paths ==========
+
+========== 7. commit and push if needed ==========
