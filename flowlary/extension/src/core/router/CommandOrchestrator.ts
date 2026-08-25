@@ -7,6 +7,8 @@ import { resolveCommandTarget } from '../input/resolveTarget.ts'
 import type { ShortcutCommand } from '../input/shortcuts.ts'
 import type { CommandRouter } from './CommandRouter.ts'
 import { mapHandlerResult, type DispatchResult } from './dispatch.ts'
+import { isTrustedExtensionSender } from '../../messaging/sender.ts'
+import { validateContentCommandType } from '../../messaging/validate.ts'
 
 const DEDUP_MS = 250
 
@@ -71,7 +73,15 @@ export class CommandOrchestrator {
     })
 
     if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
-      this.messageListener = (message, _sender, sendResponse) => {
+      this.messageListener = (message, sender, sendResponse) => {
+        if (!isTrustedExtensionSender(sender as chrome.runtime.MessageSender | undefined)) {
+          sendResponse({
+            status: 'error',
+            reason: 'untrusted_sender',
+            handlerExecuted: false,
+          })
+          return false
+        }
         const handled = this.handleRuntimeMessage(message)
         if (handled) {
           void handled.then(sendResponse)
@@ -114,18 +124,9 @@ export class CommandOrchestrator {
 
   handleRuntimeMessage(message: unknown): Promise<DispatchResult> | null {
     if (!message || typeof message !== 'object' || !('type' in message)) return null
-    const type = (message as { type: string }).type
-    if (type === 'RUN_COMMAND') {
-      const operation = (message as { operation?: OperationType }).operation
-      if (operation === 'TRANSLATE' || operation === 'FIX_LAYOUT' || operation === 'CORRECT') {
-        return this.dispatch(operation)
-      }
-    }
-    if (type === 'DISPATCH_COMMAND') {
-      const command = (message as { command?: Command }).command
-      if (command?.type) return this.dispatch(command.type)
-    }
-    return null
+    const validated = validateContentCommandType(message)
+    if (!validated.ok) return null
+    return this.dispatch(validated.value)
   }
 
   async dispatch(

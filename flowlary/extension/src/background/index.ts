@@ -1,12 +1,9 @@
 import { BRAND } from '@flowlary/shared'
 import { CommandRouter } from '../core/router/CommandRouter.ts'
 import { stateManager } from '../core/state/StateManager.ts'
-import type {
-  ExtensionRequest,
-  ExtensionResponse,
-  ExtensionStatus,
-} from '../messaging/types.ts'
-import { isExtensionRequest } from '../messaging/types.ts'
+import type { ExtensionResponse, ExtensionStatus } from '../messaging/types.ts'
+import { isTrustedExtensionSender } from '../messaging/sender.ts'
+import { validateExtensionRequest } from '../messaging/validate.ts'
 import { commandFromChromeCommand, sendCommandToActiveTab } from './commands.ts'
 import { handleCheckWord } from './classify.ts'
 import { handleTranslateText } from './translate.ts'
@@ -24,6 +21,10 @@ import {
   getHistoryStats,
   removeHistoryEntry,
   clearHistory,
+  normalizeSettings,
+  normalizeCorrection,
+  normalizeTranslation,
+  normalizeLayout,
 } from '../storage/index.ts'
 import { ensureHistoryInitialized } from '../storage/history/record.ts'
 import { initializeFlowlaryCache } from '../storage/cache/index.ts'
@@ -100,47 +101,60 @@ export async function handleMessage(
 ): Promise<ExtensionResponse | undefined> {
   await startupBackground()
 
-  if (!isExtensionRequest(message)) {
-    return { ok: false, error: 'unknown_message' }
+  const validated = validateExtensionRequest(message)
+  if (!validated.ok) {
+    return { ok: false, error: validated.error }
   }
 
-  switch (message.type) {
+  switch (validated.value.type) {
     case 'GET_STATUS':
       return buildStatus()
 
     case 'SET_SETTINGS': {
-      Object.assign(stateManager.settings, message.patch)
+      stateManager.settings = normalizeSettings({
+        ...stateManager.settings,
+        ...validated.value.patch,
+      })
       await setSettings(flowlaryStorage, stateManager.settings)
       return buildStatus()
     }
 
     case 'SET_TRANSLATION': {
-      Object.assign(stateManager.translation, message.patch)
+      stateManager.translation = normalizeTranslation({
+        ...stateManager.translation,
+        ...validated.value.patch,
+      })
       await setTranslationSettings(flowlaryStorage, stateManager.translation)
       return buildStatus()
     }
 
     case 'SET_CORRECTION': {
-      Object.assign(stateManager.correction, message.patch)
+      stateManager.correction = normalizeCorrection(
+        { ...stateManager.correction, ...validated.value.patch },
+        validated.value.patch.groqApiKey ?? stateManager.correction.groqApiKey,
+      )
       await setCorrectionSettings(flowlaryStorage, stateManager.correction)
       return buildStatus()
     }
 
     case 'SET_LAYOUT': {
-      Object.assign(stateManager.layout, message.patch)
+      stateManager.layout = normalizeLayout({
+        ...stateManager.layout,
+        ...validated.value.patch,
+      })
       await setLayoutSettings(flowlaryStorage, stateManager.layout)
       return buildStatus()
     }
 
     case 'CORRECT_TEXT':
-      return handleCorrectText(message)
+      return handleCorrectText(validated.value)
 
     case 'CANCEL_CORRECT':
-      cancelCorrectRequest(message.requestId)
+      cancelCorrectRequest(validated.value.requestId)
       return { ok: true }
 
     case 'PAUSE_TEMPORARILY': {
-      const ms = message.ms ?? 60 * 60 * 1000
+      const ms = validated.value.ms ?? 60 * 60 * 1000
       stateManager.settings.pausedUntil = Date.now() + ms
       await setSettings(flowlaryStorage, stateManager.settings)
       return buildStatus()
@@ -153,10 +167,10 @@ export async function handleMessage(
       return { ok: true }
 
     case 'CHECK_WORD':
-      return handleCheckWord(message)
+      return handleCheckWord(validated.value)
 
     case 'TRANSLATE_TEXT':
-      return handleTranslateText(message)
+      return handleTranslateText(validated.value)
 
     case 'ACTIVATE_LICENSE':
       return { ok: false, error: 'not_implemented' }
@@ -170,7 +184,7 @@ export async function handleMessage(
     }
 
     case 'DELETE_HISTORY_ENTRY': {
-      const removed = await removeHistoryEntry(flowlaryStorage, message.id)
+      const removed = await removeHistoryEntry(flowlaryStorage, validated.value.id)
       if (!removed) return { ok: false, error: 'not_found' }
       const [entries, stats] = await Promise.all([
         getHistory(flowlaryStorage),
@@ -190,12 +204,9 @@ export async function handleMessage(
     case 'RUN_COMMAND':
     case 'DISPATCH_COMMAND': {
       const operation =
-        message.type === 'RUN_COMMAND'
-          ? message.operation
-          : message.command.type
-      if (operation !== 'TRANSLATE' && operation !== 'FIX_LAYOUT' && operation !== 'CORRECT') {
-        return { ok: false, error: 'unsupported_operation' }
-      }
+        validated.value.type === 'RUN_COMMAND'
+          ? validated.value.operation
+          : validated.value.command.type
       const sent = await sendCommandToActiveTab(operation)
       return { ok: sent === 'sent', error: sent === 'noop' ? 'no_tab' : undefined }
     }
@@ -206,7 +217,11 @@ export async function handleMessage(
 }
 
 export function registerBackgroundListeners(): void {
-  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (!isTrustedExtensionSender(sender)) {
+      sendResponse({ ok: false, error: 'untrusted_sender' } satisfies ExtensionResponse)
+      return false
+    }
     void handleMessage(message).then((response) => sendResponse(response))
     return true
   })

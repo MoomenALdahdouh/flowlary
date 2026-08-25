@@ -1,6 +1,7 @@
 import {
   CORRECTION_DEFAULTS,
   CORRECTION_SYSTEM_PROMPT,
+  isValidAiResponseLength,
   validateCorrectionResponse,
   buildCacheKey,
   CACHE_TTL_MS,
@@ -73,7 +74,9 @@ async function callGroqOnce(
   if (!content) throw new Error('invalid_response')
 
   const validated = validateCorrectionResponse(JSON.parse(content), text)
-  if (!validated) throw new Error('invalid_response')
+  if (!validated || !isValidAiResponseLength(validated.correctedText)) {
+    throw new Error('invalid_response')
+  }
   return { data: validated, model }
 }
 

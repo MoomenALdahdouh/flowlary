@@ -1,20 +1,74 @@
-# Privacy (Phase 1)
+# Flowlary Privacy
 
-Flowlary is privacy-first by design. Phase 1 establishes architecture only; enforcement is implemented as features are ported.
+Flowlary processes writing locally in the browser extension. Selected operations may send text to remote AI or backend services **after** the safety gate passes.
 
-## Principles
+## What stays local
 
-1. Typed text is **not** sent anywhere unless required for the selected operation.
-2. Layout conversion remains **local** whenever possible (Layfix `mapLayout`).
-3. Translation sends text only when translation is explicitly requested.
-4. Correction sends only relevant writing context (EWA segment limits).
-5. Safety gate runs **before** any network call.
+- Layout conversion via `mapLayout` (preferred path)
+- Settings, entitlement cache, migration state
+- Tiered cache (L1 memory + L2 `flowlary.cache`) — privacy-gated; secrets not cached
+- Unified history (`flowlary.history`) — privacy-gated; max 50 entries
+- Field safety decisions
+- DOM writes through controlled `writeReplacement()`
 
-## Phase 7 Status
+## What may leave your device
 
-- English correction uses BYOK Groq via service worker only.
-- Text is sent only after safety passes and English eligibility is confirmed.
-- API keys stored in local extension storage (`flowlary.correction.groqKey`).
-- No correction text or keys are logged or sent to Flowlary servers.
+| Operation | Destination | When | Data sent |
+|-----------|-------------|------|-----------|
+| CORRECT (BYOK) | `https://api.groq.com` | After safety; user enabled correction with Groq key | English segment + minimal context JSON |
+| TRANSLATE | Translation API (prod or local dev) | Manual shortcut or live mode (opt-in) | Text, languages, mode |
+| FIX_LAYOUT classifier | Layout API (fallback) | When local mapping cannot resolve token | Word + short context |
 
-See `FL0_AUDIT.md` §13 and source `PRIVACY.md` files for full requirements.
+Production API hosts are declared in `extension/manifest.json`. Localhost entries are for development builds only.
+
+## BYOK Groq
+
+- User provides their own Groq API key in popup settings
+- Key stored in extension local storage (`flowlary.correction`)
+- Key used only in the service worker `Authorization: Bearer` header
+- Key is **not** sent to Flowlary servers, logs, metrics, cache, or history
+
+## Safety before network
+
+No correction, translation, or classifier request runs until `evaluateFieldSafety()` allows the field and text.
+
+Blocked categories include: password/OTP/payment fields, code editors, markdown code regions, excluded domains, JWTs, API keys, private keys, and other high-risk tokens.
+
+## Cache
+
+- Keys are derived hashes; values exclude known secrets
+- Cache is never transmitted remotely
+- User can clear extension data via browser
+
+## History
+
+Records successful CORRECT, TRANSLATE, and FIX_LAYOUT commits when privacy rules allow.
+
+Does **not** record blocked/sensitive content. User can delete entries or clear all history from the popup.
+
+## Storage namespaces
+
+`flowlary.settings`, `flowlary.correction`, `flowlary.translation`, `flowlary.layout`, `flowlary.history`, `flowlary.entitlement`, `flowlary.cache`
+
+## Data retention
+
+- History: bounded (50 entries), user-deletable
+- Cache: TTL + LRU eviction
+- Settings/keys: until user changes or uninstalls extension
+
+## User controls
+
+- Global pause
+- Per-domain exclusions
+- Disable live translation (default OFF)
+- Clear history
+- Remove Groq API key
+
+## Limitations
+
+- This is not a legal privacy certification
+- Client-side entitlement is not cryptographically tamper-proof
+- Heuristic safety cannot detect every secret format
+- Remote services (Groq, translation, classifier) receive text you choose to process
+
+See [DATA_FLOW.md](./DATA_FLOW.md) and [SECURITY_ARCHITECTURE.md](../security/SECURITY_ARCHITECTURE.md).

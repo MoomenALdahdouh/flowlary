@@ -3,6 +3,7 @@ import type { LanguageCode, TranslationMode } from '../features/translation/type
 import {
   buildCacheKey,
   CACHE_TTL_MS,
+  isValidAiResponseLength,
   normalizeCacheText,
 } from '@flowlary/shared'
 import {
@@ -108,7 +109,7 @@ export async function handleTranslateText(
       }
 
       const body = (await response.json()) as { translation?: unknown }
-      if (typeof body.translation !== 'string' || !body.translation.trim()) {
+      if (!isValidAiResponseLength(body.translation) || !body.translation.trim()) {
         return { type: 'TRANSLATE_TEXT_ERROR', ok: false, code: 'invalid-response' }
       }
 

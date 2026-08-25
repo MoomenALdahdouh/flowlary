@@ -76,6 +76,8 @@ Phase 11: **Unified history** — local-only `HistoryService` records successful
 
 Phase 12: **Tiered cache** — L1 memory + L2 persistent `flowlary.cache`. Operation-isolated keys, TTL, LRU eviction, privacy gating, request coalescing. See [PHASE12_CACHE_PERFORMANCE.md](./PHASE12_CACHE_PERFORMANCE.md).
 
+Phase 13: **Security / privacy hardening** — Runtime message validation, sender checks, safety text scanning, AI response bounds, CSP, documentation. See [SECURITY_ARCHITECTURE.md](../security/SECURITY_ARCHITECTURE.md) and [DATA_FLOW.md](../privacy/DATA_FLOW.md).
+
 See [PHASE3_INPUT_ROUTING.md](./PHASE3_INPUT_ROUTING.md), [PHASE4_LAYOUT.md](./PHASE4_LAYOUT.md), [PHASE5_TRANSLATION.md](./PHASE5_TRANSLATION.md), [PHASE6_LIVE_TRANSLATION.md](./PHASE6_LIVE_TRANSLATION.md), [PHASE7_CORRECTION.md](./PHASE7_CORRECTION.md).
 
 ## FieldSession (Phase 2 hardened)

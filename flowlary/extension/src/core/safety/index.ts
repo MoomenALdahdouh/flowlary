@@ -38,10 +38,13 @@ export function evaluateFieldSafety(element: Element, context: SafetyContext = {
     return { allowed: false, reason: 'markdown-code-fence' }
   }
 
-  if (context.token) {
-    const tokenReason = skipReasonForToken(context.token)
-    if (tokenReason) {
-      return { allowed: false, reason: `token:${tokenReason}` }
+  if (context.token || context.text) {
+    const token = (context.token ?? context.text ?? '').trim()
+    if (token) {
+      const tokenReason = skipReasonForToken(token, context.text ?? '', token)
+      if (tokenReason) {
+        return { allowed: false, reason: `token:${tokenReason}` }
+      }
     }
   }
 

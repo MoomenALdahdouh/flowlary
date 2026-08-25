@@ -74,7 +74,9 @@ export function skipReasonForToken(
   if (UUID.test(value)) return 'uuid'
   if (HEX_HASH.test(value)) return 'hash'
   if (looksLikeCard(value)) return 'credit-card'
-  if (API_KEY.test(value) || /^(sk|pk)-[A-Za-z0-9]{16,}$/.test(value)) return 'api-key'
+  if (API_KEY.test(value) || /^(sk|pk|gsk)-[A-Za-z0-9]{16,}$/.test(value) || /^gsk_[A-Za-z0-9]{8,}$/i.test(value)) {
+    return 'api-key'
+  }
   if (BEARERISH.test(raw) || /^(ghp_|github_pat_|xox[baprs]-)/.test(value)) {
     return 'access-token'
   }
