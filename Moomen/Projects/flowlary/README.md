@@ -8,7 +8,9 @@ Flowlary is a unified Chrome MV3 extension that combines three writing capabilit
 - **Writing Correction** — English grammar/spelling (BYOK Groq)
 - **Translation** — manual + optional live translation (12 languages)
 
-Original source extensions remain read-only references; all product code lives in this folder (`Moomen/Projects/flowlary`).
+Original source extensions remain read-only references; all product code lives in this folder.
+
+**Path:** `~/Moomen/Projects/flowlary` (or `Moomen/Projects/flowlary` inside this repo)
 
 ## Structure
 
