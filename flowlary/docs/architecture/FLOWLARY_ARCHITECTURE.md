@@ -62,7 +62,11 @@ chrome.commands / Ctrl+Shift+, or P / RUN_COMMAND message
 
 Phase 4: **LayoutScheduler** subscribes to EventBus for auto-fix on word boundaries. **LayoutFeature** handles manual `FIX_LAYOUT`. **Speed Box** toggled via orchestrator callback — no extra document listeners.
 
-See [PHASE3_INPUT_ROUTING.md](./PHASE3_INPUT_ROUTING.md), [PHASE4_LAYOUT.md](./PHASE4_LAYOUT.md).
+Phase 5: **TranslationFeature** handles manual `TRANSLATE` (Ctrl/Cmd+Shift+,). Content script sends `TRANSLATE_TEXT` to service worker; SW calls `/api/translate`.
+
+Phase 6: **TranslationScheduler** subscribes to EventBus for optional live translation (750ms debounce, segment-level). **Default OFF** (`liveEnabled: false`). Manual translation unchanged.
+
+See [PHASE3_INPUT_ROUTING.md](./PHASE3_INPUT_ROUTING.md), [PHASE4_LAYOUT.md](./PHASE4_LAYOUT.md), [PHASE5_TRANSLATION.md](./PHASE5_TRANSLATION.md), [PHASE6_LIVE_TRANSLATION.md](./PHASE6_LIVE_TRANSLATION.md).
 
 ## FieldSession (Phase 2 hardened)
 

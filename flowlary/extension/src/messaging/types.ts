@@ -4,6 +4,7 @@ import { BRAND } from '@flowlary/shared'
 export type MessageType =
   | 'GET_STATUS'
   | 'SET_SETTINGS'
+  | 'SET_TRANSLATION'
   | 'PAUSE_TEMPORARILY'
   | 'CAN_INTERVENE'
   | 'NOTE_USAGE_ACTIVITY'
@@ -12,6 +13,7 @@ export type MessageType =
   | 'COMMAND_RESULT'
   | 'RUN_COMMAND'
   | 'CHECK_WORD'
+  | 'TRANSLATE_TEXT'
 
 export type ExtensionStatus = {
   brand: typeof BRAND
@@ -21,11 +23,26 @@ export type ExtensionStatus = {
     translation: boolean
     layout: boolean
   }
+  translation: {
+    liveEnabled: boolean
+    shortcutEnabled: boolean
+    sourceLanguage: string
+    targetLanguage: string
+  }
   version: string
 }
 
 export type GetStatusMessage = { type: 'GET_STATUS' }
 export type SetSettingsMessage = { type: 'SET_SETTINGS'; patch: Record<string, unknown> }
+export type SetTranslationMessage = {
+  type: 'SET_TRANSLATION'
+  patch: Partial<{
+    liveEnabled: boolean
+    shortcutEnabled: boolean
+    sourceLanguage: string
+    targetLanguage: string
+  }>
+}
 export type PauseTemporarilyMessage = { type: 'PAUSE_TEMPORARILY'; ms?: number }
 export type CanInterveneMessage = { type: 'CAN_INTERVENE' }
 export type NoteUsageMessage = { type: 'NOTE_USAGE_ACTIVITY' }
@@ -43,10 +60,18 @@ export type CheckWordMessage = {
   sourceLayout?: string
   candidateLayouts?: string[]
 }
+export type TranslateTextMessage = {
+  type: 'TRANSLATE_TEXT'
+  text: string
+  sourceLanguage: string
+  targetLanguage: string
+  mode: 'shortcut' | 'live'
+}
 
 export type ExtensionRequest =
   | GetStatusMessage
   | SetSettingsMessage
+  | SetTranslationMessage
   | PauseTemporarilyMessage
   | CanInterveneMessage
   | NoteUsageMessage
@@ -54,6 +79,7 @@ export type ExtensionRequest =
   | DispatchCommandMessage
   | RunCommandMessage
   | CheckWordMessage
+  | TranslateTextMessage
 
 export type ExtensionResponse = ExtensionStatus | CommandResult | { ok: boolean; error?: string }
 

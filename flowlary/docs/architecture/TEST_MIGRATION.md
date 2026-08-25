@@ -27,7 +27,7 @@ Tests to port in Phase 2+ from source repositories. Source paths refer to audit 
 | `src/content/translateCurrentText.test.ts` | 5 | shortcut translate path |
 | `src/content/evaluateGate.test.ts` | 5 | entitlement gate |
 | `src/translation/engine.test.ts` | 5–6 | translate eligibility |
-| `src/translation/live.typing.test.ts` | 6 | 750ms live segments |
+| `src/translation/live.typing.test.ts` | 6 ✅ | 750ms live segments → `tests/unit/translation/segments.test.ts` |
 | `src/safety/fields.test.ts` | 2 | field probes |
 | `src/safety/safety.test.ts` | 2 | token safety |
 | `src/background/commands.test.ts` | 3 ✅ | shortcut dispatch → `tests/unit/backgroundCommands.test.ts` |
@@ -66,6 +66,14 @@ Tests to port in Phase 2+ from source repositories. Source paths refer to audit 
 | Lingo `background/commands.test.ts` | `tests/unit/backgroundCommands.test.ts` | SW forwards RUN_COMMAND to active tab |
 | Phase 3 spec TESTs 1–22 | `tests/integration/phase3.test.ts` | focus, multi-field, shortcuts, safety, mutex, no auto-chain, speed box infra |
 | InputEngine isolation | `tests/unit/inputEngine.test.ts` | input does not emit shortcut/commands |
+
+## Phase 6 Tests (Completed)
+
+| Source / spec | Flowlary test | Behavior |
+|---------------|---------------|----------|
+| Lingo `live.typing.test.ts` | `tests/unit/translation/segments.test.ts` | sync segmentation, no per-word, pause fallback |
+| Phase 6 spec TESTs 1–40 | `tests/integration/phase6-live-translation.test.ts` | debounce, safety, stale, mutex, no auto-chain, field isolation |
+| Live translate unit | `tests/integration/phase6-live-translation.test.ts` (unit blocks) | generation stale, mutex busy, adversarial write |
 
 ## Phase 2 Tests (Completed)
 

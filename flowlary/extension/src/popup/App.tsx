@@ -12,6 +12,16 @@ export function App() {
   }, [])
 
   const active = status?.active ?? true
+  const liveEnabled = status?.translation?.liveEnabled ?? false
+
+  async function toggleLiveTranslation(): Promise<void> {
+    const next = !liveEnabled
+    const response = (await chrome.runtime.sendMessage({
+      type: 'SET_TRANSLATION',
+      patch: { liveEnabled: next },
+    })) as ExtensionStatus
+    setStatus(response)
+  }
 
   return (
     <div className="fl-popup">
@@ -34,7 +44,12 @@ export function App() {
           </li>
           <li>
             Translation
-            <div className="fl-placeholder">Manual & live — Phase 5–6</div>
+            <label className="fl-toggle">
+              <span>Live Translation</span>
+              <button type="button" onClick={() => void toggleLiveTranslation()}>
+                {liveEnabled ? 'ON' : 'OFF'}
+              </button>
+            </label>
           </li>
           <li>
             Keyboard Layout

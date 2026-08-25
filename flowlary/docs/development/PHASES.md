@@ -7,8 +7,8 @@
 | **2** | DOM / Safety / FieldSession hardening | ✅ Complete |
 | **3** | InputEngine + CommandRouter wired to events | ✅ Complete |
 | **4** | Port Layfix layout module (local-first) | ✅ Complete |
-| **5** | Port Lingo manual translation | Pending |
-| **6** | Port Lingo live translation (default OFF) | Pending |
+| **5** | Port Lingo manual translation | ✅ Complete |
+| **6** | Port Lingo live translation (default OFF) | ✅ Complete |
 | **7** | Port EWA correction + BYOK Groq | Pending |
 | **8** | CorrectionCard + direct-edit integration | Pending |
 | **9** | Unified popup UX | Pending |

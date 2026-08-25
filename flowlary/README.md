@@ -41,4 +41,4 @@ Load the unpacked extension from `extension/dist/` in Chrome.
 
 ## Status
 
-**Phase 1 — Foundation** complete. Feature implementations (correction, translation, layout) are not yet ported.
+Phases 0–6 complete. Manual translation (Ctrl/Cmd+Shift+,), optional live translation (default OFF), and keyboard layout fix are implemented. English correction is Phase 7.

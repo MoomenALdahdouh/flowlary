@@ -11,7 +11,7 @@ export interface TranslationAI {
     text: string,
     sourceLanguage: string,
     targetLanguage: string,
-    context?: { mode?: string },
+    context?: { mode?: string; signal?: AbortSignal },
   ): Promise<CommandResult>
 }
 

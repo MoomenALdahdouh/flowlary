@@ -10,6 +10,7 @@ import type {
 import { isExtensionRequest } from '../messaging/types.ts'
 import { commandFromChromeCommand, sendCommandToActiveTab } from './commands.ts'
 import { handleCheckWord } from './classify.ts'
+import { handleTranslateText } from './translate.ts'
 
 const router = new CommandRouter()
 
@@ -25,6 +26,12 @@ export function buildStatus(): ExtensionStatus {
       correction: stateManager.correction.enabled,
       translation: stateManager.translation.shortcutEnabled,
       layout: stateManager.layout.autoEnabled,
+    },
+    translation: {
+      liveEnabled: stateManager.translation.liveEnabled,
+      shortcutEnabled: stateManager.translation.shortcutEnabled,
+      sourceLanguage: stateManager.translation.sourceLanguage,
+      targetLanguage: stateManager.translation.targetLanguage,
     },
     version: BRAND.version,
   }
@@ -57,6 +64,12 @@ export async function handleMessage(
       return buildStatus()
     }
 
+    case 'SET_TRANSLATION': {
+      Object.assign(stateManager.translation, message.patch)
+      await flowlaryStorage.set(flowlaryStorage.keys.translation, stateManager.translation)
+      return buildStatus()
+    }
+
     case 'PAUSE_TEMPORARILY': {
       const ms = message.ms ?? 60 * 60 * 1000
       stateManager.settings.pausedUntil = Date.now() + ms
@@ -72,6 +85,9 @@ export async function handleMessage(
 
     case 'CHECK_WORD':
       return handleCheckWord(message)
+
+    case 'TRANSLATE_TEXT':
+      return handleTranslateText(message)
 
     case 'ACTIVATE_LICENSE':
       return { ok: false, error: 'not_implemented' }

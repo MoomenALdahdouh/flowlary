@@ -9,7 +9,9 @@ const engine = new InputEngine()
 const router = new CommandRouter()
 
 router.registerCorrection(createCorrectionFeature())
-router.registerTranslation(createTranslationFeature())
+
+const translation = createTranslationFeature({ engine })
+router.registerTranslation(translation)
 
 const layout = createLayoutFeature({ engine })
 router.registerLayout(layout)
@@ -22,6 +24,7 @@ const orchestrator = new CommandOrchestrator({
 
 engine.start()
 layout.start()
+translation.start()
 orchestrator.start()
 
-export { engine, router, orchestrator, layout }
+export { engine, router, orchestrator, layout, translation }
