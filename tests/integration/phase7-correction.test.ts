@@ -53,6 +53,7 @@ describe('Phase 7 — Correction module integration', () => {
     stateManager.settings.excludedDomains = []
     stateManager.correction.enabled = true
     stateManager.correction.consentAccepted = true
+    stateManager.correction.aiProvider = 'byok'
     stateManager.correction.groqApiKey = 'gsk_test_key'
     stateManager.correction.mode = 'direct'
     stateManager.translation.liveEnabled = false
@@ -157,8 +158,10 @@ describe('Phase 7 — Correction module integration', () => {
     expect(correctCalls).toBe(0)
   })
 
-  it('F — missing API key blocks Groq call', async () => {
+  it('F — missing API key blocks Groq call in BYOK mode', async () => {
+    stateManager.correction.aiProvider = 'byok'
     stateManager.correction.groqApiKey = ''
+    stateManager.correction.consentAccepted = true
     const ta = document.createElement('textarea')
     document.body.append(ta)
     focusAndType(ta, 'I dont know what to write today')

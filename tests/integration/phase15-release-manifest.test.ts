@@ -18,7 +18,6 @@ describe('Production manifest (release packaging)', () => {
     expect(prodManifest.host_permissions).toEqual([
       'https://api.groq.com/*',
       'https://flowlary-api.zaixos.com/*',
-      'https://lingo-api.zaixos.com/*',
     ])
     for (const host of prodManifest.host_permissions) {
       expect(host.startsWith('https://')).toBe(true)

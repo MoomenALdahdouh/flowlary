@@ -7,11 +7,14 @@ export type FlowlarySettings = {
   version: number
 }
 
+export type CorrectionAiProvider = 'managed' | 'byok'
+
 export type CorrectionSettings = {
   enabled: boolean
   mode: 'box' | 'direct'
   highlights: boolean
   consentAccepted: boolean
+  aiProvider: CorrectionAiProvider
   groqApiKey: string
 }
 
@@ -42,6 +45,7 @@ export const DEFAULT_CORRECTION: CorrectionSettings = {
   mode: 'direct',
   highlights: true,
   consentAccepted: false,
+  aiProvider: 'managed',
   groqApiKey: '',
 }
 

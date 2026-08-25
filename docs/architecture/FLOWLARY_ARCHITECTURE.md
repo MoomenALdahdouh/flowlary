@@ -78,6 +78,8 @@ Phase 12: **Tiered cache** — L1 memory + L2 persistent `flowlary.cache`. Opera
 
 Phase 13: **Security / privacy hardening** — Runtime message validation, sender checks, safety text scanning, AI response bounds, CSP, documentation. See [SECURITY_ARCHITECTURE.md](../security/SECURITY_ARCHITECTURE.md) and [DATA_FLOW.md](../privacy/DATA_FLOW.md).
 
+Phase 16: **Production AI Gateway** — Unified Flowlary API with managed Groq, three separate provider contracts (correction / translation / layout classification), install auth, rate limiting, usage metadata. Managed correction default; BYOK Groq opt-in. See [AI_PRODUCTION_ARCHITECTURE.md](../production/AI_PRODUCTION_ARCHITECTURE.md).
+
 See [PHASE3_INPUT_ROUTING.md](./PHASE3_INPUT_ROUTING.md), [PHASE4_LAYOUT.md](./PHASE4_LAYOUT.md), [PHASE5_TRANSLATION.md](./PHASE5_TRANSLATION.md), [PHASE6_LIVE_TRANSLATION.md](./PHASE6_LIVE_TRANSLATION.md), [PHASE7_CORRECTION.md](./PHASE7_CORRECTION.md).
 
 ## FieldSession (Phase 2 hardened)
@@ -150,9 +152,9 @@ Dispatches `CORRECT`, `TRANSLATE`, `FIX_LAYOUT`, `PIPELINE` to registered handle
 
 | Module | Source | AI contract |
 |--------|--------|-------------|
-| `features/correction` | EWA | `CorrectionAI` — BYOK Groq |
-| `features/translation` | Lingo | `TranslationAI` — server translate |
-| `features/layout` | Layfix | `LayoutClassifierAI` — classify only; remap local |
+| `features/correction` | EWA | `CorrectionAI` — managed Flowlary API (default) or BYOK Groq |
+| `features/translation` | Lingo | `TranslationAI` — Flowlary API `/api/ai/translation` |
+| `features/layout` | Layfix | `LayoutClassifierAI` — Flowlary API fallback; remap local |
 
 ## DOM Layer
 

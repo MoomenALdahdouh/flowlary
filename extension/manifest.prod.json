@@ -29,8 +29,7 @@
   },
   "host_permissions": [
     "https://api.groq.com/*",
-    "https://flowlary-api.zaixos.com/*",
-    "https://lingo-api.zaixos.com/*"
+    "https://flowlary-api.zaixos.com/*"
   ],
   "content_scripts": [
     {

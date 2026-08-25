@@ -39,6 +39,7 @@ export type CorrectionPatch = Partial<{
   highlights: boolean
   consentAccepted: boolean
   groqApiKey: string
+  aiProvider?: 'managed' | 'byok'
 }>
 
 export type TranslationPatch = Partial<{
@@ -82,11 +83,15 @@ export async function dispatchCommand(operation: 'TRANSLATE' | 'FIX_LAYOUT'): Pr
 }
 
 export async function saveGroqKey(key: string): Promise<ExtensionStatus> {
-  return patchCorrection({ groqApiKey: key.trim(), consentAccepted: true })
+  return patchCorrection({ groqApiKey: key.trim(), consentAccepted: true, aiProvider: 'byok' })
 }
 
 export async function removeGroqKey(): Promise<ExtensionStatus> {
-  return patchCorrection({ groqApiKey: '', consentAccepted: false })
+  return patchCorrection({ groqApiKey: '', aiProvider: 'managed' })
+}
+
+export async function acceptManagedCorrection(): Promise<ExtensionStatus> {
+  return patchCorrection({ consentAccepted: true, aiProvider: 'managed' })
 }
 
 export async function fetchHistory(): Promise<HistoryResponse> {

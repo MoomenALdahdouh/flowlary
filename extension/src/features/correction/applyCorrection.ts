@@ -13,6 +13,7 @@ import {
 } from './mergeCorrection.ts'
 import { isEligibleForCorrection } from './language.ts'
 import { requestCorrectionRemote } from './client.ts'
+import { isCorrectionAiReady } from './readiness.ts'
 import { recordHistory } from '../../storage/history/record.ts'
 import type { CorrectionMetrics } from './metrics.ts'
 import type { CorrectionCard } from './ui/CorrectionCard.ts'
@@ -48,7 +49,7 @@ export async function runCorrectionRequest(
 ): Promise<'committed' | 'stale' | 'blocked' | 'noop' | 'busy' | 'aborted' | 'error' | 'pending'> {
   if (!stateManager.isActive() || !stateManager.correction.enabled) return 'noop'
   if (!stateManager.correction.consentAccepted) return 'blocked'
-  if (!stateManager.correction.groqApiKey.trim()) return 'blocked'
+  if (!isCorrectionAiReady(stateManager.correction)) return 'blocked'
 
   if (debouncerGeneration !== options.currentDebouncerGeneration()) {
     options.metrics.correction_stale_results += 1
@@ -120,7 +121,7 @@ export async function runCorrectionRequest(
       segment,
       session.field.kind,
       previousText,
-      stateManager.correction.groqApiKey,
+      stateManager.correction.aiProvider === 'byok' ? stateManager.correction.groqApiKey : undefined,
       signal,
     )
 

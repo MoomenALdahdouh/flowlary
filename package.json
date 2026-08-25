@@ -13,7 +13,8 @@
     "build": "npm run build -w @flowlary/extension",
     "build:release": "npm run build:release -w @flowlary/extension",
     "package:release": "node scripts/package-release.mjs",
-    "test": "npm run test -w @flowlary/shared && npm run test -w @flowlary/extension",
+    "test": "npm run test -w @flowlary/shared && npm run test -w @flowlary/backend && npm run test -w @flowlary/extension",
+    "dev:api": "npm run dev -w @flowlary/backend",
     "typecheck": "npm run typecheck -w @flowlary/shared && npm run typecheck -w @flowlary/extension"
   },
   "engines": {

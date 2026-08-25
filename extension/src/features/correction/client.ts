@@ -6,6 +6,7 @@ export type CorrectTextMessage = {
   text: string
   fieldType?: string
   previousText?: string
+  groqApiKey?: string
 }
 
 export type CorrectTextResponse =
@@ -28,7 +29,7 @@ export async function requestCorrectionRemote(
   text: string,
   fieldType: string | undefined,
   previousText: string | undefined,
-  groqApiKey: string,
+  groqApiKey: string | undefined,
   signal?: AbortSignal,
 ): Promise<CorrectTextResponse> {
   if (signal?.aborted) {
@@ -40,14 +41,16 @@ export async function requestCorrectionRemote(
   }
 
   try {
-    const response = (await chrome.runtime.sendMessage({
+    const payload: CorrectTextMessage = {
       type: 'CORRECT_TEXT',
       requestId,
       text,
       fieldType,
       previousText,
-      groqApiKey,
-    })) as CorrectTextResponse | undefined
+    }
+    if (groqApiKey?.trim()) payload.groqApiKey = groqApiKey.trim()
+
+    const response = (await chrome.runtime.sendMessage(payload)) as CorrectTextResponse | undefined
 
     if (signal?.aborted) {
       return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'aborted', aborted: true }

@@ -6,7 +6,13 @@ import {
   normalizeProfile,
 } from '../features/layout/layouts/index.ts'
 
-import { LAYOUT_API_BASE } from '../config/endpoints.ts'
+import { FLOWLARY_API_BASE } from '../config/endpoints.ts'
+import {
+  buildFlowlaryApiHeaders,
+  ensureInstallAuth,
+  resolveEntitlementHeader,
+} from '../config/auth.ts'
+import { flowlaryStorage, getEntitlement, resolveEntitlementStatus } from '../storage/index.ts'
 
 export type CheckWordRequest = {
   type: 'CHECK_WORD'
@@ -53,9 +59,11 @@ export async function handleCheckWord(message: CheckWordRequest): Promise<CheckW
   }
 
   try {
-    const response = await fetch(`${LAYOUT_API_BASE}/api/analyze-word`, {
+    const entitlement = resolveEntitlementStatus(await getEntitlement(flowlaryStorage))
+    const auth = await ensureInstallAuth(flowlaryStorage)
+    const response = await fetch(`${FLOWLARY_API_BASE}/api/ai/layout-classification`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: buildFlowlaryApiHeaders(auth, resolveEntitlementHeader(entitlement)),
       body: JSON.stringify({
         word,
         context: message.context,
@@ -69,14 +77,20 @@ export async function handleCheckWord(message: CheckWordRequest): Promise<CheckW
     }
 
     const payload = (await response.json()) as {
-      result: { kind: 'VALID' | 'LAYOUT_MISMATCH'; target_layout?: string | null }
+      result?: { kind: 'VALID' | 'LAYOUT_MISMATCH'; target_layout?: string | null }
+      ok?: boolean
     }
 
-    if (payload.result.kind === 'VALID') {
+    const result = payload.result ?? (payload as { result: { kind: 'VALID' | 'LAYOUT_MISMATCH'; target_layout?: string | null } }).result
+    if (!result) {
+      return { type: 'CHECK_WORD_ERROR', reason: 'invalid_response' }
+    }
+
+    if (result.kind === 'VALID') {
       return { type: 'CHECK_WORD_RESULT', result: { kind: 'VALID' }, sourceLayout: source }
     }
 
-    const targetLayout = payload.result.target_layout as LayoutId
+    const targetLayout = result.target_layout as LayoutId
     const corrected = mapLayout(word, source, targetLayout)
     return {
       type: 'CHECK_WORD_RESULT',

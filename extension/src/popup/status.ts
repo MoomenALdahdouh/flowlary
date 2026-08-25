@@ -42,7 +42,7 @@ export function computeFeatureStatus(status: ExtensionStatus | null): PopupFeatu
   let correction: FeatureReadiness = 'ready'
   if (!status.correction.enabled) {
     correction = 'disabled'
-  } else if (!status.correction.hasGroqKey || !status.correction.consentAccepted) {
+  } else if (!status.correction.aiReady) {
     correction = 'setup'
   }
 
@@ -79,6 +79,17 @@ export function readinessLabel(state: FeatureReadiness): string {
     default:
       return 'Unavailable'
   }
+}
+
+export function correctionAiLabel(status: {
+  aiProvider: 'managed' | 'byok'
+  aiReady: boolean
+  hasGroqKey: boolean
+}): string {
+  if (status.aiProvider === 'byok') {
+    return status.hasGroqKey ? 'Your Groq key (BYOK)' : 'BYOK not configured'
+  }
+  return status.aiReady ? 'Flowlary managed AI' : 'Managed AI — consent required'
 }
 
 export function groqKeyLabel(hasKey: boolean): string {

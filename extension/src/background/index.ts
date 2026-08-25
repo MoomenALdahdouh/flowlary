@@ -28,6 +28,7 @@ import {
 } from '../storage/index.ts'
 import { ensureHistoryInitialized } from '../storage/history/record.ts'
 import { initializeFlowlaryCache } from '../storage/cache/index.ts'
+import { isCorrectionAiReady } from '../features/correction/readiness.ts'
 
 const router = new CommandRouter()
 
@@ -74,7 +75,9 @@ export async function buildStatus(): Promise<ExtensionStatus> {
       mode: stateManager.correction.mode,
       highlights: stateManager.correction.highlights,
       consentAccepted: stateManager.correction.consentAccepted,
+      aiProvider: stateManager.correction.aiProvider,
       hasGroqKey: Boolean(stateManager.correction.groqApiKey.trim()),
+      aiReady: isCorrectionAiReady(stateManager.correction),
     },
     layout: {
       autoEnabled: stateManager.layout.autoEnabled,

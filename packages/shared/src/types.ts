@@ -60,6 +60,8 @@ export const STORAGE_KEYS = {
   entitlementLicenseKey: 'flowlary.entitlement.licenseKey',
   migrations: 'flowlary.migrations.v1',
   cache: 'flowlary.cache',
+  authInstallId: 'flowlary.auth.installId',
+  authInstallToken: 'flowlary.auth.installToken',
 } as const
 
 /** Unified product identifier for entitlement and licensing. */

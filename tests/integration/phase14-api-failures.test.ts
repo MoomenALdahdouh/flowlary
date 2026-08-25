@@ -7,15 +7,21 @@ import { handleCorrectText, resetCorrectHandlerForTests, cancelCorrectRequest } 
 import { handleCheckWord } from '../../extension/src/background/classify.ts'
 import { resetFlowlaryCacheForTests } from '../../extension/src/storage/cache/index.ts'
 import { createMockChromeStorage } from '../helpers/mockChromeStorage.ts'
+import { seedFlowlaryInstallAuth } from '../helpers/mockFlowlaryAuth.ts'
+import { stateManager } from '../../extension/src/core/state/StateManager.ts'
 
 describe('Phase 14 — API failure handling', () => {
   const originalFetch = globalThis.fetch
 
   beforeEach(() => {
-    createMockChromeStorage().install()
+    const mock = createMockChromeStorage()
+    seedFlowlaryInstallAuth(mock)
+    mock.install()
     resetFlowlaryCacheForTests()
     resetTranslateHandlerForTests()
     resetCorrectHandlerForTests()
+    stateManager.correction.aiProvider = 'byok'
+    stateManager.correction.consentAccepted = true
   })
 
   afterEach(() => {

@@ -39,7 +39,9 @@ export type ExtensionStatus = {
     mode: 'box' | 'direct'
     highlights: boolean
     consentAccepted: boolean
+    aiProvider: 'managed' | 'byok'
     hasGroqKey: boolean
+    aiReady: boolean
   }
   layout: {
     autoEnabled: boolean
@@ -75,6 +77,7 @@ export type SetCorrectionMessage = {
     highlights: boolean
     consentAccepted: boolean
     groqApiKey: string
+    aiProvider?: 'managed' | 'byok'
   }>
 }
 export type SetLayoutMessage = {
@@ -93,7 +96,7 @@ export type CorrectTextMessage = {
   text: string
   fieldType?: string
   previousText?: string
-  groqApiKey: string
+  groqApiKey?: string
 }
 export type CancelCorrectMessage = { type: 'CANCEL_CORRECT'; requestId: string }
 export type PauseTemporarilyMessage = { type: 'PAUSE_TEMPORARILY'; ms?: number }

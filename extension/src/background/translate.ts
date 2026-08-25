@@ -11,8 +11,13 @@ import {
   getFlowlaryCache,
   getTranslateCoalescer,
 } from '../storage/cache/index.ts'
-
-import { TRANSLATION_API_BASE } from '../config/endpoints.ts'
+import { flowlaryStorage, getEntitlement, resolveEntitlementStatus } from '../storage/index.ts'
+import { FLOWLARY_API_BASE } from '../config/endpoints.ts'
+import {
+  buildFlowlaryApiHeaders,
+  ensureInstallAuth,
+  resolveEntitlementHeader,
+} from '../config/auth.ts'
 
 export type TranslateTextRequest = {
   type: 'TRANSLATE_TEXT'
@@ -33,7 +38,7 @@ export type TranslateTextResponse =
   | { type: 'TRANSLATE_TEXT_ERROR'; ok: false; code: string }
 
 function mapHttpFailure(status: number): string {
-  if (status === 403 || status === 503) return 'license'
+  if (status === 401 || status === 403) return 'license'
   if (status === 429) return 'rate-limited'
   return 'upstream'
 }
@@ -87,13 +92,15 @@ export async function handleTranslateText(
 
     getCacheMetrics().ai_requests_translate += 1
     try {
-      const response = await fetch(`${TRANSLATION_API_BASE}/api/translate`, {
+      const entitlement = resolveEntitlementStatus(await getEntitlement(flowlaryStorage))
+      const auth = await ensureInstallAuth(flowlaryStorage)
+      const response = await fetch(`${FLOWLARY_API_BASE}/api/ai/translation`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: buildFlowlaryApiHeaders(auth, resolveEntitlementHeader(entitlement)),
         body: JSON.stringify({
+          text: message.text,
           source_language: message.sourceLanguage,
           target_language: message.targetLanguage,
-          text: message.text,
           context: { mode: message.mode },
         }),
       })
@@ -106,16 +113,23 @@ export async function handleTranslateText(
         }
       }
 
-      const body = (await response.json()) as { translation?: unknown }
-      if (!isValidAiResponseLength(body.translation) || !body.translation.trim()) {
+      const body = (await response.json()) as { translation?: unknown; ok?: boolean }
+      const translation =
+        typeof body.translation === 'string'
+          ? body.translation
+          : typeof body === 'object' && body !== null && 'translation' in body
+            ? (body as { translation?: unknown }).translation
+            : undefined
+      if (!isValidAiResponseLength(translation) || !String(translation).trim()) {
         return { type: 'TRANSLATE_TEXT_ERROR', ok: false, code: 'invalid-response' }
       }
 
-      cache.setWithL2(cacheKey, body.translation, 'TRANSLATE', CACHE_TTL_MS.TRANSLATE)
+      const normalized = String(translation).trim()
+      cache.setWithL2(cacheKey, normalized, 'TRANSLATE', CACHE_TTL_MS.TRANSLATE)
       return {
         type: 'TRANSLATE_TEXT_RESULT',
         ok: true,
-        translation: body.translation,
+        translation: normalized,
         sourceLanguage: message.sourceLanguage,
         targetLanguage: message.targetLanguage,
       }

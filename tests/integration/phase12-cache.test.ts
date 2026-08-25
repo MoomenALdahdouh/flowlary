@@ -20,8 +20,10 @@ import {
 import { canCacheText } from '../../extension/src/storage/cache/privacy.ts'
 import { normalizePersistentCacheStore } from '../../extension/src/storage/cache/persistentStore.ts'
 import { createMockChromeStorage } from '../helpers/mockChromeStorage.ts'
+import { seedFlowlaryInstallAuth } from '../helpers/mockFlowlaryAuth.ts'
 import { handleTranslateText, resetTranslateHandlerForTests } from '../../extension/src/background/translate.ts'
 import { handleCorrectText, resetCorrectHandlerForTests } from '../../extension/src/background/correct.ts'
+import { stateManager } from '../../extension/src/core/state/StateManager.ts'
 
 describe('Phase 12 — cache core', () => {
   beforeEach(() => {
@@ -174,6 +176,7 @@ describe('Phase 12 — request coalescing', () => {
 
   it('coalesces identical translation requests', async () => {
     const mockStore = createMockChromeStorage()
+    seedFlowlaryInstallAuth(mockStore)
     mockStore.install()
     let resolveFetch!: (value: Response) => void
     const fetchPromise = new Promise<Response>((resolve) => {
@@ -192,7 +195,7 @@ describe('Phase 12 — request coalescing', () => {
     const pending = Promise.all([handleTranslateText(request), handleTranslateText(request)])
     resolveFetch({
       ok: true,
-      json: async () => ({ translation: 'Hello' }),
+      json: async () => ({ ok: true, translation: 'Hello' }),
     } as Response)
     const [a, b] = await pending
     expect(a.ok).toBe(true)
@@ -221,7 +224,11 @@ describe('Phase 12 — correction handler cache', () => {
     resetFlowlaryCacheForTests()
     resetCorrectHandlerForTests()
     const mockStore = createMockChromeStorage()
+    seedFlowlaryInstallAuth(mockStore)
     mockStore.install()
+    stateManager.correction.aiProvider = 'byok'
+    stateManager.correction.consentAccepted = true
+    stateManager.correction.groqApiKey = 'gsk_test_key_1234567890'
   })
 
   afterEach(() => {

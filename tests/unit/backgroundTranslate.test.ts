@@ -1,15 +1,23 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { handleTranslateText } from '../../extension/src/background/translate.ts'
+import { handleTranslateText, resetTranslateHandlerForTests } from '../../extension/src/background/translate.ts'
+import { createMockChromeStorage } from '../helpers/mockChromeStorage.ts'
+import { seedFlowlaryInstallAuth } from '../helpers/mockFlowlaryAuth.ts'
+import { resetFlowlaryCacheForTests } from '../../extension/src/storage/cache/index.ts'
 
 describe('background translate', () => {
   const originalFetch = globalThis.fetch
 
   beforeEach(() => {
+    const mock = createMockChromeStorage()
+    seedFlowlaryInstallAuth(mock)
+    mock.install()
+    resetFlowlaryCacheForTests()
+    resetTranslateHandlerForTests()
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => ({
         ok: true,
-        json: async () => ({ translation: 'Hello' }),
+        json: async () => ({ ok: true, translation: 'Hello' }),
       })),
     )
   })
@@ -17,6 +25,7 @@ describe('background translate', () => {
   afterEach(() => {
     globalThis.fetch = originalFetch
     vi.unstubAllGlobals()
+    resetFlowlaryCacheForTests()
   })
 
   it('transports translation request to backend', async () => {

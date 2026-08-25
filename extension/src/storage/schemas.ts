@@ -55,11 +55,18 @@ export function normalizeSettings(raw: unknown): FlowlarySettings {
 export function normalizeCorrection(raw: unknown, groqApiKey = ''): CorrectionSettings {
   const value = stripVersion<CorrectionSettings>(raw)
   const mode = value.mode === 'box' || value.mode === 'direct' ? value.mode : DEFAULT_CORRECTION.mode
+  const aiProvider =
+    value.aiProvider === 'byok' || value.aiProvider === 'managed'
+      ? value.aiProvider
+      : groqApiKey.trim()
+        ? 'byok'
+        : DEFAULT_CORRECTION.aiProvider
   return {
     enabled: asBoolean(value.enabled, DEFAULT_CORRECTION.enabled),
     mode,
     highlights: asBoolean(value.highlights, DEFAULT_CORRECTION.highlights),
     consentAccepted: asBoolean(value.consentAccepted, DEFAULT_CORRECTION.consentAccepted),
+    aiProvider,
     groqApiKey: typeof groqApiKey === 'string' ? groqApiKey.trim() : '',
   }
 }

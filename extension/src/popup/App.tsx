@@ -13,6 +13,7 @@ import {
   patchTranslation,
   PopupApiError,
   removeGroqKey,
+  acceptManagedCorrection,
   saveGroqKey,
   setGlobalActive,
 } from './api.ts'
@@ -21,6 +22,7 @@ import {
   computeFeatureStatus,
   formatLanguagePair,
   groqKeyLabel,
+  correctionAiLabel,
   readinessLabel,
 } from './status.ts'
 import { getShortcutLabels } from './shortcuts.ts'
@@ -91,6 +93,13 @@ export function App() {
   const liveOn = status?.translation.liveEnabled ?? false
   const layoutOn = status?.layout.autoEnabled ?? false
   const hasGroqKey = status?.correction.hasGroqKey ?? false
+  const correctionAi =
+    status &&
+    correctionAiLabel({
+      aiProvider: status.correction.aiProvider,
+      aiReady: status.correction.aiReady,
+      hasGroqKey,
+    })
 
   const languagePair =
     status &&
@@ -175,10 +184,19 @@ export function App() {
               }
             >
               <div className="fl-inline-meta">
-                <span>Groq API</span>
-                <strong>{groqKeyLabel(hasGroqKey)}</strong>
+                <span>Correction AI</span>
+                <strong>{correctionAi ?? 'Loading…'}</strong>
               </div>
-              {!hasGroqKey ? (
+              {status?.correction.aiProvider === 'managed' && !status.correction.aiReady ? (
+                <button
+                  type="button"
+                  className="fl-link-btn"
+                  onClick={() => void mutate('consent', () => acceptManagedCorrection())}
+                >
+                  Enable Flowlary AI
+                </button>
+              ) : null}
+              {status?.correction.aiProvider === 'byok' && !hasGroqKey ? (
                 <button
                   type="button"
                   className="fl-link-btn"
@@ -597,9 +615,46 @@ function SettingsPanel({
         </div>
 
         <div className="fl-settings-block">
-          <h3 className="fl-block-title">Groq API</h3>
+          <h3 className="fl-block-title">Writing correction AI</h3>
           <p className="fl-card-desc">
-            Your key stays in the browser. It is never shown after saving.
+            Default: Flowlary managed AI (no Groq account required). Optional BYOK sends correction directly to your Groq key from this browser only.
+          </p>
+          <p className="fl-inline-meta">
+            <span>Mode</span>
+            <strong>{status ? correctionAiLabel({
+              aiProvider: status.correction.aiProvider,
+              aiReady: status.correction.aiReady,
+              hasGroqKey: status.correction.hasGroqKey,
+            }) : '…'}</strong>
+          </p>
+          {status?.correction.aiProvider === 'managed' ? (
+            <button
+              type="button"
+              className="fl-action-btn"
+              disabled={busy === 'byok-mode'}
+              onClick={() => {
+                onShowKeyForm(true)
+                void onMutate('byok-mode', () => patchCorrection({ aiProvider: 'byok' }))
+              }}
+            >
+              Use my Groq key (BYOK)
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="fl-action-btn fl-action-btn-muted"
+              disabled={busy === 'managed-mode'}
+              onClick={() => void onMutate('managed-mode', () => patchCorrection({ aiProvider: 'managed', groqApiKey: '' }))}
+            >
+              Switch to Flowlary managed AI
+            </button>
+          )}
+        </div>
+
+        <div className="fl-settings-block">
+          <h3 className="fl-block-title">Groq API (BYOK only)</h3>
+          <p className="fl-card-desc">
+            Your key stays in the browser. It is never sent to Flowlary servers.
           </p>
           <p className="fl-inline-meta">
             <span>Status</span>
@@ -747,7 +802,7 @@ function SettingsPanel({
         <h2 className="fl-section-label">Privacy</h2>
         <div className="fl-privacy">
           <p>Flowlary runs primarily in your browser. Protected fields like passwords are blocked.</p>
-          <p>Correction uses your Groq API key. Translation uses the configured translation service. Layout fixes are local-first.</p>
+          <p>Correction uses Flowlary managed AI by default, or your own Groq key (BYOK). Translation and layout classification use the Flowlary API. Layout remapping stays local-first.</p>
           <p>Your writing is not collected for analytics.</p>
         </div>
       </section>

@@ -13,6 +13,7 @@ import { createCorrectionMetrics, type CorrectionMetrics } from './metrics.ts'
 import { CorrectionScheduler } from './scheduler.ts'
 import { CorrectionCard } from './ui/CorrectionCard.ts'
 import { IntelligentDebouncer, debounceOptionsForMode } from './debounce.ts'
+import { isCorrectionAiReady } from './readiness.ts'
 
 export type CorrectionModuleOptions = {
   engine: InputEngine
@@ -70,7 +71,7 @@ export function createCorrectionFeature(options: CorrectionModuleOptions): Corre
       if (!stateManager.correction.consentAccepted) {
         return { ok: false, operation: 'CORRECT', error: 'consent_required' }
       }
-      if (!stateManager.correction.groqApiKey.trim()) {
+      if (!isCorrectionAiReady(stateManager.correction)) {
         return { ok: false, operation: 'CORRECT', error: 'missing_api_key' }
       }
 

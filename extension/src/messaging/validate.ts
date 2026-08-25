@@ -164,6 +164,7 @@ function validateSetCorrection(raw: Record<string, unknown>): ValidationResult<S
   const consentAccepted = readBoolean(patch.consentAccepted)
   if (consentAccepted !== undefined) next.consentAccepted = consentAccepted
   if (patch.mode === 'box' || patch.mode === 'direct') next.mode = patch.mode
+  if (patch.aiProvider === 'managed' || patch.aiProvider === 'byok') next.aiProvider = patch.aiProvider
   if (typeof patch.groqApiKey === 'string' && patch.groqApiKey.length <= SECURITY_LIMITS.MAX_GROQ_KEY_LENGTH) {
     next.groqApiKey = patch.groqApiKey.trim()
   }
@@ -285,15 +286,22 @@ function validateCorrectText(raw: Record<string, unknown>): ValidationResult<Cor
   if (!isNonEmptyBoundedString(raw.text, SECURITY_LIMITS.MAX_CORRECTION_TEXT_LENGTH)) {
     return fail('invalid_text')
   }
-  if (!isNonEmptyBoundedString(raw.groqApiKey, SECURITY_LIMITS.MAX_GROQ_KEY_LENGTH)) {
-    return fail('missing_api_key')
+  const groqApiKey =
+    typeof raw.groqApiKey === 'string' && raw.groqApiKey.trim()
+      ? raw.groqApiKey.trim()
+      : undefined
+  if (
+    groqApiKey &&
+    !isNonEmptyBoundedString(groqApiKey, SECURITY_LIMITS.MAX_GROQ_KEY_LENGTH)
+  ) {
+    return fail('invalid_api_key')
   }
   const message: CorrectTextMessage = {
     type: 'CORRECT_TEXT',
     requestId: raw.requestId.trim(),
     text: raw.text,
-    groqApiKey: raw.groqApiKey.trim(),
   }
+  if (groqApiKey) message.groqApiKey = groqApiKey
   if (isBoundedString(raw.fieldType, SECURITY_LIMITS.MAX_FIELD_TYPE_LENGTH)) {
     message.fieldType = raw.fieldType
   }

@@ -15,6 +15,15 @@ import {
   getCorrectCoalescer,
   getFlowlaryCache,
 } from '../storage/cache/index.ts'
+import { stateManager } from '../core/state/StateManager.ts'
+import { flowlaryStorage, getEntitlement, resolveEntitlementStatus } from '../storage/index.ts'
+import { FLOWLARY_API_BASE } from '../config/endpoints.ts'
+import {
+  buildFlowlaryApiHeaders,
+  ensureInstallAuth,
+  resolveEntitlementHeader,
+} from '../config/auth.ts'
+import { usesManagedCorrection } from '../features/correction/readiness.ts'
 
 const GROQ_CHAT_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
@@ -30,7 +39,7 @@ function truncateForCorrection(text: string): string {
   return slice
 }
 
-async function callGroqOnce(
+async function callGroqByokOnce(
   apiKey: string,
   text: string,
   context: CorrectRequestContext | undefined,
@@ -80,13 +89,54 @@ async function callGroqOnce(
   return { data: validated, model }
 }
 
+async function callManagedCorrectionOnce(
+  text: string,
+  context: CorrectRequestContext | undefined,
+  signal?: AbortSignal,
+): Promise<{ data: CorrectionResponse; model: string }> {
+  const entitlement = resolveEntitlementStatus(await getEntitlement(flowlaryStorage))
+  const auth = await ensureInstallAuth(flowlaryStorage)
+  const res = await fetch(`${FLOWLARY_API_BASE}/api/ai/correction`, {
+    method: 'POST',
+    headers: buildFlowlaryApiHeaders(auth, resolveEntitlementHeader(entitlement)),
+    body: JSON.stringify({
+      text,
+      fieldType: context?.fieldType,
+      previousText: context?.previousText,
+    }),
+    signal,
+  })
+
+  if (!res.ok) {
+    if (res.status === 401 || res.status === 403) throw new Error('auth_failed')
+    if (res.status === 429) throw new Error('rate_limited')
+    if (res.status === 403) throw new Error('entitlement_denied')
+    throw new Error(`gateway_http_${res.status}`)
+  }
+
+  const json = (await res.json()) as {
+    ok?: boolean
+    data?: CorrectionResponse
+    model?: string
+    error?: { code?: string }
+  }
+  if (!json.ok || !json.data) {
+    const code = json.error?.code
+    if (code === 'AI_RATE_LIMITED') throw new Error('rate_limited')
+    if (code === 'AI_AUTH_FAILED') throw new Error('auth_failed')
+    if (code === 'AI_ENTITLEMENT_DENIED') throw new Error('entitlement_denied')
+    throw new Error('invalid_response')
+  }
+  return { data: json.data, model: json.model ?? CORRECTION_DEFAULTS.GROQ_MODEL_DEFAULT }
+}
+
 export type CorrectTextMessage = {
   type: 'CORRECT_TEXT'
   requestId: string
   text: string
   fieldType?: string
   previousText?: string
-  groqApiKey: string
+  groqApiKey?: string
 }
 
 export type CorrectTextResponse =
@@ -114,9 +164,23 @@ function correctionCacheKey(text: string, context?: CorrectRequestContext): stri
 }
 
 export async function handleCorrectText(message: CorrectTextMessage): Promise<CorrectTextResponse> {
-  const { requestId, text, fieldType, previousText, groqApiKey } = message
+  const { requestId, text, fieldType, previousText } = message
+  const settings = stateManager.correction
+  const useManaged = usesManagedCorrection(settings)
+  const groqApiKey = (message.groqApiKey ?? settings.groqApiKey).trim()
+  const ready =
+    settings.consentAccepted && (useManaged || Boolean(groqApiKey))
 
-  if (!groqApiKey.trim()) {
+  if (!ready) {
+    return {
+      type: 'CORRECT_TEXT_RESULT',
+      ok: false,
+      requestId,
+      error: useManaged ? 'consent_required' : 'missing_api_key',
+    }
+  }
+
+  if (!useManaged && !groqApiKey) {
     return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'missing_api_key' }
   }
 
@@ -170,7 +234,9 @@ export async function handleCorrectText(message: CorrectTextMessage): Promise<Co
       for (let attempt = 0; attempt < 2; attempt += 1) {
         try {
           const started = Date.now()
-          const result = await callGroqOnce(groqApiKey, segment, context, controller.signal)
+          const result = useManaged
+            ? await callManagedCorrectionOnce(segment, context, controller.signal)
+            : await callGroqByokOnce(groqApiKey, segment, context, controller.signal)
           cache.setWithL2(cacheKey, result.data, 'CORRECT', CACHE_TTL_MS.CORRECT)
           return {
             type: 'CORRECT_TEXT_RESULT',
@@ -184,13 +250,21 @@ export async function handleCorrectText(message: CorrectTextMessage): Promise<Co
           if (err instanceof DOMException && err.name === 'AbortError') {
             return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'aborted', aborted: true }
           }
-          if (err instanceof Error && (err.message === 'invalid_api_key' || err.message === 'rate_limited')) {
-            return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: err.message }
+          if (err instanceof Error) {
+            if (err.message === 'invalid_api_key') {
+              return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'invalid_api_key' }
+            }
+            if (err.message === 'rate_limited') {
+              return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'rate_limited' }
+            }
+            if (err.message === 'auth_failed' || err.message === 'entitlement_denied') {
+              return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'network' }
+            }
           }
         }
       }
 
-      if (lastError instanceof Error && lastError.message.startsWith('groq_http_')) {
+      if (lastError instanceof Error && (lastError.message.startsWith('groq_http_') || lastError.message.startsWith('gateway_http_'))) {
         return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'network' }
       }
       return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'invalid_response' }

@@ -20,7 +20,7 @@ Clone this repository into that folder. The GitHub repo root **is** the Flowlary
 flowlary/
 ├── extension/        # Chrome MV3 extension (Vite + CRXJS)
 ├── packages/shared/  # Shared types and contracts
-├── backend/          # Backend placeholder
+├── backend/          # Flowlary AI Gateway (Node HTTP)
 ├── tests/            # Unit & integration tests
 ├── release/          # Store-ready ZIP + checksum (generated)
 └── docs/             # Architecture, privacy, security, release
@@ -32,7 +32,8 @@ flowlary/
 npm install
 npm run dev           # Extension dev server (localhost APIs)
 npm run build         # Dev build → extension/dist/
-npm test              # 458 tests
+npm run dev:api       # Local AI gateway → http://127.0.0.1:8787
+npm test              # 470 tests
 ```
 
 Load unpacked from `extension/dist/` in Chrome.
