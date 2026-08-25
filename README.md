@@ -1,93 +1,72 @@
-# Extension merge report
+# Flowlary
 
-Deep check of whether three local Chrome extension projects can ship as one:
+**Your AI Writing Companion**
 
-- `Moomen/Projects/ai-writing-translator`
-- `Moomen/Projects/autofix-layout`
-- `Moomen/CursorProjects/english-writing-assistant`
+Flowlary is a unified Chrome MV3 extension that combines three writing capabilities:
 
-**Date:** 25 Aug 2026  
-**Verdict:** Conditional. Merge writing + translate into one extension. Do not merge all three as separate products until the unpublished repos are attached. Keep layout-as-product (and Adaptive Content Filter) separate.
+- **Keyboard Layout Fix** — local-first layout remapping (13 layouts)
+- **Writing Correction** — English grammar/spelling (BYOK Groq)
+- **Translation** — manual + optional live translation (12 languages)
 
-This Origin workspace did not include the two unpublished folders. English Writing Assistant was cloned from public GitHub and reviewed in full.
+Original source extensions remain read-only references; all product code lives in this folder.
 
-## Run this report locally
+**On your Mac:** `/Users/moomen/Projects/flowlary` (Finder: home **moomen** → **Projects** → **flowlary**)
 
-Requires Node.js 20+.
+Clone this repository into that folder. The GitHub repo root **is** the Flowlary project.
+
+## Structure
+
+```
+flowlary/
+├── extension/        # Chrome MV3 extension (Vite + CRXJS)
+├── packages/shared/  # Shared types and contracts
+├── backend/          # Backend placeholder
+├── tests/            # Unit & integration tests
+├── release/          # Store-ready ZIP + checksum (generated)
+└── docs/             # Architecture, privacy, security, release
+```
+
+## Development
 
 ```bash
 npm install
-npm run dev
+npm run dev           # Extension dev server (localhost APIs)
+npm run build         # Dev build → extension/dist/
+npm test              # 458 tests
 ```
 
-Open the printed URL (default http://127.0.0.1:43147).
+Load unpacked from `extension/dist/` in Chrome.
 
-## What was readable
-
-| Source | Result |
-| --- | --- |
-| [MoomenALdahdouh/english-writing-assistant](https://github.com/MoomenALdahdouh/english-writing-assistant) | Cloned. Chrome MV3, TypeScript workspaces, Groq BYOK, v1.3.13. |
-| `ai-writing-translator` on GitHub | 404. Not in the public repo list. |
-| `autofix-layout` on GitHub | 404. Not in the public repo list. |
-| [github.com/ZAIXOS](https://github.com/ZAIXOS) | Org exists. 0 public repos. |
-| [zaixos.com/products](https://zaixos.com/products) | Clinic OS, Voice, Adaptive Content Filter only. |
-| writing.zaixos.com | Empty HTTP response (landing not live). |
-
-## English Writing Assistant (audited)
-
-- Manifest V3, content scripts on all `http`/`https` pages, `storage` + Groq/API host permissions.
-- Adapters for textarea, text input, contenteditable. Skips passwords and Monaco/CodeMirror/Ace.
-- Service worker: LRU cache, abort, history, user Groq key (preferred) or local Hono `/api/correct` when unpacked.
-- English-only detector; fields over 250 characters are ignored.
-- Suggestion-box vs direct-edit modes; Shadow DOM correction card under the field.
-- ~49 TS/TSX files and 17 tests. Last public push 16 Aug 2026.
-
-This codebase is the natural merge host: adapters, debounce, Groq client, consent, and overlay can be reused.
-
-## Unpublished projects (inferred only)
-
-**ai-writing-translator** is likely another MV3 writing tool on the same fields. If so, it duplicates injection, storage, and API-key handling. Confirm: page vs selection vs input translation; overlay vs replace; storage key prefix; extra permissions.
-
-**autofix-layout** is the uncertain one. If it only positions the overlay on RTL/mixed pages, fold it into `CorrectionCard`. If it mutates host-page CSS, it is a different Chrome Web Store purpose and should stay its own listing.
-
-## Why a naive three-way merge fails
-
-1. English-only skip vs translate (one feature disables the other unless you add a language pipeline).
-2. Three content scripts on every page (double API calls, stacked UI, cursor fights).
-3. Chrome Web Store single-purpose policy (writing help ≠ layout fixer ≠ content filter).
-4. Storage prefixes (`ewa_*`) and three store IDs cannot be silently merged.
-5. STORE.md still describes a hosted API; live code prefers BYOK. Pick one story.
-
-## Recommended plan
-
-1. Keep **english-writing-assistant** as the host. Add **Translate** as a mode next to Box / Direct.
-2. Absorb autofix-layout **only** if it is overlay layout code.
-3. Push the two local repos (private is fine) and re-run the audit against `manifest.json` + content-script entrypoints.
-
-Do not combine this with Adaptive Content Filter.
-
-The interactive version of this report is the Next.js app in this repository.
-
-## Flowlary (merged extension)
-
-The unified Chrome extension should live on your Mac at:
-
-```text
-/Users/moomen/Projects/flowlary
-```
-
-That is Finder: home **moomen** → **Projects** → **flowlary**.
-
-In this git repo the source is `Moomen/Projects/flowlary/`. Copy it onto the Mac (a Cloud Agent cannot write to your Finder):
+## Release packaging
 
 ```bash
-rsync -a --exclude node_modules --exclude .git \
-  ./Moomen/Projects/flowlary/ /Users/moomen/Projects/flowlary/
-cd /Users/moomen/Projects/flowlary && npm install && npm run build
+npm test
+npm run build:release   # Production manifest + HTTPS API defaults
+npm run package:release # → release/flowlary-v1.0.0.zip + .sha256
 ```
 
-Load unpacked extension from:
+See `release/RELEASE_CHECKLIST.md` before Chrome Web Store submission.
 
-```text
-/Users/moomen/Projects/flowlary/extension/dist
-```
+## Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| Ctrl/Cmd+Shift+, | Translate |
+| Ctrl/Cmd+Shift+P | Fix keyboard layout |
+| Ctrl/Cmd+Shift+L | Speed Box (manual conversion) |
+
+## Documentation
+
+- [Architecture](docs/architecture/FLOWLARY_ARCHITECTURE.md)
+- [Phases](docs/development/PHASES.md)
+- [Privacy](docs/privacy/PRIVACY.md) · [Data flow](docs/privacy/DATA_FLOW.md)
+- [Security](docs/security/SECURITY_ARCHITECTURE.md)
+- [Release notes](RELEASE_NOTES.md)
+- [Store description draft](docs/release/CHROME_WEB_STORE_DESCRIPTION.md)
+- [Phase 15 report](PHASE15_REPORT.md)
+
+## Status
+
+**Version 1.0.0** — Phases 0–15 complete. Release ZIP prepared; **not published** to Chrome Web Store.
+
+Release blockers: public privacy policy URL, support contact, store screenshots, production API verification.

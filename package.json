@@ -1,31 +1,22 @@
 {
-  "name": "extension-merge-report",
-  "version": "0.1.0",
+  "name": "flowlary",
+  "version": "1.0.0",
   "private": true,
+  "description": "Flowlary — Your AI Writing Companion",
+  "workspaces": [
+    "extension",
+    "packages/*",
+    "backend"
+  ],
   "scripts": {
-    "dev": "next dev --turbopack --hostname 127.0.0.1 --port 43147",
-    "build": "next build --turbopack",
-    "start": "next start --hostname 127.0.0.1 --port 43147",
-    "lint": "eslint"
+    "dev": "npm run dev -w @flowlary/extension",
+    "build": "npm run build -w @flowlary/extension",
+    "build:release": "npm run build:release -w @flowlary/extension",
+    "package:release": "node scripts/package-release.mjs",
+    "test": "npm run test -w @flowlary/shared && npm run test -w @flowlary/extension",
+    "typecheck": "npm run typecheck -w @flowlary/shared && npm run typecheck -w @flowlary/extension"
   },
-  "dependencies": {
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "lucide-react": "^1.34.0",
-    "next": "15.5.23",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "tailwind-merge": "^3.6.0"
-  },
-  "devDependencies": {
-    "@eslint/eslintrc": "^3",
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "15.5.23",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+  "engines": {
+    "node": ">=20"
   }
 }
