@@ -2,9 +2,16 @@ import { vi } from 'vitest'
 
 vi.stubGlobal('chrome', {
   runtime: {
-    onMessage: { addListener: vi.fn() },
+    onMessage: { addListener: vi.fn(), removeListener: vi.fn() },
     onInstalled: { addListener: vi.fn() },
     sendMessage: vi.fn(),
+  },
+  commands: {
+    onCommand: { addListener: vi.fn() },
+  },
+  tabs: {
+    query: vi.fn().mockResolvedValue([]),
+    sendMessage: vi.fn().mockResolvedValue(undefined),
   },
   storage: {
     local: {

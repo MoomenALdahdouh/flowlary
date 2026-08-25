@@ -5,7 +5,7 @@
 | **0** | Forensic audit (`FL0_AUDIT.md`) | ✅ Complete |
 | **1** | Foundation — monorepo, core scaffold, build, tests | ✅ Complete |
 | **2** | DOM / Safety / FieldSession hardening | ✅ Complete |
-| **3** | InputEngine + CommandRouter wired to events | Pending |
+| **3** | InputEngine + CommandRouter wired to events | ✅ Complete |
 | **4** | Port Layfix layout module (local-first) | Pending |
 | **5** | Port Lingo manual translation | Pending |
 | **6** | Port Lingo live translation (default OFF) | Pending |

@@ -10,6 +10,7 @@ export type MessageType =
   | 'ACTIVATE_LICENSE'
   | 'DISPATCH_COMMAND'
   | 'COMMAND_RESULT'
+  | 'RUN_COMMAND'
 
 export type ExtensionStatus = {
   brand: typeof BRAND
@@ -30,6 +31,10 @@ export type NoteUsageMessage = { type: 'NOTE_USAGE_ACTIVITY' }
 export type ActivateLicenseMessage = { type: 'ACTIVATE_LICENSE'; licenseKey: string }
 export type DispatchCommandMessage = { type: 'DISPATCH_COMMAND'; command: Command }
 export type CommandResultMessage = { type: 'COMMAND_RESULT'; result: CommandResult }
+export type RunCommandMessage = {
+  type: 'RUN_COMMAND'
+  operation: 'TRANSLATE' | 'FIX_LAYOUT' | 'CORRECT'
+}
 
 export type ExtensionRequest =
   | GetStatusMessage
@@ -39,6 +44,7 @@ export type ExtensionRequest =
   | NoteUsageMessage
   | ActivateLicenseMessage
   | DispatchCommandMessage
+  | RunCommandMessage
 
 export type ExtensionResponse = ExtensionStatus | CommandResult | { ok: boolean; error?: string }
 

@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { InputEngine, detectEditable } from '../../extension/src/core/input/InputEngine.ts'
 import { EventBus } from '../../extension/src/core/events/EventBus.ts'
 
@@ -10,6 +10,10 @@ describe('InputEngine', () => {
     bus = new EventBus()
     engine = new InputEngine({ eventBus: bus })
     document.body.innerHTML = ''
+  })
+
+  afterEach(() => {
+    engine.stop()
   })
 
   it('detects textarea', () => {
@@ -47,5 +51,18 @@ describe('InputEngine', () => {
     expect(events).toContain('input')
     const session = engine.getActiveSession()
     expect(session?.getGeneration()).toBeGreaterThan(0)
+  })
+
+  it('does not auto-emit feature commands on input', () => {
+    const commands: string[] = []
+    bus.subscribe((event) => {
+      if (event.type === 'shortcut') commands.push(event.command)
+    })
+    const ta = document.createElement('textarea')
+    document.body.append(ta)
+    engine.start()
+    ta.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
+    ta.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText' }))
+    expect(commands).toEqual([])
   })
 })

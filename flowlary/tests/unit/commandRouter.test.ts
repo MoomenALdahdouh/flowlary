@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { CommandRouter } from '../../extension/src/core/router/CommandRouter.ts'
 import type { Command } from '@flowlary/shared'
 
@@ -49,5 +49,14 @@ describe('CommandRouter', () => {
     const result = await router.dispatch(baseCommand('CORRECT'))
     expect(result.ok).toBe(false)
     expect(result.error).toBe('handler_not_registered')
+  })
+
+  it('does not auto-chain PIPELINE to other handlers', async () => {
+    const router = new CommandRouter()
+    const correct = vi.fn(async () => ({ ok: true, operation: 'CORRECT' as const }))
+    router.register('CORRECT', correct)
+    const result = await router.dispatch(baseCommand('PIPELINE'))
+    expect(result.error).toBe('pipeline_not_implemented')
+    expect(correct).not.toHaveBeenCalled()
   })
 })

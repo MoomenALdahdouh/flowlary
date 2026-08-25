@@ -30,7 +30,7 @@ Tests to port in Phase 2+ from source repositories. Source paths refer to audit 
 | `src/translation/live.typing.test.ts` | 6 | 750ms live segments |
 | `src/safety/fields.test.ts` | 2 | field probes |
 | `src/safety/safety.test.ts` | 2 | token safety |
-| `src/background/commands.test.ts` | 3 | shortcut dispatch |
+| `src/background/commands.test.ts` | 3 ✅ | shortcut dispatch → `tests/unit/backgroundCommands.test.ts` |
 | `src/entitlement/entitlement.test.ts` | 10 | license/usage |
 | `src/identity.test.ts` | 10 | storage key naming |
 
@@ -53,12 +53,19 @@ Tests to port in Phase 2+ from source repositories. Source paths refer to audit 
 
 | Test | Phase |
 |------|-------|
-| Single listener verification (no duplicate handlers) | 3 |
-| Cross-feature mutex (layout + correct same field) | 4–7 |
-| CommandRouter no auto-chaining | 3 |
+| Single listener verification (no duplicate handlers) | 3 ✅ |
+| CommandRouter no auto-chaining | 3 ✅ |
 | Storage migration round-trip | 10 |
 | Unified popup toggles | 9 |
 | Mixed field: `hsjo]lj I dont know...` | 14 |
+
+## Phase 3 Tests (Completed)
+
+| Source / spec | Flowlary test | Behavior |
+|---------------|---------------|----------|
+| Lingo `background/commands.test.ts` | `tests/unit/backgroundCommands.test.ts` | SW forwards RUN_COMMAND to active tab |
+| Phase 3 spec TESTs 1–22 | `tests/integration/phase3.test.ts` | focus, multi-field, shortcuts, safety, mutex, no auto-chain, speed box infra |
+| InputEngine isolation | `tests/unit/inputEngine.test.ts` | input does not emit shortcut/commands |
 
 ## Phase 2 Tests (Completed)
 

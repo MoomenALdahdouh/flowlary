@@ -1,13 +1,15 @@
-import { BRAND } from '@flowlary/shared'
+import { BRAND, type WriteOrigin } from '@flowlary/shared'
 import { isControlledWriteActive, shouldIgnoreInputForGeneration } from '../dom/writeOrigin.ts'
 import { bumpUserGeneration, syncDomGeneration } from '../dom/generation.ts'
-import { isEditableElement, resolveEditableKind } from '../dom/read.ts'
+import { findEditableFromTarget } from '../dom/adapter.ts'
+import { resolveEditableKind } from '../dom/read.ts'
 import { markPageActive, shouldProcessFrame } from '../dom/frameGuard.ts'
-import { beginComposition, endComposition } from '../dom/composition.ts'
+import { beginComposition, endComposition, isComposing } from '../dom/composition.ts'
 import { evaluateFieldSafety } from '../safety/index.ts'
-import { EventBus, type NormalizedInputEvent } from '../events/EventBus.ts'
-import { FieldSessionRegistry } from '../session/FieldSession.ts'
+import { EventBus, OWNED_DOCUMENT_EVENTS, type NormalizedInputEvent } from '../events/EventBus.ts'
+import { FieldSession, FieldSessionRegistry } from '../session/FieldSession.ts'
 import { stateManager } from '../state/StateManager.ts'
+import { detectShortcut } from './shortcuts.ts'
 
 export type InputEngineOptions = {
   eventBus?: EventBus
@@ -21,6 +23,7 @@ export type InputEngineOptions = {
 export class InputEngine {
   readonly eventBus: EventBus
   readonly sessions: FieldSessionRegistry
+  readonly ownedEvents = OWNED_DOCUMENT_EVENTS
   private activeElement: Element | null = null
   private started = false
   private bound = {
@@ -29,8 +32,8 @@ export class InputEngine {
     input: (event: Event) => this.onInput(event),
     keyDown: (event: KeyboardEvent) => this.onKeyDown(event),
     keyUp: (event: KeyboardEvent) => this.onKeyUp(event),
-    compositionStart: () => this.onCompositionStart(),
-    compositionEnd: () => this.onCompositionEnd(),
+    compositionStart: (event: CompositionEvent) => this.onCompositionStart(event),
+    compositionEnd: (event: CompositionEvent) => this.onCompositionEnd(event),
   }
 
   constructor(options: InputEngineOptions = {}) {
@@ -66,26 +69,30 @@ export class InputEngine {
     this.activeElement = null
   }
 
+  isStarted(): boolean {
+    return this.started
+  }
+
   getActiveElement(): Element | null {
     return this.activeElement
   }
 
-  getActiveSession() {
+  getActiveSession(): FieldSession | undefined {
     if (!this.activeElement) return undefined
     return this.sessions.get(this.activeElement)
   }
 
+  getSession(element: Element): FieldSession | undefined {
+    return this.sessions.get(element)
+  }
+
   private resolveEditableTarget(target: EventTarget | null): Element | null {
-    if (!(target instanceof Element)) return null
-    if (isEditableElement(target)) return target
-    const closest = target.closest('textarea,input,[contenteditable=""],[contenteditable="true"]')
-    if (closest && isEditableElement(closest)) return closest
-    return null
+    return findEditableFromTarget(target)?.element ?? null
   }
 
   private shouldAssist(element: Element): boolean {
     if (!stateManager.isActive()) return false
-    const hostname = location.hostname
+    const hostname = typeof location !== 'undefined' ? location.hostname : undefined
     const decision = evaluateFieldSafety(element, {
       hostname,
       excludedDomains: stateManager.settings.excludedDomains,
@@ -93,21 +100,38 @@ export class InputEngine {
     return decision.allowed
   }
 
+  private writeOrigin(): WriteOrigin {
+    return isControlledWriteActive() ? 'SYSTEM' : 'USER'
+  }
+
   private onFocusIn(event: FocusEvent): void {
     const target = this.resolveEditableTarget(event.target)
     if (!target || !this.shouldAssist(target)) return
     this.activeElement = target
-    this.sessions.getOrCreate(target)
-    this.emit({ type: 'focus-in', target })
+    const session = this.sessions.getOrCreate(target)
+    this.emit({
+      type: 'focus-in',
+      target,
+      session,
+      composing: session.isComposing(),
+      origin: 'USER',
+    })
   }
 
   private onFocusOut(event: FocusEvent): void {
     const target = this.resolveEditableTarget(event.target)
     if (!target) return
+    const session = this.sessions.get(target)
     if (this.activeElement === target) {
       this.activeElement = null
     }
-    this.emit({ type: 'focus-out', target })
+    this.emit({
+      type: 'focus-out',
+      target,
+      session,
+      composing: session?.isComposing() ?? false,
+      origin: 'USER',
+    })
   }
 
   private onInput(event: Event): void {
@@ -118,57 +142,119 @@ export class InputEngine {
     const session = this.sessions.getOrCreate(target)
     session.noteInput()
 
-    if (shouldIgnoreInputForGeneration(inputEvent.inputType)) {
+    const composing = session.isComposing() || isComposing()
+    const ignoreGeneration =
+      composing || shouldIgnoreInputForGeneration(inputEvent.inputType)
+
+    if (ignoreGeneration) {
       syncDomGeneration(target, session)
       this.emit({
         type: 'input',
         target,
+        session,
         inputType: inputEvent.inputType,
         generation: session.getGeneration(),
-        origin: isControlledWriteActive() ? 'SYSTEM' : 'USER',
+        origin: this.writeOrigin(),
+        composing,
       })
       return
     }
 
     const generation = bumpUserGeneration(target, session)
-
     this.emit({
       type: 'input',
       target,
+      session,
       inputType: inputEvent.inputType,
       generation,
       origin: 'USER',
+      composing: false,
     })
   }
 
   private onKeyDown(event: KeyboardEvent): void {
+    const shortcut = detectShortcut(event)
+    if (shortcut) {
+      event.preventDefault()
+      const target =
+        this.resolveEditableTarget(event.target) ?? this.activeElement
+      const session = target ? this.sessions.get(target) : this.getActiveSession()
+      this.emit({
+        type: 'shortcut',
+        command: shortcut,
+        target,
+        session,
+        composing: session?.isComposing() ?? isComposing(),
+        origin: 'USER',
+      })
+      return
+    }
+
     const target = this.resolveEditableTarget(event.target)
     if (!target || !this.shouldAssist(target)) return
-    this.emit({ type: 'keydown', target, key: event.key, code: event.code })
+    const session = this.sessions.getOrCreate(target)
+    this.emit({
+      type: 'keydown',
+      target,
+      session,
+      key: event.key,
+      code: event.code,
+      ctrlKey: event.ctrlKey,
+      metaKey: event.metaKey,
+      shiftKey: event.shiftKey,
+      composing: session.isComposing(),
+      origin: 'USER',
+    })
   }
 
   private onKeyUp(event: KeyboardEvent): void {
     const target = this.resolveEditableTarget(event.target)
     if (!target || !this.shouldAssist(target)) return
-    this.emit({ type: 'keyup', target, key: event.key, code: event.code })
+    const session = this.sessions.get(target)
+    this.emit({
+      type: 'keyup',
+      target,
+      session,
+      key: event.key,
+      code: event.code,
+      composing: session?.isComposing() ?? false,
+      origin: 'USER',
+    })
   }
 
-  private onCompositionStart(): void {
+  private onCompositionStart(event: CompositionEvent): void {
     beginComposition()
-    if (this.activeElement) {
-      this.sessions.getOrCreate(this.activeElement).setComposing(true)
-      this.emit({ type: 'composition-start', target: this.activeElement })
-    }
+    const target =
+      this.resolveEditableTarget(event.target) ?? this.activeElement
+    if (!target || !this.shouldAssist(target)) return
+    this.activeElement = target
+    const session = this.sessions.getOrCreate(target)
+    session.setComposing(true)
+    this.emit({
+      type: 'composition-start',
+      target,
+      session,
+      composing: true,
+      origin: 'USER',
+    })
   }
 
-  private onCompositionEnd(): void {
+  private onCompositionEnd(event: CompositionEvent): void {
     endComposition()
-    if (this.activeElement) {
-      const session = this.sessions.getOrCreate(this.activeElement)
-      session.setComposing(false)
-      const generation = session.bumpGeneration()
-      this.emit({ type: 'composition-end', target: this.activeElement, generation })
-    }
+    const target =
+      this.resolveEditableTarget(event.target) ?? this.activeElement
+    if (!target) return
+    const session = this.sessions.getOrCreate(target)
+    session.setComposing(false)
+    const generation = bumpUserGeneration(target, session)
+    this.emit({
+      type: 'composition-end',
+      target,
+      session,
+      generation,
+      composing: false,
+      origin: 'USER',
+    })
   }
 
   private emit(event: NormalizedInputEvent): void {

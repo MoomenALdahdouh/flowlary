@@ -8,6 +8,7 @@ import type {
   ExtensionStatus,
 } from '../messaging/types.ts'
 import { isExtensionRequest } from '../messaging/types.ts'
+import { commandFromChromeCommand, sendCommandToActiveTab } from './commands.ts'
 
 const router = new CommandRouter()
 
@@ -28,6 +29,16 @@ export function buildStatus(): ExtensionStatus {
   }
 }
 
+/**
+ * Canonical command path:
+ * chrome.commands / popup DISPATCH_COMMAND
+ *   → service worker
+ *   → tabs.sendMessage(RUN_COMMAND)
+ *   → content CommandOrchestrator
+ *   → CommandRouter
+ *
+ * The service worker never reads field text and never calls feature handlers.
+ */
 export async function handleMessage(
   message: unknown,
 ): Promise<ExtensionResponse | undefined> {
@@ -61,8 +72,18 @@ export async function handleMessage(
     case 'ACTIVATE_LICENSE':
       return { ok: false, error: 'not_implemented' }
 
-    case 'DISPATCH_COMMAND':
-      return router.dispatch(message.command)
+    case 'RUN_COMMAND':
+    case 'DISPATCH_COMMAND': {
+      const operation =
+        message.type === 'RUN_COMMAND'
+          ? message.operation
+          : message.command.type
+      if (operation !== 'TRANSLATE' && operation !== 'FIX_LAYOUT' && operation !== 'CORRECT') {
+        return { ok: false, error: 'unsupported_operation' }
+      }
+      const sent = await sendCommandToActiveTab(operation)
+      return { ok: sent === 'sent', error: sent === 'noop' ? 'no_tab' : undefined }
+    }
 
     default:
       return { ok: false, error: 'unknown_message' }
@@ -77,6 +98,12 @@ export function registerBackgroundListeners(): void {
 
   chrome.runtime.onInstalled.addListener(() => {
     console.info('[Flowlary] installed', BRAND.version)
+  })
+
+  chrome.commands?.onCommand.addListener((command) => {
+    const operation = commandFromChromeCommand(command)
+    if (!operation) return
+    void sendCommandToActiveTab(operation)
   })
 }
 

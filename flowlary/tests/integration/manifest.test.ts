@@ -33,6 +33,8 @@ describe('Extension manifest (single entry points)', () => {
     expect(manifest.commands).toHaveProperty('TRANSLATE')
     expect(manifest.commands).toHaveProperty('FIX_LAYOUT')
     expect(manifest.commands).not.toHaveProperty('TRANSLATE_CURRENT_TEXT')
+    expect(manifest.commands).not.toHaveProperty('SPEED_BOX')
+    expect(Object.keys(manifest.commands)).toHaveLength(2)
   })
 
   it('uses all_frames with documented iframe policy', () => {

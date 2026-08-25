@@ -48,6 +48,20 @@ Single owner of:
 
 Feature modules **must not** register competing global listeners.
 
+Phase 3: InputEngine emits normalized events. **CommandOrchestrator** is the only consumer that may call CommandRouter. Ordinary `input` events update FieldSession only.
+
+**Canonical command path:**
+
+```
+chrome.commands / Ctrl+Shift+, or P / RUN_COMMAND message
+    → CommandOrchestrator
+    → Safety Gate
+    → FieldSession.tryAcquireWrite
+    → CommandRouter (stub handlers in Phase 3)
+```
+
+See [PHASE3_INPUT_ROUTING.md](./PHASE3_INPUT_ROUTING.md).
+
 ## FieldSession (Phase 2 hardened)
 
 Per-field state and concurrency boundary:
