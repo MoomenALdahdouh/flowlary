@@ -66,7 +66,9 @@ Phase 5: **TranslationFeature** handles manual `TRANSLATE` (Ctrl/Cmd+Shift+,). C
 
 Phase 6: **TranslationScheduler** subscribes to EventBus for optional live translation (750ms debounce, segment-level). **Default OFF** (`liveEnabled: false`).
 
-Phase 7: **CorrectionScheduler** subscribes to EventBus with EWA IntelligentDebouncer. **CorrectionFeature** sends `CORRECT_TEXT` to service worker for Groq BYOK (`llama-3.1-8b-instant`). Direct mode auto-merges; box mode shows minimal CorrectionCard.
+Phase 7: **CorrectionScheduler** subscribes to EventBus with EWA IntelligentDebouncer. **CorrectionFeature** sends `CORRECT_TEXT` to service worker for Groq BYOK (`llama-3.1-8b-instant`). Direct mode auto-merges; box mode shows CorrectionCard (Phase 8).
+
+Phase 8: **CorrectionCard** (Shadow DOM, hostStyleAdapter, tokenDiff highlights). One card per field. Accept/dismiss with stale binding verification. Direct-edit and orchestrator-dispatch mutex integration. All commits use `WriteOrigin.CORRECT`.
 
 See [PHASE3_INPUT_ROUTING.md](./PHASE3_INPUT_ROUTING.md), [PHASE4_LAYOUT.md](./PHASE4_LAYOUT.md), [PHASE5_TRANSLATION.md](./PHASE5_TRANSLATION.md), [PHASE6_LIVE_TRANSLATION.md](./PHASE6_LIVE_TRANSLATION.md), [PHASE7_CORRECTION.md](./PHASE7_CORRECTION.md).
 

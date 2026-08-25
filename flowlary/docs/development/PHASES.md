@@ -10,7 +10,7 @@
 | **5** | Port Lingo manual translation | ✅ Complete |
 | **6** | Port Lingo live translation (default OFF) | ✅ Complete |
 | **7** | Port EWA correction + BYOK Groq | ✅ Complete |
-| **8** | CorrectionCard + direct-edit integration | Pending |
+| **8** | CorrectionCard + direct-edit integration | ✅ Complete |
 | **9** | Unified popup UX | Pending |
 | **10** | Unified storage + migration from legacy keys | Pending |
 | **11** | Unified history | Pending |

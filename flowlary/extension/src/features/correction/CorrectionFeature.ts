@@ -1,11 +1,14 @@
 import type { Command, CommandResult, CorrectionFeature } from '@flowlary/shared'
 import type { InputEngine } from '../../core/input/InputEngine.ts'
-import { readFieldText, readSelectionRange } from '../../core/dom/read.ts'
+import { readFieldText } from '../../core/dom/read.ts'
 import { evaluateFieldSafety } from '../../core/safety/index.ts'
 import type { EditableElement } from '../../core/dom/types.ts'
 import { stateManager } from '../../core/state/StateManager.ts'
 import { isEligibleForCorrection } from './language.ts'
-import { runCorrectionRequest, type FieldCorrectionState } from './applyCorrection.ts'
+import {
+  runCorrectionRequest,
+  type FieldCorrectionState,
+} from './applyCorrection.ts'
 import { createCorrectionMetrics, type CorrectionMetrics } from './metrics.ts'
 import { CorrectionScheduler } from './scheduler.ts'
 import { CorrectionCard } from './ui/CorrectionCard.ts'
@@ -25,7 +28,7 @@ export function createCorrectionFeature(options: CorrectionModuleOptions): Corre
   const metrics = createCorrectionMetrics()
   const fieldStates = new Map<string, FieldCorrectionState & { debouncer: IntelligentDebouncer }>()
 
-  function getFieldState(fieldId: string, element: EditableElement) {
+  function getFieldState(fieldId: string) {
     let state = fieldStates.get(fieldId)
     if (!state) {
       state = {
@@ -34,6 +37,7 @@ export function createCorrectionFeature(options: CorrectionModuleOptions): Corre
         lastCorrectedFor: '',
         pendingRequestId: null,
         card: null,
+        cardMounted: false,
       }
       fieldStates.set(fieldId, state)
     }
@@ -92,18 +96,38 @@ export function createCorrectionFeature(options: CorrectionModuleOptions): Corre
         return { ok: false, operation: 'CORRECT', error: 'not_english' }
       }
 
-      const fieldState = getFieldState(session.field.id, editable)
-      if (!fieldState.card) {
-        fieldState.card = new CorrectionCard({ onApply: () => undefined })
+      const fieldState = getFieldState(session.field.id)
+      const active = session.getActiveRequest()
+      const applyOptions = {
+        metrics,
+        fieldState,
+        currentDebouncerGeneration: () => fieldState.debouncer.currentGeneration(),
+        orchestratorLock:
+          active?.operation === 'CORRECT' && command.requestId !== undefined
+            ? {
+                requestId: command.requestId,
+                generation: command.generation ?? session.getGeneration(),
+                signal: active.signal,
+              }
+            : undefined,
+        getCard: (el: EditableElement) => {
+          if (!fieldState.card) {
+            fieldState.card = new CorrectionCard({
+              highlights: stateManager.correction.highlights,
+              onApply: () => undefined,
+              onDismiss: () => undefined,
+            })
+          }
+          if (!fieldState.cardMounted) {
+            fieldState.card.mount(el)
+            fieldState.cardMounted = true
+          }
+          return fieldState.card
+        },
       }
 
       const gen = fieldState.debouncer.schedule(text)
-      const result = await runCorrectionRequest(editable, session, text, gen, {
-        metrics,
-        fieldState,
-        currentDebouncerGeneration: () => gen,
-        getCard: () => fieldState.card!,
-      })
+      const result = await runCorrectionRequest(editable, session, text, gen, applyOptions)
 
       if (result === 'committed' || result === 'pending') {
         return {

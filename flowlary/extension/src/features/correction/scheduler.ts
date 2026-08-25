@@ -13,10 +13,18 @@ import {
   IntelligentDebouncer,
 } from './debounce.ts'
 import { extractWritingContext } from './segment.ts'
-import { runCorrectionRequest, commitMergedCorrection, type FieldCorrectionState } from './applyCorrection.ts'
+import {
+  runCorrectionRequest,
+  acceptCorrectionSuggestion,
+  dismissCorrectionSuggestion,
+  invalidateCardIfStale,
+  syncCardVisibility,
+  type FieldCorrectionState,
+} from './applyCorrection.ts'
 import type { CorrectionMetrics } from './metrics.ts'
 import { CorrectionCard } from './ui/CorrectionCard.ts'
 import { cancelCorrectionRemote } from './client.ts'
+import { isCorrectionHost } from './ui/CorrectionCard.ts'
 
 export type CorrectionSchedulerOptions = {
   engine: InputEngine
@@ -59,6 +67,42 @@ export class CorrectionScheduler {
     this.fieldStates.clear()
   }
 
+  private buildApplyOptions(
+    fieldState: FieldCorrectionState & { debouncer: IntelligentDebouncer },
+  ) {
+    return {
+      metrics: this.options.metrics,
+      fieldState,
+      currentDebouncerGeneration: () => fieldState.debouncer.currentGeneration(),
+      getCard: (el: EditableElement) => this.ensureCard(el, fieldState),
+    }
+  }
+
+  private ensureCard(
+    element: EditableElement,
+    fieldState: FieldCorrectionState & { debouncer: IntelligentDebouncer },
+  ): CorrectionCard {
+    if (!fieldState.card) {
+      const applyOptions = this.buildApplyOptions(fieldState)
+      fieldState.card = new CorrectionCard({
+        highlights: stateManager.correction.highlights,
+        onApply: (binding) => {
+          const session = this.options.engine.sessions.getOrCreate(element)
+          void acceptCorrectionSuggestion(element, session, binding, applyOptions)
+        },
+        onDismiss: () => {
+          dismissCorrectionSuggestion(element, applyOptions)
+        },
+      })
+    }
+    fieldState.card.setHighlights(stateManager.correction.highlights)
+    if (!fieldState.cardMounted) {
+      fieldState.card.mount(element)
+      fieldState.cardMounted = true
+    }
+    return fieldState.card
+  }
+
   private getFieldState(fieldId: string, element: EditableElement) {
     let state = this.fieldStates.get(fieldId)
     if (!state) {
@@ -74,6 +118,7 @@ export class CorrectionScheduler {
         lastCorrectedFor: '',
         pendingRequestId: null,
         card: null,
+        cardMounted: false,
       }
       this.fieldStates.set(fieldId, state)
     }
@@ -88,6 +133,9 @@ export class CorrectionScheduler {
     const session = this.options.engine.sessions.getOrCreate(element)
     if (session.isComposing()) return
 
+    const fieldState = this.getFieldState(session.field.id, element)
+    const applyOptions = this.buildApplyOptions(fieldState)
+
     const text = readFieldText(element)
     const hostname = typeof location !== 'undefined' ? location.hostname : undefined
     const safety = evaluateFieldSafety(element, {
@@ -97,10 +145,12 @@ export class CorrectionScheduler {
     })
     if (!safety.allowed) {
       this.options.metrics.correction_blocked += 1
-      this.getFieldState(session.field.id, element).debouncer.cancel()
-      this.getFieldState(session.field.id, element).card?.hide()
+      fieldState.debouncer.cancel()
+      fieldState.card?.hide()
       return
     }
+
+    invalidateCardIfStale(element, session, text, applyOptions)
 
     let workingText = text
     if (stateManager.correction.mode === 'direct') {
@@ -119,7 +169,6 @@ export class CorrectionScheduler {
             session.releaseWrite('CORRECT', acquired.requestId)
             if (write.verdict === 'written') {
               workingText = fixed
-              const fieldState = this.getFieldState(session.field.id, element)
               const segment = extractWritingContext(fixed)
               fieldState.lastCorrectedFor = segment
               fieldState.lastSentText = segment
@@ -131,22 +180,24 @@ export class CorrectionScheduler {
       }
     }
 
+    syncCardVisibility(element, workingText, applyOptions)
+
     if (!workingText.trim()) {
-      const fieldState = this.getFieldState(session.field.id, element)
       fieldState.debouncer.cancel()
       if (fieldState.pendingRequestId) void cancelCorrectionRemote(fieldState.pendingRequestId)
       fieldState.card?.hide()
+      fieldState.lastSentText = ''
+      fieldState.lastCorrectedFor = ''
       return
     }
 
     if (!shouldShowEnglishAssistant(workingText)) {
-      const fieldState = this.getFieldState(session.field.id, element)
       fieldState.debouncer.cancel()
       fieldState.card?.hide()
       return
     }
 
-    this.getFieldState(session.field.id, element).debouncer.schedule(workingText)
+    fieldState.debouncer.schedule(workingText)
   }
 
   private async onDebounced(
@@ -156,30 +207,11 @@ export class CorrectionScheduler {
   ): Promise<void> {
     const session = this.options.engine.sessions.getOrCreate(element)
     const fieldState = this.getFieldState(session.field.id, element)
-    await runCorrectionRequest(element, session, text, debouncerGeneration, {
-      metrics: this.options.metrics,
-      fieldState,
-      currentDebouncerGeneration: () => fieldState.debouncer.currentGeneration(),
-      getCard: (el) => {
-        if (!fieldState.card) {
-          fieldState.card = new CorrectionCard({
-            onApply: (corrected, original) => {
-              void commitMergedCorrection(el, session, original, corrected, {
-                metrics: this.options.metrics,
-                fieldState,
-                currentDebouncerGeneration: () => fieldState.debouncer.currentGeneration(),
-                getCard: () => fieldState.card!,
-              })
-            },
-          })
-        }
-        return fieldState.card
-      },
-    })
+    await runCorrectionRequest(element, session, text, debouncerGeneration, this.buildApplyOptions(fieldState))
   }
 
   private teardownField(element: Element | null | undefined): void {
-    if (!element) return
+    if (!element || isCorrectionHost(element)) return
     const session = this.options.engine.sessions.get(element)
     if (!session) return
     const state = this.fieldStates.get(session.field.id)
@@ -189,3 +221,5 @@ export class CorrectionScheduler {
     state.card?.hide()
   }
 }
+
+export { isCorrectionHost }

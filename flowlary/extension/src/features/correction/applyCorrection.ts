@@ -15,12 +15,14 @@ import { isEligibleForCorrection } from './language.ts'
 import { requestCorrectionRemote } from './client.ts'
 import type { CorrectionMetrics } from './metrics.ts'
 import type { CorrectionCard } from './ui/CorrectionCard.ts'
+import type { CorrectionSuggestionBinding } from './ui/types.ts'
 
 export type FieldCorrectionState = {
   lastSentText: string
   lastCorrectedFor: string
   pendingRequestId: string | null
   card: CorrectionCard | null
+  cardMounted: boolean
 }
 
 export type ApplyCorrectionOptions = {
@@ -28,6 +30,12 @@ export type ApplyCorrectionOptions = {
   fieldState: FieldCorrectionState
   currentDebouncerGeneration: () => number
   getCard: (element: EditableElement) => CorrectionCard
+  /** When CommandOrchestrator already holds the CORRECT mutex. */
+  orchestratorLock?: {
+    requestId: number
+    generation: number
+    signal: AbortSignal
+  }
 }
 
 export async function runCorrectionRequest(
@@ -43,6 +51,7 @@ export async function runCorrectionRequest(
 
   if (debouncerGeneration !== options.currentDebouncerGeneration()) {
     options.metrics.correction_stale_results += 1
+    invalidateCardSuggestion(options, 'stale')
     return 'stale'
   }
 
@@ -56,6 +65,7 @@ export async function runCorrectionRequest(
   })
   if (!safety.allowed) {
     options.metrics.correction_blocked += 1
+    options.getCard(element).hide()
     return 'blocked'
   }
 
@@ -69,13 +79,22 @@ export async function runCorrectionRequest(
     return 'noop'
   }
 
-  const acquired = session.tryAcquireWrite('CORRECT')
+  const active = session.getActiveRequest()
+  const reuseOrchestratorLock =
+    options.orchestratorLock &&
+    active?.operation === 'CORRECT' &&
+    active.requestId === options.orchestratorLock.requestId
+
+  const acquired = reuseOrchestratorLock
+    ? { ok: true as const, ...options.orchestratorLock! }
+    : session.tryAcquireWrite('CORRECT')
   if (!acquired.ok) {
     options.metrics.correction_blocked += 1
     return 'busy'
   }
 
   const { requestId, signal } = acquired
+  const releaseAfterRequest = !reuseOrchestratorLock
   const remoteRequestId = `${Date.now()}-${requestId}`
   options.fieldState.lastSentText = segment
   options.fieldState.pendingRequestId = remoteRequestId
@@ -85,6 +104,13 @@ export async function runCorrectionRequest(
   const mode = stateManager.correction.mode
   const card = options.getCard(element)
   if (mode === 'box') card.setAnalyzing()
+
+  let delivery:
+    | {
+        currentText: string
+        data: CorrectionResponse
+      }
+    | null = null
 
   try {
     const previousText = fullText.slice(0, Math.max(0, fullText.length - segment.length)).slice(-200)
@@ -99,11 +125,13 @@ export async function runCorrectionRequest(
 
     if (signal.aborted) {
       options.metrics.correction_stale_results += 1
+      invalidateCardSuggestion(options, 'stale')
       return 'aborted'
     }
 
     if (!element.isConnected) {
       options.metrics.correction_stale_results += 1
+      invalidateCardSuggestion(options, 'stale')
       return 'stale'
     }
 
@@ -121,7 +149,7 @@ export async function runCorrectionRequest(
 
     if (debouncerGeneration !== options.currentDebouncerGeneration()) {
       options.metrics.correction_stale_results += 1
-      card.hide()
+      invalidateCardSuggestion(options, 'stale')
       return 'stale'
     }
 
@@ -130,28 +158,47 @@ export async function runCorrectionRequest(
       !canMergeCorrection(currentText, segment)
     ) {
       options.metrics.correction_stale_results += 1
-      card.hide()
+      invalidateCardSuggestion(options, 'stale')
       return 'stale'
     }
 
-    return deliverCorrectionResult(element, session, currentText, segment, result.data, options)
+    delivery = { currentText, data: result.data }
   } catch {
     options.metrics.correction_errors += 1
     return 'error'
   } finally {
     options.fieldState.pendingRequestId = null
-    session.releaseWrite('CORRECT', requestId)
+    if (releaseAfterRequest) {
+      session.releaseWrite('CORRECT', requestId)
+    }
   }
+
+  if (!delivery) return 'error'
+
+  return deliverCorrectionResult(
+    element,
+    session,
+    delivery.currentText,
+    fullText,
+    segment,
+    remoteRequestId,
+    debouncerGeneration,
+    delivery.data,
+    options,
+  )
 }
 
-function deliverCorrectionResult(
+async function deliverCorrectionResult(
   element: EditableElement,
   session: FieldSession,
   currentText: string,
+  requestedFullText: string,
   segment: string,
+  remoteRequestId: string,
+  debouncerGeneration: number,
   data: CorrectionResponse,
   options: ApplyCorrectionOptions,
-): 'committed' | 'noop' | 'pending' | 'stale' {
+): Promise<'committed' | 'noop' | 'pending' | 'stale'> {
   const correctedSegment = data.correctedText
   if (!correctedSegment || correctedSegment === segment) {
     options.getCard(element).hide()
@@ -161,13 +208,92 @@ function deliverCorrectionResult(
   const mode = stateManager.correction.mode
 
   if (mode === 'box') {
-    options.getCard(element).setReady(correctedSegment, segment, () => {
-      void commitMergedCorrection(element, session, segment, correctedSegment, options)
-    })
+    const binding: CorrectionSuggestionBinding = {
+      remoteRequestId,
+      debouncerGeneration,
+      fieldGeneration: session.getGeneration(),
+      segment,
+      requestedFullText,
+      response: { ...data, originalText: segment },
+    }
+    options.getCard(element).setReady(binding)
+    options.metrics.correction_card_shown += 1
     return 'pending'
   }
 
-  return commitMergedCorrection(element, session, segment, correctedSegment, options)
+  options.metrics.correction_direct_edit += 1
+  return await commitMergedCorrection(element, session, segment, correctedSegment, options, {
+    requestId: options.orchestratorLock?.requestId,
+    generation: options.orchestratorLock?.generation,
+  })
+}
+
+export async function acceptCorrectionSuggestion(
+  element: EditableElement,
+  session: FieldSession,
+  binding: CorrectionSuggestionBinding,
+  options: ApplyCorrectionOptions,
+): Promise<'committed' | 'stale' | 'busy' | 'blocked'> {
+  if (!element.isConnected) {
+    options.metrics.correction_card_stale += 1
+    options.getCard(element).hide()
+    return 'stale'
+  }
+
+  const hostname = typeof location !== 'undefined' ? location.hostname : undefined
+  const liveText = readFieldText(element)
+  const safety = evaluateFieldSafety(element, {
+    hostname,
+    excludedDomains: stateManager.settings.excludedDomains,
+    text: liveText,
+  })
+  if (!safety.allowed) {
+    options.metrics.correction_blocked += 1
+    options.getCard(element).hide()
+    return 'blocked'
+  }
+
+  if (binding.debouncerGeneration !== options.currentDebouncerGeneration()) {
+    options.metrics.correction_card_stale += 1
+    options.getCard(element).hide()
+    return 'stale'
+  }
+
+  if (session.getGeneration() !== binding.fieldGeneration) {
+    options.metrics.correction_card_stale += 1
+    options.getCard(element).hide()
+    return 'stale'
+  }
+
+  const mode = stateManager.correction.mode
+  if (
+    !isResultStillRelevant(liveText, binding.requestedFullText, binding.segment, mode) ||
+    !canMergeCorrection(liveText, binding.segment)
+  ) {
+    options.metrics.correction_card_stale += 1
+    options.getCard(element).hide()
+    return 'stale'
+  }
+
+  const result = await commitMergedCorrection(
+    element,
+    session,
+    binding.segment,
+    binding.response.correctedText,
+    options,
+  )
+  if (result === 'committed') {
+    options.metrics.correction_card_accepted += 1
+  }
+  return result
+}
+
+export function dismissCorrectionSuggestion(
+  element: EditableElement,
+  options: ApplyCorrectionOptions,
+): void {
+  options.metrics.correction_card_dismissed += 1
+  options.getCard(element).hide()
 }
 
 export async function commitMergedCorrection(
@@ -176,6 +302,7 @@ export async function commitMergedCorrection(
   segment: string,
   correctedSegment: string,
   options: ApplyCorrectionOptions,
+  existingLock?: { requestId: number; generation: number },
 ): Promise<'committed' | 'stale' | 'busy'> {
   const liveText = readFieldText(element)
   const merged = mergeCorrectionIntoField(liveText, segment, correctedSegment)
@@ -185,22 +312,34 @@ export async function commitMergedCorrection(
     return 'stale'
   }
 
-  const acquired = session.tryAcquireWrite('CORRECT')
-  if (!acquired.ok) return 'busy'
+  let requestId = existingLock?.requestId
+  let generation = existingLock?.generation
+  let releaseAfter = false
+
+  if (requestId === undefined || generation === undefined) {
+    const acquired = session.tryAcquireWrite('CORRECT')
+    if (!acquired.ok) return 'busy'
+    requestId = acquired.requestId
+    generation = acquired.generation
+    releaseAfter = true
+  }
 
   const write = writeReplacement(element, 0, liveText.length, merged, {
     origin: 'CORRECT',
     session,
-    requestId: acquired.requestId,
-    expectedGeneration: acquired.generation,
+    requestId: requestId!,
+    expectedGeneration: generation!,
     placeCaretAfter: false,
     allowActiveEdit: true,
   })
 
-  session.releaseWrite('CORRECT', acquired.requestId)
+  if (releaseAfter) {
+    session.releaseWrite('CORRECT', requestId!)
+  }
 
   if (write.verdict !== 'written') {
     options.metrics.correction_stale_results += 1
+    options.getCard(element).hide()
     return 'stale'
   }
 
@@ -209,6 +348,44 @@ export async function commitMergedCorrection(
   options.getCard(element).hide()
   options.metrics.correction_commits += 1
   return 'committed'
+}
+
+export function invalidateCardIfStale(
+  element: EditableElement,
+  session: FieldSession,
+  fullText: string,
+  options: ApplyCorrectionOptions,
+): void {
+  const card = options.fieldState.card
+  if (!card?.hasReadyCorrection()) return
+  const binding = card.getBinding()
+  if (!binding) return
+
+  const mode = stateManager.correction.mode
+  if (
+    binding.debouncerGeneration !== options.currentDebouncerGeneration() ||
+    fullText !== binding.requestedFullText ||
+    !isResultStillRelevant(fullText, binding.requestedFullText, binding.segment, mode) ||
+    !canMergeCorrection(fullText, binding.segment)
+  ) {
+    invalidateCardSuggestion(options, 'stale')
+  } else if (mode === 'box' && extractWritingContext(fullText) && shouldSyncPlainRow(fullText, binding)) {
+    card.ensureVisible(fullText)
+  }
+}
+
+function shouldSyncPlainRow(fullText: string, binding: CorrectionSuggestionBinding): boolean {
+  return !binding.response.correctedText || fullText.trim() !== binding.response.correctedText.trim()
+}
+
+function invalidateCardSuggestion(
+  options: ApplyCorrectionOptions,
+  reason: 'stale' | 'hidden',
+): void {
+  if (reason === 'stale') {
+    options.metrics.correction_card_stale += 1
+  }
+  options.fieldState.card?.hide()
 }
 
 function mapError(code: string): string {
@@ -222,4 +399,36 @@ function mapError(code: string): string {
     default:
       return 'Could not reach Groq.'
   }
+}
+
+export function syncCardVisibility(
+  element: EditableElement,
+  text: string,
+  options: ApplyCorrectionOptions,
+): void {
+  const mode = stateManager.correction.mode
+  const card = options.getCard(element)
+
+  if (mode !== 'box') {
+    card.hide()
+    return
+  }
+
+  if (!text.trim()) {
+    card.hide()
+    options.fieldState.lastSentText = ''
+    options.fieldState.lastCorrectedFor = ''
+  }
+}
+
+export function ensureCardMounted(
+  element: EditableElement,
+  options: ApplyCorrectionOptions,
+): CorrectionCard {
+  const card = options.getCard(element)
+  if (!options.fieldState.cardMounted) {
+    card.mount(element)
+    options.fieldState.cardMounted = true
+  }
+  return card
 }
