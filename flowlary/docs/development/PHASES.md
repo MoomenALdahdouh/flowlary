@@ -16,7 +16,7 @@
 | **11** | Unified history | ✅ Complete |
 | **12** | Performance / cost optimization (CacheCoordinator persistent) | ✅ Complete |
 | **13** | Security / privacy review | ✅ Complete |
-| **14** | Full regression testing | Pending |
+| **14** | Full regression testing | ✅ Complete |
 
 ## Phase 1 Deliverables
 
