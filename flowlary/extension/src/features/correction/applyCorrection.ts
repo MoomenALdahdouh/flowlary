@@ -420,15 +420,3 @@ export function syncCardVisibility(
     options.fieldState.lastCorrectedFor = ''
   }
 }
-
-export function ensureCardMounted(
-  element: EditableElement,
-  options: ApplyCorrectionOptions,
-): CorrectionCard {
-  const card = options.getCard(element)
-  if (!options.fieldState.cardMounted) {
-    card.mount(element)
-    options.fieldState.cardMounted = true
-  }
-  return card
-}
