@@ -1,0 +1,45 @@
+import { buildLocaleCatalog } from './buildLocale.ts'
+import { websiteShellOverrides } from './commonOverrides.ts'
+
+export const el = buildLocaleCatalog(
+  'el',
+  websiteShellOverrides({
+    tagline: 'Ο σύντροφος γραφής με τεχνητή νοημοσύνη',
+    skip: 'Μετάβαση στο περιεχόμενο',
+    menuOpen: 'Άνοιγμα μενού',
+    menuClose: 'Κλείσιμο μενού',
+    locale: 'Γλώσσα',
+    theme: 'Χρωματικό θέμα',
+    features: 'Δυνατότητες',
+    howItWorks: 'Πώς λειτουργεί',
+    pricing: 'Τιμές',
+    account: 'Λογαριασμός',
+    about: 'Σχετικά',
+    support: 'Υποστήριξη',
+    guide: 'Οδηγός',
+    blog: 'Ιστολόγιο',
+    privacy: 'Απόρρητο',
+    terms: 'Όροι',
+    primaryCta: 'Αποκτήστε το Flowlary',
+    secondaryCta: 'Δείτε πώς λειτουργεί',
+    exploreFeatures: 'Εξερευνήστε τις δυνατότητες',
+    getStarted: 'Ξεκινήστε',
+    viewPricing: 'Δείτε τις τιμές',
+    product: 'Προϊόν',
+    legal: 'Νομικά',
+    footerTagline: 'Γράψτε καθαρά. Μείνετε στη ροή.',
+    heroKicker: 'Σύντροφος γραφής για Chrome',
+    heroTitle: 'Γράψτε καθαρά.\nΜείνετε στη ροή.',
+    heroLead:
+      'Διορθώστε τα Αγγλικά, μεταφράστε κείμενο και διορθώστε λάθη διάταξης πληκτρολογίου χωρίς να φύγετε από τη σελίδα που ήδη χρησιμοποιείτε.',
+    heroNote: 'Λειτουργεί στο πεδίο Chrome που ήδη χρησιμοποιείτε.',
+    heroFacts: [
+      'Λειτουργεί σε πεδία κειμένου ιστού',
+      'Έλεγχοι ασφαλείας με προτεραιότητα την ιδιωτικότητα',
+      'Διόρθωση, μετάφραση και διάταξη',
+      'Τοπικοί έλεγχοι + διαχειριζόμενη τεχνητή νοημοσύνη',
+    ],
+    finalTitle: 'Συνεχίστε να γράφετε. Το Flowlary αναλαμβάνει την τριβή.',
+    finalLead: 'Ένας σύντροφος Chrome για διόρθωση, μετάφραση και λάθη διάταξης πληκτρολογίου.',
+  }),
+)

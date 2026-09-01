@@ -1,0 +1,45 @@
+import { buildLocaleCatalog } from './buildLocale.ts'
+import { websiteShellOverrides } from './commonOverrides.ts'
+
+export const pt = buildLocaleCatalog(
+  'pt',
+  websiteShellOverrides({
+    tagline: 'Seu companheiro de escrita com IA',
+    skip: 'Ir para o conteúdo',
+    menuOpen: 'Abrir menu',
+    menuClose: 'Fechar menu',
+    locale: 'Idioma',
+    theme: 'Tema de cor',
+    features: 'Recursos',
+    howItWorks: 'Como funciona',
+    pricing: 'Preços',
+    account: 'Conta',
+    about: 'Sobre',
+    support: 'Suporte',
+    guide: 'Tutorial',
+    blog: 'Blog',
+    privacy: 'Privacidade',
+    terms: 'Termos',
+    primaryCta: 'Obter Flowlary',
+    secondaryCta: 'Veja como funciona',
+    exploreFeatures: 'Explorar recursos',
+    getStarted: 'Começar',
+    viewPricing: 'Ver preços',
+    product: 'Produto',
+    legal: 'Jurídico',
+    footerTagline: 'Escreva com clareza. Permaneça no fluxo.',
+    heroKicker: 'Companheiro de escrita para Chrome',
+    heroTitle: 'Escreva com clareza.\nPermaneça no fluxo.',
+    heroLead:
+      'Corrija o inglês, traduza texto e corrija erros de layout de teclado sem sair da página que você já está usando.',
+    heroNote: 'Funciona no campo do Chrome que você já está usando.',
+    heroFacts: [
+      'Funciona em campos de texto na web',
+      'Verificações de segurança com foco em privacidade',
+      'Correção, tradução e layout',
+      'Controles locais + IA gerenciada',
+    ],
+    finalTitle: 'Continue escrevendo. O Flowlary cuida do atrito.',
+    finalLead: 'Um companheiro Chrome para correção, tradução e erros de layout de teclado.',
+  }),
+)

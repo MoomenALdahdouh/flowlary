@@ -1,0 +1,12 @@
+@import '@flowlary/shared/tokens.css';
+
+html[dir='rtl'] {
+  --fl-start: right;
+  --fl-font-display: var(--fl-font-arabic);
+  --fl-font: var(--fl-font-arabic);
+  --fl-line-body: var(--fl-line-body-ar);
+}
+
+html[dir='ltr'] {
+  --fl-start: left;
+}

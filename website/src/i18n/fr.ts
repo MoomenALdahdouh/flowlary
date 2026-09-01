@@ -1,0 +1,45 @@
+import { buildLocaleCatalog } from './buildLocale.ts'
+import { websiteShellOverrides } from './commonOverrides.ts'
+
+export const fr = buildLocaleCatalog(
+  'fr',
+  websiteShellOverrides({
+    tagline: 'Votre compagnon d’écriture IA',
+    skip: 'Aller au contenu',
+    menuOpen: 'Ouvrir le menu',
+    menuClose: 'Fermer le menu',
+    locale: 'Langue',
+    theme: 'Thème de couleur',
+    features: 'Fonctionnalités',
+    howItWorks: 'Comment ça marche',
+    pricing: 'Tarifs',
+    account: 'Compte',
+    about: 'À propos',
+    support: 'Assistance',
+    guide: 'Tutoriel',
+    blog: 'Blog',
+    privacy: 'Confidentialité',
+    terms: 'Conditions',
+    primaryCta: 'Obtenir Flowlary',
+    secondaryCta: 'Voir comment ça marche',
+    exploreFeatures: 'Explorer les fonctionnalités',
+    getStarted: 'Commencer',
+    viewPricing: 'Voir les tarifs',
+    product: 'Produit',
+    legal: 'Mentions légales',
+    footerTagline: 'Écrivez clairement. Restez dans le flux.',
+    heroKicker: 'Compagnon d’écriture Chrome',
+    heroTitle: 'Écrivez clairement.\nRestez dans le flux.',
+    heroLead:
+      'Corrigez l’anglais, traduisez du texte et corrigez les erreurs de disposition clavier sans quitter la page que vous utilisez déjà.',
+    heroNote: 'Fonctionne dans le champ Chrome que vous utilisez déjà.',
+    heroFacts: [
+      'Fonctionne dans les champs de texte web',
+      'Vérifications de sécurité axées sur la confidentialité',
+      'Correction, traduction et disposition',
+      'Contrôles locaux + IA gérée',
+    ],
+    finalTitle: 'Continuez à écrire. Flowlary gère les frictions.',
+    finalLead: 'Un compagnon Chrome pour la correction, la traduction et les erreurs de disposition clavier.',
+  }),
+)

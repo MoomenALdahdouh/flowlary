@@ -1,0 +1,148 @@
+/* Glass Blur Snow — reusable material levels */
+
+.glass-1,
+.glass-2,
+.glass-3 {
+  border: var(--fl-glass-border-subtle);
+  box-shadow: var(--fl-glass-shadow), var(--fl-glass-highlight);
+  -webkit-backdrop-filter: var(--fl-glass-blur-sm);
+  backdrop-filter: var(--fl-glass-blur-sm);
+  contain: layout style paint;
+}
+
+.glass-1 {
+  background: var(--fl-glass-1);
+}
+
+.glass-2 {
+  background: var(--fl-glass-2);
+  -webkit-backdrop-filter: var(--fl-glass-blur);
+  backdrop-filter: var(--fl-glass-blur);
+}
+
+.glass-3 {
+  background: var(--fl-glass-3);
+  border: var(--fl-glass-border);
+  box-shadow: var(--fl-glass-shadow-lg), var(--fl-glass-highlight);
+  -webkit-backdrop-filter: var(--fl-glass-blur);
+  backdrop-filter: var(--fl-glass-blur);
+}
+
+.glass-interactive {
+  transition:
+    background var(--fl-duration) var(--fl-ease),
+    border-color var(--fl-duration) var(--fl-ease),
+    box-shadow var(--fl-duration) var(--fl-ease),
+    transform var(--fl-duration) var(--fl-ease);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .glass-interactive:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--fl-glass-shadow-lg), var(--fl-glass-highlight);
+  }
+
+  .glass-interactive:active {
+    transform: translateY(0) scale(0.995);
+  }
+}
+
+.glass-interactive:focus-visible {
+  outline: var(--fl-focus);
+  outline-offset: 3px;
+}
+
+/* Product surfaces stay sharp — no blur on inner content */
+.product-surface {
+  background: var(--fl-product-bg);
+  border: 1px solid var(--fl-border);
+  border-radius: var(--fl-radius);
+  color: var(--fl-text);
+}
+
+.product-surface-raised {
+  background: var(--fl-product-surface);
+}
+
+.fl-surface-0 {
+  background: var(--fl-bg);
+}
+
+.fl-surface-1 {
+  background: var(--fl-product-bg);
+  border: 1px solid var(--fl-border);
+  border-radius: var(--fl-radius);
+  color: var(--fl-text);
+}
+
+.fl-surface-2 {
+  background: var(--fl-surface-2);
+  border: 1px solid var(--fl-border-strong);
+  border-radius: var(--fl-radius);
+  color: var(--fl-text);
+  box-shadow: var(--fl-shadow-sm);
+}
+
+.fl-surface-overlay {
+  background: var(--fl-overlay);
+}
+
+/* Atmospheric page shell */
+.snow-atmosphere {
+  position: relative;
+  isolation: isolate;
+}
+
+.snow-atmosphere::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 80% 50% at 72% -8%, var(--fl-atmosphere-1), transparent 58%),
+    radial-gradient(ellipse 55% 38% at 8% 18%, var(--fl-atmosphere-cool), transparent 52%),
+    radial-gradient(ellipse 45% 30% at 92% 72%, var(--fl-atmosphere-2), transparent 48%);
+}
+
+.snow-grain {
+  position: relative;
+}
+
+.snow-grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.028;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+  mix-blend-mode: overlay;
+}
+
+@media (max-width: 767px) {
+  .glass-1,
+  .glass-2,
+  .glass-3 {
+    -webkit-backdrop-filter: var(--fl-glass-blur-sm);
+    backdrop-filter: var(--fl-glass-blur-sm);
+  }
+
+  .glass-1 {
+    background: var(--fl-glass-2);
+  }
+
+  .glass-2,
+  .glass-3 {
+    background: var(--fl-glass-3);
+    box-shadow: var(--fl-glass-shadow), var(--fl-glass-highlight);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-interactive:hover,
+  .glass-interactive:active {
+    transform: none;
+  }
+}

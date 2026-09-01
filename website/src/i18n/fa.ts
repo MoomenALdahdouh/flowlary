@@ -1,0 +1,45 @@
+import { buildLocaleCatalog } from './buildLocale.ts'
+import { websiteShellOverrides } from './commonOverrides.ts'
+
+export const fa = buildLocaleCatalog(
+  'fa',
+  websiteShellOverrides({
+    tagline: 'همراه نوشتاری هوش مصنوعی شما',
+    skip: 'رفتن به محتوا',
+    menuOpen: 'باز کردن منو',
+    menuClose: 'بستن منو',
+    locale: 'زبان',
+    theme: 'تم رنگ',
+    features: 'قابلیت‌ها',
+    howItWorks: 'نحوه کار',
+    pricing: 'قیمت‌گذاری',
+    account: 'حساب',
+    about: 'درباره',
+    support: 'پشتیبانی',
+    guide: 'آموزش',
+    blog: 'وبلاگ',
+    privacy: 'حریم خصوصی',
+    terms: 'شرایط',
+    primaryCta: 'دریافت Flowlary',
+    secondaryCta: 'ببینید چگونه کار می‌کند',
+    exploreFeatures: 'کاوش قابلیت‌ها',
+    getStarted: 'شروع کنید',
+    viewPricing: 'مشاهده قیمت‌ها',
+    product: 'محصول',
+    legal: 'حقوقی',
+    footerTagline: 'روشن بنویسید. در جریان بمانید.',
+    heroKicker: 'همراه نوشتاری Chrome',
+    heroTitle: 'روشن بنویسید.\nدر جریان بمانید.',
+    heroLead:
+      'انگلیسی را اصلاح کنید، متن را ترجمه کنید و اشتباهات چیدمان صفحه‌کلید را بدون ترک صفحه‌ای که هم‌اکنون استفاده می‌کنید برطرف کنید.',
+    heroNote: 'در همان فیلد Chrome که استفاده می‌کنید کار می‌کند.',
+    heroFacts: [
+      'در فیلدهای متنی وب کار می‌کند',
+      'بررسی‌های امنیتی با اولویت حریم خصوصی',
+      'اصلاح، ترجمه و چیدمان',
+      'کنترل‌های محلی + هوش مصنوعی مدیریت‌شده',
+    ],
+    finalTitle: 'به نوشتن ادامه دهید. Flowlary اصطکاک را برطرف می‌کند.',
+    finalLead: 'یک همراه Chrome برای اصلاح، ترجمه و اشتباهات چیدمان صفحه‌کلید.',
+  }),
+)

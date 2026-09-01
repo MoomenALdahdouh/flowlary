@@ -1,0 +1,45 @@
+import { buildLocaleCatalog } from './buildLocale.ts'
+import { websiteShellOverrides } from './commonOverrides.ts'
+
+export const de = buildLocaleCatalog(
+  'de',
+  websiteShellOverrides({
+    tagline: 'Dein KI‑Schreibbegleiter',
+    skip: 'Zum Inhalt springen',
+    menuOpen: 'Menü öffnen',
+    menuClose: 'Menü schließen',
+    locale: 'Sprache',
+    theme: 'Farbschema',
+    features: 'Funktionen',
+    howItWorks: 'So funktioniert es',
+    pricing: 'Preise',
+    account: 'Konto',
+    about: 'Über uns',
+    support: 'Support',
+    guide: 'Anleitung',
+    blog: 'Blog',
+    privacy: 'Datenschutz',
+    terms: 'Nutzungsbedingungen',
+    primaryCta: 'Flowlary holen',
+    secondaryCta: 'So funktioniert es',
+    exploreFeatures: 'Funktionen entdecken',
+    getStarted: 'Loslegen',
+    viewPricing: 'Preise ansehen',
+    product: 'Produkt',
+    legal: 'Rechtliches',
+    footerTagline: 'Klar schreiben. Im Flow bleiben.',
+    heroKicker: 'Chrome‑Schreibbegleiter',
+    heroTitle: 'Klar schreiben.\nIm Flow bleiben.',
+    heroLead:
+      'Korrigiere Englisch, übersetze Text und behebe Tastaturbelegungsfehler, ohne die Seite zu verlassen, die du bereits nutzt.',
+    heroNote: 'Funktioniert im Chrome‑Feld, das du bereits nutzt.',
+    heroFacts: [
+      'Funktioniert in Web‑Textfeldern',
+      'Datenschutzorientierte Sicherheitsprüfungen',
+      'Korrektur, Übersetzung & Layout',
+      'Lokale Steuerung + verwaltete KI',
+    ],
+    finalTitle: 'Weiter schreiben. Flowlary übernimmt die Reibung.',
+    finalLead: 'Ein Chrome‑Begleiter für Korrektur, Übersetzung und Tastaturbelegungsfehler.',
+  }),
+)

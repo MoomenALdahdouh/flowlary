@@ -1,0 +1,25 @@
+export const ROUTES = [
+  '/',
+  '/features',
+  '/features/writing-correction',
+  '/features/translation',
+  '/features/live-translation',
+  '/features/keyboard-layout',
+  '/features/speed-box',
+  '/pricing',
+  '/about',
+  '/privacy',
+  '/terms',
+  '/cookies',
+  '/contact',
+  '/support',
+  '/feedback',
+  '/admin/feedback',
+  '/guide',
+  '/blog',
+  '/account',
+  '/account/forgot-password',
+  '/account/reset-password',
+] as const
+
+export type AppRoute = (typeof ROUTES)[number]

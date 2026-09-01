@@ -1,0 +1,45 @@
+import { buildLocaleCatalog } from './buildLocale.ts'
+import { websiteShellOverrides } from './commonOverrides.ts'
+
+export const ru = buildLocaleCatalog(
+  'ru',
+  websiteShellOverrides({
+    tagline: 'Ваш AI‑помощник для письма',
+    skip: 'Перейти к содержанию',
+    menuOpen: 'Открыть меню',
+    menuClose: 'Закрыть меню',
+    locale: 'Язык',
+    theme: 'Цветовая тема',
+    features: 'Функции',
+    howItWorks: 'Как это работает',
+    pricing: 'Тарифы',
+    account: 'Аккаунт',
+    about: 'О нас',
+    support: 'Поддержка',
+    guide: 'Руководство',
+    blog: 'Блог',
+    privacy: 'Конфиденциальность',
+    terms: 'Условия',
+    primaryCta: 'Получить Flowlary',
+    secondaryCta: 'Посмотреть, как это работает',
+    exploreFeatures: 'Изучить функции',
+    getStarted: 'Начать',
+    viewPricing: 'Посмотреть тарифы',
+    product: 'Продукт',
+    legal: 'Правовая информация',
+    footerTagline: 'Пишите ясно. Оставайтесь в потоке.',
+    heroKicker: 'Помощник для письма в Chrome',
+    heroTitle: 'Пишите ясно.\nОставайтесь в потоке.',
+    heroLead:
+      'Исправляйте английский, переводите текст и исправляйте ошибки раскладки клавиатуры, не покидая страницу, которую вы уже используете.',
+    heroNote: 'Работает в поле Chrome, которое вы уже используете.',
+    heroFacts: [
+      'Работает в веб‑полях ввода',
+      'Проверки безопасности с приоритетом конфиденциальности',
+      'Исправление, перевод и раскладка',
+      'Локальные настройки + управляемый AI',
+    ],
+    finalTitle: 'Продолжайте писать. Flowlary уберёт трение.',
+    finalLead: 'Помощник Chrome для исправления, перевода и ошибок раскладки клавиатуры.',
+  }),
+)

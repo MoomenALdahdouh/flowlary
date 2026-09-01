@@ -1,0 +1,275 @@
+.writing-lab {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+}
+
+.writing-lab-card {
+  border-radius: var(--fl-radius);
+  border: 1px solid var(--fl-border);
+  background: var(--fl-surface-2);
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.writing-lab-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1rem 0.85rem;
+}
+
+.writing-lab-textarea {
+  width: 100%;
+  min-height: 9.5rem;
+  max-height: 22rem;
+  resize: vertical;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--fl-text);
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1.55;
+  padding: 0.25rem 0.1rem;
+}
+
+.writing-lab-textarea::placeholder {
+  color: var(--fl-faint);
+}
+
+.writing-lab-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--fl-border-subtle, var(--fl-border));
+}
+
+.writing-lab-disclaimer {
+  margin: 0;
+  font-size: var(--fl-text-meta, 0.82rem);
+  color: var(--fl-faint);
+  max-width: 28rem;
+}
+
+.writing-lab-gate {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  font-size: 0.92rem;
+  color: var(--fl-muted);
+  border-top: 1px solid var(--fl-border-subtle, var(--fl-border));
+  background: var(--fl-surface-muted, rgba(127, 127, 127, 0.06));
+}
+
+.writing-lab-gate strong {
+  color: var(--fl-text);
+}
+
+.writing-lab-consent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.85rem 1rem;
+  border-top: 1px solid var(--fl-border-subtle, var(--fl-border));
+  background: var(--fl-surface-muted, rgba(127, 127, 127, 0.06));
+}
+
+.writing-lab-consent p {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--fl-muted);
+}
+
+.writing-lab-results {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+  border-top: 1px solid var(--fl-border-subtle, var(--fl-border));
+}
+
+.writing-lab-section-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fl-faint);
+}
+
+.writing-lab-original {
+  margin: 0;
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--fl-radius);
+  border: 1px solid var(--fl-border);
+  background: var(--fl-surface);
+  color: var(--fl-text);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.writing-lab-corrections {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.writing-lab-correction {
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--fl-radius);
+  border: 1px solid var(--fl-border);
+}
+
+.writing-lab-correction-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.writing-lab-category {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fl-accent-hover, var(--fl-accent));
+}
+
+.writing-lab-correction.is-spelling .writing-lab-category,
+.writing-lab-correction.is-spelling .writing-lab-pair .from,
+.writing-lab-correction.is-spelling .writing-lab-pair span:last-child {
+  color: var(--fl-teach-spelling, #be123c);
+}
+
+.writing-lab-correction.is-grammar .writing-lab-category,
+.writing-lab-correction.is-grammar .writing-lab-pair .from,
+.writing-lab-correction.is-grammar .writing-lab-pair span:last-child {
+  color: var(--fl-teach-grammar, #a16207);
+}
+
+.writing-lab-correction.is-wording .writing-lab-category,
+.writing-lab-correction.is-wording .writing-lab-pair .from,
+.writing-lab-correction.is-wording .writing-lab-pair span:last-child {
+  color: var(--fl-teach-wording, #3730a3);
+}
+
+.writing-lab-correction.is-spelling .writing-lab-pair .from {
+  text-decoration-color: color-mix(in srgb, var(--fl-teach-spelling, #be123c) 55%, transparent);
+}
+
+.writing-lab-correction.is-grammar .writing-lab-pair .from {
+  text-decoration-color: color-mix(in srgb, var(--fl-teach-grammar, #a16207) 55%, transparent);
+}
+
+.writing-lab-correction.is-wording .writing-lab-pair .from {
+  text-decoration-color: color-mix(in srgb, var(--fl-teach-wording, #3730a3) 55%, transparent);
+}
+
+.writing-lab-pair {
+  margin: 0;
+  font-size: 0.98rem;
+  line-height: 1.45;
+  color: var(--fl-text);
+}
+
+.writing-lab-pair .from {
+  color: var(--fl-muted);
+  text-decoration: line-through;
+  text-decoration-color: rgba(220, 80, 80, 0.55);
+}
+
+.writing-lab-pair .arrow {
+  margin: 0 0.35rem;
+  color: var(--fl-faint);
+}
+
+.writing-lab-inline-btn {
+  margin-top: 0.55rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--fl-radius);
+  border: 1px solid var(--fl-border);
+  background: transparent;
+  color: var(--fl-accent-hover, var(--fl-accent));
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.writing-lab-inline-btn:hover {
+  background: var(--fl-surface-muted, rgba(127, 127, 127, 0.08));
+}
+
+.writing-lab-explanation {
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1px dashed var(--fl-border-subtle, var(--fl-border));
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--fl-muted);
+}
+
+.writing-lab-notice {
+  padding: 0.85rem;
+  border-radius: var(--fl-radius);
+  border: 1px solid var(--fl-border);
+  background: var(--fl-surface);
+}
+
+.writing-lab-notice p {
+  margin: 0;
+  color: var(--fl-muted);
+  line-height: 1.5;
+}
+
+.writing-lab-notice p + p {
+  margin-top: 0.45rem;
+}
+
+.writing-lab-bridge {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.writing-lab-error {
+  margin: 0;
+  padding: 0.65rem 1rem;
+  color: var(--fl-danger, #b42318);
+  font-size: 0.92rem;
+}
+
+.writing-lab-actions.is-ai-working {
+  border-top-color: color-mix(in srgb, var(--fl-ai-working) 35%, var(--fl-border));
+}
+
+.writing-lab-actions.is-ai-working .writing-lab-disclaimer {
+  color: var(--fl-ai-working);
+}
+
+.writing-lab-meta {
+  margin: 0.45rem 0 0;
+  font-size: 0.82rem;
+  color: var(--fl-faint);
+}
+
+@media (max-width: 720px) {
+  .writing-lab-textarea {
+    min-height: 8rem;
+  }
+
+  .writing-lab-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

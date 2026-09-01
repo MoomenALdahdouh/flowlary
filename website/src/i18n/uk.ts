@@ -1,0 +1,45 @@
+import { buildLocaleCatalog } from './buildLocale.ts'
+import { websiteShellOverrides } from './commonOverrides.ts'
+
+export const uk = buildLocaleCatalog(
+  'uk',
+  websiteShellOverrides({
+    tagline: 'Ваш AI‑супутник для письма',
+    skip: 'Перейти до вмісту',
+    menuOpen: 'Відкрити меню',
+    menuClose: 'Закрити меню',
+    locale: 'Мова',
+    theme: 'Кольорова тема',
+    features: 'Можливості',
+    howItWorks: 'Як це працює',
+    pricing: 'Тарифи',
+    account: 'Обліковий запис',
+    about: 'Про нас',
+    support: 'Підтримка',
+    guide: 'Посібник',
+    blog: 'Блог',
+    privacy: 'Конфіденційність',
+    terms: 'Умови',
+    primaryCta: 'Отримати Flowlary',
+    secondaryCta: 'Подивитися, як це працює',
+    exploreFeatures: 'Переглянути можливості',
+    getStarted: 'Почати',
+    viewPricing: 'Переглянути тарифи',
+    product: 'Продукт',
+    legal: 'Правова інформація',
+    footerTagline: 'Пишіть чітко. Залишайтеся в потоці.',
+    heroKicker: 'Супутник для письма в Chrome',
+    heroTitle: 'Пишіть чітко.\nЗалишайтеся в потоці.',
+    heroLead:
+      'Виправляйте англійську, перекладайте текст і виправляйте помилки розкладки клавіатури, не покидаючи сторінку, яку ви вже використовуєте.',
+    heroNote: 'Працює в полі Chrome, яке ви вже використовуєте.',
+    heroFacts: [
+      'Працює у веб‑полях введення',
+      'Перевірки безпеки з пріоритетом конфіденційності',
+      'Виправлення, переклад і розкладка',
+      'Локальні налаштування + керований AI',
+    ],
+    finalTitle: 'Продовжуйте писати. Flowlary усуває тертя.',
+    finalLead: 'Супутник Chrome для виправлення, перекладу та помилок розкладки клавіатури.',
+  }),
+)
