@@ -1,4 +1,5 @@
 import { STORAGE_KEYS } from '@flowlary/shared'
+import { runStorageMigration } from './migration/runner.ts'
 
 export type StorageArea = 'local' | 'sync'
 
@@ -110,6 +111,7 @@ export {
   getHistoryStats,
   removeHistoryEntry,
   clearHistory,
+  getUnifiedHistoryStore,
 } from './facade.ts'
 
 export {
@@ -118,6 +120,7 @@ export {
   initializeFlowlaryCache,
   resetFlowlaryCacheForTests,
   getTranslateCoalescer,
+  resetAiRequestCoalescers,
   getCorrectCoalescer,
 } from './cache/index.ts'
 
@@ -162,20 +165,101 @@ export {
   type EntitlementPublicView,
 } from './entitlement.ts'
 
+export {
+  ensureLearningProfile,
+  getLearningProfile,
+  setLearningProfile,
+  patchLearningProfile,
+  resetLearningProfile,
+  getLearningInstallMeta,
+  setLearningInstallKind,
+  buildLearningRuntimeView,
+  formatLearningSummary,
+  completeOnboarding,
+  setOnboardingStep,
+  dismissLearningSetupPrompt,
+  restartLearningOnboarding,
+  normalizeLearningProfile,
+  learningSkipDefaults,
+  type LearningRuntimeView,
+} from './learning/index.ts'
+
+export {
+  clearLearningEvents,
+  ensureLearningEventsInitialized,
+  getLearningEvents,
+  getLearningEventService,
+  recordLearningEvents,
+  resetLearningEventServiceForTests,
+  normalizeLearningEventStore,
+} from './learning/events/index.ts'
+
+export { computeProgressMetrics, type ProgressMetrics } from './learning/progress.ts'
+
+export {
+  computeLearningPersonalization,
+  attachPersonalizationToProgress,
+} from './learning/personalization.ts'
+
+export {
+  computePracticeRecommendation,
+  resolvePracticeFocus,
+} from './learning/practice/recommendation.ts'
+
+export {
+  getPracticeSessionStore,
+  normalizePracticeSessionStore,
+  clearPracticeSessions,
+  computePracticeSummary,
+  createPracticeSessionId,
+  resetPracticeSessionStoreForTests,
+} from './learning/practice/sessions.ts'
+
+export { buildPracticePrompt } from './learning/practice/prompts.ts'
+
+export { computeDataSummary } from './data/summary.ts'
+export { serializeFlowlaryExport, buildFlowlaryExport, exportContainsSecrets } from './data/export.ts'
+export {
+  parseExportJson,
+  previewImport,
+  importUserData,
+  validateExportPayload,
+  type ImportUserDataOptions,
+  type ImportUserDataResult,
+} from './data/import.ts'
+export { resetLocalFlowlaryData } from './data/reset.ts'
+export {
+  activeAccountContext,
+  isValidAccountId,
+  type AccountContextSnapshot,
+} from './activeAccountContext.ts'
+export {
+  getAccountScopedStorage,
+  buildAccountScopedKey,
+  ACCOUNT_OWNED,
+  parseAccountIdFromStorageKey,
+  isAccountScopedStorageKey,
+  captureWriteGuard,
+  assertWriteGuard,
+} from './accountScopedStorage.ts'
+export {
+  attachActiveAccount,
+  detachActiveAccount,
+  restoreActiveAccountFromSession,
+} from './accountSessionLifecycle.ts'
+export { maybeClaimLegacyAccountData, readIsolationMeta } from './accountIsolationMigration.ts'
+
 /** @deprecated Use runStorageMigration — kept for compatibility. */
 export async function migrateEWASettings(): Promise<void> {
-  const { runStorageMigration } = await import('./migration/runner.ts')
   await runStorageMigration()
 }
 
 /** @deprecated Use runStorageMigration — kept for compatibility. */
 export async function migrateLingoSettings(): Promise<void> {
-  const { runStorageMigration } = await import('./migration/runner.ts')
   await runStorageMigration()
 }
 
 /** @deprecated Use runStorageMigration — kept for compatibility. */
 export async function migrateLayfixSettings(): Promise<void> {
-  const { runStorageMigration } = await import('./migration/runner.ts')
   await runStorageMigration()
 }

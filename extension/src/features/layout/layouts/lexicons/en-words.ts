@@ -54,6 +54,10 @@ const ENGLISH_WORD_SET = new Set(
   ENGLISH_WORDS.split(/\s+/).map((word) => word.toLocaleLowerCase()),
 )
 
+export function englishLexiconCandidates(): readonly string[] {
+  return [...ENGLISH_WORD_SET]
+}
+
 export function isEnglishWord(word: string): boolean {
   const text = word.toLocaleLowerCase()
   if (ENGLISH_WORD_SET.has(text)) return true

@@ -17,3 +17,16 @@ export function isExcludedHost(hostname: string, excluded: string[]): boolean {
   }
   return false
 }
+
+/** User preference: pause or resume a hostname. Not a developer allowlist. */
+export function withHostExclusion(
+  excluded: string[],
+  hostname: string,
+  exclude: boolean,
+): string[] {
+  const host = hostname.trim().toLowerCase().replace(/^\.+/, '')
+  const base = normalizeExcludedDomains(excluded)
+  if (!host) return base
+  if (exclude) return normalizeExcludedDomains([...base, host])
+  return base.filter((entry) => host !== entry && !host.endsWith(`.${entry}`))
+}

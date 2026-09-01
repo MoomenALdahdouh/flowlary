@@ -8,7 +8,6 @@ const LANGUAGE_TO_LAYOUT: Record<string, LayoutId> = {
   de: 'de-qwertz',
   fr: 'fr-azerty',
   tr: 'tr-q',
-  he: 'he-standard',
   el: 'el-standard',
   es: 'es-latam',
   it: 'it-standard',

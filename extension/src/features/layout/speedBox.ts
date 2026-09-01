@@ -9,11 +9,78 @@ import {
   type ConverterPair,
 } from './layouts/index.ts'
 import type { LayoutId, UserLayoutProfile } from './layouts/types.ts'
+import { setNativeValue } from '../../core/dom/write.ts'
+import { commitWriteTransaction } from '../../core/writeGate/writeGate.ts'
+import { FieldSession } from '../../core/session/FieldSession.ts'
+import type { WriterTag } from '@flowlary/shared'
+import { requestTranslationRemote } from '../translation/client.ts'
+import { requestCorrectionRemote } from '../correction/client.ts'
+import {
+  DEFAULT_SOURCE_LANGUAGE,
+  DEFAULT_TARGET_LANGUAGE,
+  SUPPORTED_LANGUAGES,
+  normalizeLanguage,
+  type LanguageOption,
+} from '../translation/languages.ts'
+import type { LanguageCode } from '../translation/types.ts'
+import { resolveTheme, THEME_STORAGE_KEY } from '@flowlary/shared/theme'
+import { isLocalDevApi } from '../../config/apiHealth.ts'
 
 export const SPEED_BOX_HOST_ID = 'flowlary-speed-box'
 
+let speedBoxThemeCleanup: (() => void) | null = null
+
+function syncSpeedBoxTheme(host: HTMLElement): void {
+  host.setAttribute('data-theme', resolveTheme())
+}
+
+function ensureSpeedBoxTheme(host: HTMLElement): void {
+  syncSpeedBoxTheme(host)
+  if (speedBoxThemeCleanup) return
+
+  const refreshTheme = () => {
+    const node = document.getElementById(SPEED_BOX_HOST_ID)
+    if (node) syncSpeedBoxTheme(node)
+  }
+
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === THEME_STORAGE_KEY || event.key === null) refreshTheme()
+  }
+  window.addEventListener('storage', onStorage)
+
+  let media: MediaQueryList | null = null
+  const onSchemeChange = () => {
+    try {
+      if (localStorage.getItem(THEME_STORAGE_KEY)) return
+    } catch {
+      /* private mode */
+    }
+    refreshTheme()
+  }
+  if (typeof window.matchMedia === 'function') {
+    media = window.matchMedia('(prefers-color-scheme: light)')
+    media.addEventListener('change', onSchemeChange)
+  }
+
+  speedBoxThemeCleanup = () => {
+    window.removeEventListener('storage', onStorage)
+    if (media) media.removeEventListener('change', onSchemeChange)
+    speedBoxThemeCleanup = null
+  }
+}
+
+export type SpeedBoxMode = 'layout' | 'translate' | 'fix'
+
 export type SpeedBoxProfile = UserLayoutProfile & {
   manualConversionEnabled: boolean
+  sourceLanguage?: string
+  targetLanguage?: string
+  correctionEnabled?: boolean
+  correctionConsentAccepted?: boolean
+  correctionMode?: 'box' | 'direct'
+  translationMode?: 'box' | 'direct'
+  layoutMode?: 'box' | 'direct'
+  translationEnabled?: boolean
 }
 
 export type SpeedBox = {
@@ -26,15 +93,74 @@ export type SpeedBox = {
   destroy(): void
 }
 
+const MODES: readonly SpeedBoxMode[] = ['layout', 'translate', 'fix']
+const MAX_PREFILL_CHARS = 4_000
+const AI_DEBOUNCE_MS = 420
+const MIN_AI_CHARS = 2
+
+let lastMode: SpeedBoxMode = 'layout'
+let lastLangPair: { source: LanguageCode; target: LanguageCode } | null = null
+
 function optionLabel(id: LayoutId): string {
   const layout = getLayout(id)
-  const language = layout?.language ?? id
-  const name = layout?.name ?? id
-  return `${language} — ${name}`
+  if (!layout) return id
+  return `${layout.language.toUpperCase()} · ${layout.name}`
+}
+
+function languageOptionLabel(item: LanguageOption): string {
+  return item.native === item.name ? item.name : `${item.native} · ${item.name}`
 }
 
 function asLayoutId(value: string): LayoutId {
   return value as LayoutId
+}
+
+function languageDirection(code: string): 'ltr' | 'rtl' {
+  return SUPPORTED_LANGUAGES.find((item) => item.code === code)?.direction ?? 'ltr'
+}
+
+function layoutDirection(id: string): 'ltr' | 'rtl' {
+  return getLayout(id)?.metadata.direction ?? 'ltr'
+}
+
+function speedError(code: string): string {
+  switch (code) {
+    case 'usage_exhausted':
+    case 'entitlement_denied':
+    case 'AI_ENTITLEMENT_DENIED':
+      return "Today's AI writing checks are used up."
+    case 'account_required':
+      return 'Sign in to use Flowlary AI.'
+    case 'auth_failed':
+      return 'Session expired — open Flowlary and sign in again.'
+    case 'consent_required':
+      return 'Enable Flowlary AI in Flowlary settings.'
+    case 'disabled':
+      return 'Turn this feature on in Flowlary settings.'
+    case 'same-language':
+      return 'Pick two different languages.'
+    case 'extension_disconnected':
+      return 'Flowlary needs a refresh. Reload the extension at chrome://extensions, then try again.'
+    case 'too-long':
+    case 'empty':
+      return 'Add some text first.'
+    case 'translation_unavailable':
+    case 'network':
+    case 'upstream':
+      return isLocalDevApi()
+        ? 'Cannot reach the local Flowlary API. Start it with npm run dev:api, then try again.'
+        : 'Cannot reach Flowlary AI right now. Try again in a moment.'
+    case 'AI_UNAVAILABLE':
+    case 'AI_PROVIDER_ERROR':
+    case 'AI_TIMEOUT':
+      return 'Flowlary AI is temporarily unavailable. Try again in a moment.'
+    case 'rate_limited':
+    case 'AI_RATE_LIMITED':
+    case 'rate-limited':
+      return 'Too many requests. Try again shortly.'
+    default:
+      return 'Something went wrong. Try again.'
+  }
 }
 
 export function speedBoxShortcutHint(platform = navigator.platform): string {
@@ -43,16 +169,48 @@ export function speedBoxShortcutHint(platform = navigator.platform): string {
 
 export function createSpeedBox(options: {
   getProfile: () => SpeedBoxProfile
+  getSession?: (element: Element) => FieldSession
+  translate?: (
+    text: string,
+    sourceLanguage: LanguageCode,
+    targetLanguage: LanguageCode,
+    signal?: AbortSignal,
+  ) => ReturnType<typeof requestTranslationRemote>
+  correct?: (
+    requestId: string,
+    text: string,
+    signal?: AbortSignal,
+  ) => ReturnType<typeof requestCorrectionRemote>
 }): SpeedBox {
   let host: HTMLElement | null = null
   let shadow: ShadowRoot | null = null
   let open = false
+  let mode: SpeedBoxMode = lastMode
   let pair: ConverterPair | null = null
+  let langSource: LanguageCode = DEFAULT_SOURCE_LANGUAGE
+  let langTarget: LanguageCode = DEFAULT_TARGET_LANGUAGE
+  let busy = false
+  let runToken = 0
+  let abort: AbortController | null = null
+  let aiTimer: ReturnType<typeof setTimeout> | null = null
   let restored: {
     element: HTMLElement
     start: number | null
     end: number | null
   } | null = null
+  let boxSuggestion: string | null = null
+
+  function isFixBoxMode(): boolean {
+    return mode === 'fix' && profile().correctionMode === 'box'
+  }
+
+  function isTranslateBoxMode(): boolean {
+    return mode === 'translate' && profile().translationMode === 'box'
+  }
+
+  function isLayoutBoxMode(): boolean {
+    return mode === 'layout' && profile().layoutMode === 'box'
+  }
 
   function profile(): SpeedBoxProfile {
     return options.getProfile()
@@ -66,36 +224,91 @@ export function createSpeedBox(options: {
     }
   }
 
-  function resolved(): ConverterPair {
+  function resolvedLayoutPair(): ConverterPair {
     return resolveConverterPair(layoutProfile(), pair ?? undefined)
   }
 
-  function inputEl(): HTMLTextAreaElement | null {
-    return shadow?.querySelector<HTMLTextAreaElement>('[data-flowlary="speed-input"]') ?? null
+  function activeTranslationPair(): { source: LanguageCode; target: LanguageCode } {
+    return { source: langSource, target: langTarget }
   }
 
-  function outputEl(): HTMLButtonElement | null {
-    return shadow?.querySelector<HTMLButtonElement>('[data-flowlary="speed-output"]') ?? null
+  function defaultTranslationPair(): { source: LanguageCode; target: LanguageCode } {
+    const current = profile()
+    const source = normalizeLanguage(current.sourceLanguage, DEFAULT_SOURCE_LANGUAGE)
+    let target = normalizeLanguage(current.targetLanguage, DEFAULT_TARGET_LANGUAGE)
+    if (source === target) {
+      target = source === DEFAULT_TARGET_LANGUAGE ? DEFAULT_SOURCE_LANGUAGE : DEFAULT_TARGET_LANGUAGE
+    }
+    return { source, target }
+  }
+
+  function q<T extends Element>(selector: string): T | null {
+    return shadow?.querySelector<T>(selector) ?? null
+  }
+
+  function inputEl(): HTMLTextAreaElement | null {
+    return q('[data-flowlary="speed-input"]')
+  }
+
+  function resultEl(): HTMLButtonElement | null {
+    return q('[data-flowlary="speed-result"]')
   }
 
   function outputTextEl(): HTMLElement | null {
-    return shadow?.querySelector<HTMLElement>('[data-flowlary="speed-result-text"]') ?? null
+    return q('[data-flowlary="speed-result-text"]')
   }
 
-  function outputHintEl(): HTMLElement | null {
-    return shadow?.querySelector<HTMLElement>('[data-flowlary="speed-result-hint"]') ?? null
+  function resultHintEl(): HTMLElement | null {
+    return q('[data-flowlary="speed-result-hint"]')
+  }
+
+  function applyEl(): HTMLButtonElement | null {
+    return q('[data-flowlary="speed-apply"]')
+  }
+
+  function statusEl(): HTMLElement | null {
+    return q('[data-flowlary="speed-status"]')
+  }
+
+  function metaEl(): HTMLElement | null {
+    return q('[data-flowlary="speed-meta"]')
+  }
+
+  function pairLayoutEl(): HTMLElement | null {
+    return q('[data-flowlary="speed-pair-layout"]')
+  }
+
+  function pairTranslateEl(): HTMLElement | null {
+    return q('[data-flowlary="speed-pair-translate"]')
   }
 
   function sourceEl(): HTMLSelectElement | null {
-    return shadow?.querySelector<HTMLSelectElement>('[data-flowlary="speed-source"]') ?? null
+    return q('[data-flowlary="speed-source"]')
   }
 
   function targetEl(): HTMLSelectElement | null {
-    return shadow?.querySelector<HTMLSelectElement>('[data-flowlary="speed-target"]') ?? null
+    return q('[data-flowlary="speed-target"]')
   }
 
-  function unavailableEl(): HTMLElement | null {
-    return shadow?.querySelector<HTMLElement>('[data-flowlary="speed-unavailable"]') ?? null
+  function langSourceEl(): HTMLSelectElement | null {
+    return q('[data-flowlary="speed-lang-source"]')
+  }
+
+  function langTargetEl(): HTMLSelectElement | null {
+    return q('[data-flowlary="speed-lang-target"]')
+  }
+
+  function panelEl(): HTMLElement | null {
+    return q('[data-flowlary="speed-panel"]')
+  }
+
+  function canInsert(): boolean {
+    return (
+      restored != null &&
+      restored.element.isConnected &&
+      (restored.element instanceof HTMLInputElement ||
+        restored.element instanceof HTMLTextAreaElement)
+    )
   }
 
   function captureFocus() {
@@ -126,71 +339,80 @@ export function createSpeedBox(options: {
     }
   }
 
-  function ensureHost(): ShadowRoot {
-    if (host && shadow && host.isConnected) return shadow
-    host = document.createElement('div')
-    host.id = SPEED_BOX_HOST_ID
-    host.setAttribute('data-flowlary-speed-box', '')
-    shadow = host.attachShadow({ mode: 'open' })
-    shadow.innerHTML = `<style>${styles}</style>
-      <div class="backdrop" data-flowlary="speed-backdrop"></div>
-      <div class="panel" data-flowlary="speed-panel" role="dialog" aria-modal="true">
-        <div class="header">
-          <p class="title">Manual conversion</p>
-          <p class="shortcut">${speedBoxShortcutHint()} · Esc</p>
-        </div>
-        <p class="hint">Same physical keys, chosen layouts. Not a translator.</p>
-        <div class="pair">
-          <label class="select">
-            <span>Source keyboard layout</span>
-            <select data-flowlary="speed-source"></select>
-          </label>
-          <button type="button" class="swap" data-flowlary="speed-swap" aria-label="Swap layouts">⇄</button>
-          <label class="select">
-            <span>Target keyboard layout</span>
-            <select data-flowlary="speed-target"></select>
-          </label>
-        </div>
-        <label class="field">
-          <span>Text to convert</span>
-          <textarea data-flowlary="speed-input" rows="3" spellcheck="false" autocomplete="off" dir="auto" placeholder="Paste or type wrong-layout text"></textarea>
-        </label>
-        <button type="button" class="result" data-flowlary="speed-output" hidden title="Click to copy">
-          <span class="result-text" data-flowlary="speed-result-text" dir="auto"></span>
-          <span class="result-hint" data-flowlary="speed-result-hint">Click to copy</span>
-        </button>
-        <p class="unavailable" data-flowlary="speed-unavailable" hidden>Conversion unavailable for this layout pair.</p>
-      </div>`
+  function prefillFromField(): string {
+    if (!restored) return ''
+    const el = restored.element
+    if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return ''
+    const start = restored.start
+    const end = restored.end
+    const selected =
+      start != null && end != null && start !== end ? el.value.slice(start, end) : el.value
+    const text = selected.trim().length > 0 ? selected : el.value
+    return text.length > MAX_PREFILL_CHARS ? text.slice(0, MAX_PREFILL_CHARS) : text
+  }
 
-    shadow.querySelector('[data-flowlary="speed-backdrop"]')?.addEventListener('pointerdown', () => {
-      close()
-    })
-    sourceEl()?.addEventListener('change', (event) => {
-      const value = (event.target as HTMLSelectElement).value
-      pair = resolveConverterPair(layoutProfile(), {
-        ...resolved(),
-        sourceLayout: asLayoutId(value),
-      })
-      refresh()
-    })
-    targetEl()?.addEventListener('change', (event) => {
-      const value = (event.target as HTMLSelectElement).value
-      pair = resolveConverterPair(layoutProfile(), {
-        ...resolved(),
-        targetLayout: asLayoutId(value),
-      })
-      refresh()
-    })
-    shadow.querySelector('[data-flowlary="speed-swap"]')?.addEventListener('click', () => {
-      pair = swapConverterPair(resolved())
-      refresh()
-    })
-    inputEl()?.addEventListener('input', () => refreshOutput())
-    outputEl()?.addEventListener('click', () => {
-      void copyCurrentResult()
-    })
-    ;(document.body ?? document.documentElement).append(host)
-    return shadow
+  function resultHintText(hasResult: boolean): string {
+    if (busy) return 'Working…'
+    if (!hasResult) return ''
+    if (mode === 'fix' && isFixBoxMode()) return 'Apply to your writing'
+    if (mode === 'translate' && isTranslateBoxMode()) return 'Apply to your writing'
+    if (mode === 'layout' && isLayoutBoxMode()) return 'Apply to your writing'
+    if (canInsert()) return 'Click to copy · Enter to insert'
+    return 'Click to copy'
+  }
+
+  function writeInput(value: string): void {
+    const input = inputEl()
+    if (!input) return
+    input.value = value
+    input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertReplacementText' }))
+  }
+
+  function applyBoxSuggestion(): void {
+    if (!boxSuggestion) return
+    writeInput(boxSuggestion)
+    boxSuggestion = null
+    applyEl()?.setAttribute('hidden', '')
+    clearResult()
+    setStatus('Applied to your writing.', 'info')
+    queueMicrotask(() => inputEl()?.focus())
+  }
+
+  function setStatus(text: string, tone: 'error' | 'info' = 'error'): void {
+    const node = statusEl()
+    if (!node) return
+    node.textContent = text
+    node.hidden = !text
+    node.dataset.tone = text ? tone : ''
+  }
+
+  function setResult(text: string, dir: 'ltr' | 'rtl' | 'auto' = 'auto'): void {
+    const button = resultEl()
+    const textEl = outputTextEl()
+    const hint = resultHintEl()
+    if (!button || !textEl || !hint) return
+    textEl.textContent = text
+    textEl.dir = dir
+    button.hidden = text.length === 0 && !busy
+    hint.textContent = resultHintText(text.length > 0)
+  }
+
+  function clearResult(): void {
+    boxSuggestion = null
+    applyEl()?.setAttribute('hidden', '')
+    setResult('')
+    setStatus('')
+  }
+
+  function setBusy(next: boolean): void {
+    busy = next
+    panelEl()?.classList.toggle('is-busy', busy)
+    panelEl()?.setAttribute('aria-busy', busy ? 'true' : 'false')
+    const hint = resultHintEl()
+    if (hint) hint.textContent = resultHintText(Boolean(outputTextEl()?.textContent))
+    if (busy && !outputTextEl()?.textContent) {
+      resultEl()?.removeAttribute('hidden')
+    }
   }
 
   function fillSelect(select: HTMLSelectElement | null, selected: LayoutId): void {
@@ -206,9 +428,84 @@ export function createSpeedBox(options: {
     select.value = choices.includes(selected) ? selected : (choices[0] ?? '')
   }
 
-  function setResultHint(text: string): void {
-    const hint = outputHintEl()
-    if (hint) hint.textContent = text
+  function fillLanguageSelect(select: HTMLSelectElement | null, selected: LanguageCode): void {
+    if (!select) return
+    select.replaceChildren()
+    for (const item of SUPPORTED_LANGUAGES) {
+      const option = document.createElement('option')
+      option.value = item.code
+      option.textContent = languageOptionLabel(item)
+      select.append(option)
+    }
+    select.value = SUPPORTED_LANGUAGES.some((item) => item.code === selected)
+      ? selected
+      : DEFAULT_SOURCE_LANGUAGE
+  }
+
+  function syncPairControls(): void {
+    const layout = resolvedLayoutPair()
+    pair = layout
+    fillSelect(sourceEl(), layout.sourceLayout)
+    fillSelect(targetEl(), layout.targetLayout)
+    fillLanguageSelect(langSourceEl(), langSource)
+    fillLanguageSelect(langTargetEl(), langTarget)
+  }
+
+  function applyModeChrome(): void {
+    const panel = panelEl()
+    if (panel) panel.dataset.mode = mode
+    if (pairLayoutEl()) pairLayoutEl()!.hidden = mode !== 'layout'
+    if (pairTranslateEl()) pairTranslateEl()!.hidden = mode !== 'translate'
+    const meta = metaEl()
+    if (meta) {
+      meta.hidden = mode !== 'fix'
+      const fixMode = profile().correctionMode === 'direct' ? 'Direct' : 'Card'
+      meta.textContent = `Fix mode: ${fixMode} · uses your correction settings`
+    }
+    const translateMeta = q('[data-flowlary="speed-meta-translate"]')
+    if (translateMeta) {
+      translateMeta.hidden = mode !== 'translate'
+      const translateMode = profile().translationMode === 'direct' ? 'Direct' : 'Card'
+      translateMeta.textContent = `Translate mode: ${translateMode} · uses your translation settings`
+    }
+    const layoutMeta = q('[data-flowlary="speed-meta-layout"]')
+    if (layoutMeta) {
+      layoutMeta.hidden = mode !== 'layout'
+      const layoutModeLabel = profile().layoutMode === 'direct' ? 'Direct' : 'Card'
+      layoutMeta.textContent = `Layout mode: ${layoutModeLabel} · uses your layout settings`
+    }
+    shadow?.querySelectorAll<HTMLButtonElement>('[data-flowlary="speed-mode"]').forEach((btn) => {
+      const active = btn.dataset.mode === mode
+      btn.classList.toggle('is-active', active)
+      btn.setAttribute('aria-selected', active ? 'true' : 'false')
+      btn.tabIndex = active ? 0 : -1
+    })
+    lastMode = mode
+  }
+
+  function clearAiTimer(): void {
+    if (aiTimer) {
+      clearTimeout(aiTimer)
+      aiTimer = null
+    }
+  }
+
+  function abortPending(): void {
+    runToken += 1
+    abort?.abort()
+    abort = null
+    clearAiTimer()
+    busy = false
+  }
+
+  function setMode(next: SpeedBoxMode): void {
+    if (mode === next) return
+    abortPending()
+    mode = next
+    applyModeChrome()
+    if (mode === 'layout') refreshOutput()
+    else scheduleAiRun(0)
+    queueMicrotask(() => inputEl()?.focus())
   }
 
   async function copyCurrentResult(): Promise<void> {
@@ -216,45 +513,415 @@ export function createSpeedBox(options: {
     if (!text) return
     const ok = await copyText(text)
     if (!ok) return
-    setResultHint('Copied')
-    window.setTimeout(() => setResultHint('Click to copy'), 1500)
+    const hint = resultHintEl()
+    if (hint) hint.textContent = 'Copied'
+    window.setTimeout(() => {
+      if (resultHintEl()?.textContent === 'Copied') {
+        resultHintEl()!.textContent = resultHintText(true)
+      }
+    }, 1500)
+  }
+
+  function insertResult(): void {
+    const text = outputTextEl()?.textContent ?? ''
+    if (!text || !canInsert() || !restored) return
+    const element = restored.element
+    if (!(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement)) return
+    const value = element.value
+    const start = restored.start
+    const end = restored.end
+    const hasRange = start != null && end != null && start !== end
+    const from = hasRange ? start : 0
+    const to = hasRange ? end : value.length
+    const origin: WriterTag =
+      mode === 'translate' ? 'TRANSLATE' : mode === 'fix' ? 'CORRECT' : 'FIX_LAYOUT'
+    const capability =
+      mode === 'translate' ? 'translation' : mode === 'fix' ? 'correction' : 'layout'
+    const session = options.getSession?.(element) ?? new FieldSession(element)
+    const acquired = session.tryAcquireWrite(origin)
+    if (!acquired.ok) return
+    const write = commitWriteTransaction(element, from, to, text, {
+      origin,
+      session,
+      requestId: acquired.requestId,
+      expectedGeneration: acquired.generation,
+      placeCaretAfter: true,
+      allowActiveEdit: true,
+      auto: false,
+      capability,
+      trigger: 'manual_box',
+      tagTranslated: mode === 'translate',
+      action:
+        mode === 'translate'
+          ? 'translation'
+          : mode === 'fix'
+            ? 'english_correction'
+            : 'layout_fix',
+    })
+    session.releaseWrite(origin, acquired.requestId)
+    if (write.verdict !== 'written') return
+    const caret = from + text.length
+    restored = { element, start: caret, end: caret }
+    close()
   }
 
   function refreshOutput(): void {
+    if (mode !== 'layout') return
     const input = inputEl()
-    const output = outputEl()
-    const textEl = outputTextEl()
-    const notice = unavailableEl()
-    if (!input || !output || !textEl || !notice) return
-    const current = resolved()
+    if (!input) return
+    const current = resolvedLayoutPair()
     const result = convertManualText(input.value, current.sourceLayout, current.targetLayout)
-    const converted = result.ok ? result.text : ''
+    if (!result.ok) {
+      setResult('')
+      setStatus('Conversion unavailable for this layout pair.')
+      return
+    }
+    const converted = result.text
     const show = input.value.trim().length > 0 && converted.length > 0
-    textEl.textContent = converted
-    output.hidden = !show
-    setResultHint('Click to copy')
-    notice.hidden = result.ok
+    if (show && isLayoutBoxMode()) {
+      boxSuggestion = converted
+      setResult(converted, layoutDirection(current.targetLayout))
+      applyEl()?.removeAttribute('hidden')
+      return
+    }
+    if (show && !isLayoutBoxMode()) {
+      const input = inputEl()
+      if (input && input.value !== converted) {
+        input.value = converted
+      }
+      setResult('')
+      setStatus('Converted as you typed.', 'info')
+      return
+    }
+    setResult(show ? converted : '', layoutDirection(current.targetLayout))
+    if (show) setStatus('')
   }
 
   function refresh(): void {
-    const current = resolved()
-    pair = current
-    fillSelect(sourceEl(), current.sourceLayout)
-    fillSelect(targetEl(), current.targetLayout)
-    refreshOutput()
+    syncPairControls()
+    applyModeChrome()
+    if (mode === 'layout') refreshOutput()
+  }
+
+  function scheduleAiRun(delay = AI_DEBOUNCE_MS): void {
+    if (mode === 'layout') return
+    clearAiTimer()
+    const text = inputEl()?.value.trim() ?? ''
+    if (text.length < MIN_AI_CHARS) {
+      clearResult()
+      return
+    }
+    aiTimer = setTimeout(() => {
+      aiTimer = null
+      void runActive()
+    }, delay)
+  }
+
+  async function runActive(): Promise<void> {
+    if (mode === 'layout') {
+      refreshOutput()
+      return
+    }
+
+    const text = inputEl()?.value.trim() ?? ''
+    if (!text || busy) return
+    const current = profile()
+
+    if (mode === 'fix') {
+      if (current.correctionEnabled === false) {
+        setStatus(speedError('disabled'))
+        return
+      }
+      if (current.correctionConsentAccepted === false) {
+        setStatus(speedError('consent_required'))
+        return
+      }
+    }
+
+    const { source, target } = activeTranslationPair()
+    if (mode === 'translate') {
+      if (current.translationEnabled === false) {
+        setStatus(speedError('disabled'))
+        return
+      }
+      if (source === target) {
+        setStatus(speedError('same-language'))
+        return
+      }
+    }
+
+    abort?.abort()
+    const token = ++runToken
+    abort = new AbortController()
+    setBusy(true)
+    setStatus('')
+
+    try {
+      if (mode === 'translate') {
+        const translate = options.translate ?? requestTranslationRemote
+        const response = await translate(text, source, target, abort.signal)
+        if (token !== runToken) return
+        if (!response.ok) {
+          setResult('')
+          setStatus(speedError(response.code))
+          return
+        }
+        if (isTranslateBoxMode()) {
+          boxSuggestion = response.translation
+          setResult(response.translation, languageDirection(target))
+          applyEl()?.removeAttribute('hidden')
+          return
+        }
+        writeInput(response.translation)
+        setResult('')
+        setStatus('Translated as you typed.', 'info')
+        return
+      }
+
+      const requestId = crypto.randomUUID()
+      const correct =
+        options.correct ??
+        ((id, value, signal) => requestCorrectionRemote(id, value, 'textarea', undefined, signal))
+      const response = await correct(requestId, text, abort.signal)
+      if (token !== runToken) return
+      if (!response.ok) {
+        setResult('')
+        setStatus(speedError(response.error))
+        return
+      }
+      const corrected = response.data.correctedText
+      if (corrected === text || response.data.changes.length === 0) {
+        boxSuggestion = null
+        applyEl()?.setAttribute('hidden', '')
+        setResult('')
+        setStatus('Looks good — no changes needed.', 'info')
+        return
+      }
+      if (isFixBoxMode()) {
+        boxSuggestion = corrected
+        setResult(corrected, 'ltr')
+        applyEl()?.removeAttribute('hidden')
+        setStatus('')
+        return
+      }
+      writeInput(corrected)
+      boxSuggestion = null
+      applyEl()?.setAttribute('hidden', '')
+      setResult('')
+      setStatus('Fixed as you typed.', 'info')
+    } catch {
+      if (token !== runToken) return
+      setResult('')
+      setStatus(speedError('network'))
+    } finally {
+      if (token === runToken) {
+        setBusy(false)
+        abort = null
+      }
+    }
+  }
+
+  function onInput(): void {
+    if (mode === 'layout') {
+      refreshOutput()
+      return
+    }
+    setStatus('')
+    scheduleAiRun()
+  }
+
+  function onPanelKeyDown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      event.stopPropagation()
+      close()
+      return
+    }
+
+    const digit = event.key
+    if ((event.metaKey || event.ctrlKey) && digit >= '1' && digit <= '3') {
+      event.preventDefault()
+      const next = MODES[Number(digit) - 1]
+      if (next) setMode(next)
+      return
+    }
+
+    if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+      const target = event.target
+      if (target instanceof HTMLButtonElement && target.dataset.flowlary === 'speed-mode') {
+        event.preventDefault()
+        const index = MODES.indexOf(mode)
+        const delta = event.key === 'ArrowRight' ? 1 : -1
+        const next = MODES[(index + delta + MODES.length) % MODES.length]
+        if (next) {
+          setMode(next)
+          shadow
+            ?.querySelector<HTMLButtonElement>(`[data-flowlary="speed-mode"][data-mode="${next}"]`)
+            ?.focus()
+        }
+      }
+    }
+
+    if (event.key === 'Enter' && !event.shiftKey && event.target === inputEl()) {
+      if (boxSuggestion && (isFixBoxMode() || isTranslateBoxMode() || isLayoutBoxMode())) {
+        event.preventDefault()
+        applyBoxSuggestion()
+        return
+      }
+      if (mode === 'layout' && !isLayoutBoxMode() && canInsert()) {
+        const value = inputEl()?.value ?? ''
+        if (value.trim()) {
+          event.preventDefault()
+          const textEl = outputTextEl()
+          if (textEl) textEl.textContent = value
+          insertResult()
+          return
+        }
+      }
+      const result = outputTextEl()?.textContent ?? ''
+      if (result && canInsert()) {
+        event.preventDefault()
+        insertResult()
+        return
+      }
+      if (mode !== 'layout') {
+        event.preventDefault()
+        clearAiTimer()
+        void runActive()
+      }
+    }
+  }
+
+  function ensureHost(): ShadowRoot {
+    if (host && shadow && host.isConnected) return shadow
+    host = document.createElement('div')
+    host.id = SPEED_BOX_HOST_ID
+    host.setAttribute('data-flowlary-speed-box', '')
+    ensureSpeedBoxTheme(host)
+    shadow = host.attachShadow({ mode: 'open' })
+    shadow.innerHTML = `<style>${styles}</style>
+      <div class="backdrop" data-flowlary="speed-backdrop"></div>
+      <div class="panel" data-flowlary="speed-panel" role="dialog" aria-modal="true" aria-labelledby="fl-speed-title" data-mode="layout">
+        <div class="header">
+          <p class="title" id="fl-speed-title">Speed Box</p>
+          <p class="shortcut">${speedBoxShortcutHint()} · Esc</p>
+        </div>
+        <div class="modes" role="tablist" aria-label="Mode">
+          <button type="button" class="mode is-active" role="tab" data-flowlary="speed-mode" data-mode="layout" aria-selected="true">Layout</button>
+          <button type="button" class="mode" role="tab" data-flowlary="speed-mode" data-mode="translate" aria-selected="false">Translate</button>
+          <button type="button" class="mode" role="tab" data-flowlary="speed-mode" data-mode="fix" aria-selected="false">Fix</button>
+        </div>
+        <div class="pair" data-flowlary="speed-pair-layout">
+          <select data-flowlary="speed-source" aria-label="Source keyboard layout"></select>
+          <button type="button" class="swap" data-flowlary="speed-swap" aria-label="Swap layouts">⇄</button>
+          <select data-flowlary="speed-target" aria-label="Target keyboard layout"></select>
+        </div>
+        <div class="pair" data-flowlary="speed-pair-translate" hidden>
+          <select data-flowlary="speed-lang-source" aria-label="Source language"></select>
+          <button type="button" class="swap" data-flowlary="speed-swap-lang" aria-label="Swap languages">⇄</button>
+          <select data-flowlary="speed-lang-target" aria-label="Target language"></select>
+        </div>
+        <p class="meta" data-flowlary="speed-meta-translate" hidden>Uses your Flowlary translation settings</p>
+        <p class="meta" data-flowlary="speed-meta-layout" hidden>Uses your Flowlary layout settings</p>
+        <p class="meta" data-flowlary="speed-meta" hidden>Uses your Flowlary correction settings</p>
+        <textarea data-flowlary="speed-input" rows="3" spellcheck="false" autocomplete="off" dir="auto" placeholder="Type or paste text"></textarea>
+        <div class="fix-actions" data-flowlary="speed-fix-actions">
+          <button type="button" class="result" data-flowlary="speed-result" hidden>
+            <span class="result-text" data-flowlary="speed-result-text" dir="auto"></span>
+            <span class="result-hint" data-flowlary="speed-result-hint"></span>
+          </button>
+          <button type="button" class="apply" data-flowlary="speed-apply" hidden>Apply</button>
+        </div>
+        <p class="status" data-flowlary="speed-status" hidden></p>
+      </div>`
+
+    shadow.addEventListener('keydown', (event) => {
+      onPanelKeyDown(event as KeyboardEvent)
+    })
+    shadow.querySelector('[data-flowlary="speed-backdrop"]')?.addEventListener('pointerdown', () => {
+      close()
+    })
+    shadow.querySelectorAll<HTMLButtonElement>('[data-flowlary="speed-mode"]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const next = btn.dataset.mode
+        if (next === 'layout' || next === 'translate' || next === 'fix') setMode(next)
+      })
+    })
+    sourceEl()?.addEventListener('change', (event) => {
+      const value = (event.target as HTMLSelectElement).value
+      pair = resolveConverterPair(layoutProfile(), {
+        ...resolvedLayoutPair(),
+        sourceLayout: asLayoutId(value),
+      })
+      refreshOutput()
+    })
+    targetEl()?.addEventListener('change', (event) => {
+      const value = (event.target as HTMLSelectElement).value
+      pair = resolveConverterPair(layoutProfile(), {
+        ...resolvedLayoutPair(),
+        targetLayout: asLayoutId(value),
+      })
+      refreshOutput()
+    })
+    shadow.querySelector('[data-flowlary="speed-swap"]')?.addEventListener('click', () => {
+      pair = swapConverterPair(resolvedLayoutPair())
+      fillSelect(sourceEl(), pair.sourceLayout)
+      fillSelect(targetEl(), pair.targetLayout)
+      refreshOutput()
+    })
+    langSourceEl()?.addEventListener('change', (event) => {
+      langSource = normalizeLanguage((event.target as HTMLSelectElement).value, langSource)
+      lastLangPair = { source: langSource, target: langTarget }
+      scheduleAiRun(0)
+    })
+    langTargetEl()?.addEventListener('change', (event) => {
+      langTarget = normalizeLanguage((event.target as HTMLSelectElement).value, langTarget)
+      lastLangPair = { source: langSource, target: langTarget }
+      scheduleAiRun(0)
+    })
+    shadow.querySelector('[data-flowlary="speed-swap-lang"]')?.addEventListener('click', () => {
+      const nextSource = langTarget
+      langTarget = langSource
+      langSource = nextSource
+      lastLangPair = { source: langSource, target: langTarget }
+      fillLanguageSelect(langSourceEl(), langSource)
+      fillLanguageSelect(langTargetEl(), langTarget)
+      scheduleAiRun(0)
+    })
+    inputEl()?.addEventListener('input', onInput)
+    resultEl()?.addEventListener('click', () => {
+      if (boxSuggestion && (isFixBoxMode() || isTranslateBoxMode() || isLayoutBoxMode())) {
+        applyBoxSuggestion()
+        return
+      }
+      void copyCurrentResult()
+    })
+    applyEl()?.addEventListener('click', () => {
+      applyBoxSuggestion()
+    })
+    ;(document.body ?? document.documentElement).append(host)
+    return shadow
   }
 
   function openBox(): boolean {
     if (!profile().manualConversionEnabled) return false
+    if (!open) restored = captureFocus()
     ensureHost()
+    if (host) syncSpeedBoxTheme(host)
     if (!open) {
-      restored = captureFocus()
       pair = resolveConverterPair(layoutProfile())
+      const defaults = defaultTranslationPair()
+      langSource = lastLangPair?.source ?? defaults.source
+      langTarget = lastLangPair?.target ?? defaults.target
+      lastLangPair = { source: langSource, target: langTarget }
+      mode = lastMode
       const input = inputEl()
-      if (input) input.value = ''
+      if (input) input.value = prefillFromField()
+      clearResult()
       refresh()
       host!.hidden = false
       open = true
+      if (mode !== 'layout') scheduleAiRun(input?.value.trim().length ? 0 : AI_DEBOUNCE_MS)
     } else {
       refresh()
     }
@@ -264,16 +931,11 @@ export function createSpeedBox(options: {
 
   function close(): void {
     if (!open) return
+    abortPending()
     open = false
     const input = inputEl()
-    const output = outputEl()
     if (input) input.value = ''
-    if (output) {
-      output.hidden = true
-      const textEl = outputTextEl()
-      if (textEl) textEl.textContent = ''
-      setResultHint('Click to copy')
-    }
+    clearResult()
     pair = null
     if (host) host.hidden = true
     restoreFocus()
@@ -300,6 +962,9 @@ export function createSpeedBox(options: {
     },
     destroy() {
       close()
+      lastMode = 'layout'
+      lastLangPair = null
+      speedBoxThemeCleanup?.()
       host?.remove()
       host = null
       shadow = null

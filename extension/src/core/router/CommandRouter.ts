@@ -28,6 +28,8 @@ export class CommandRouter {
 
   async dispatch(command: Command): Promise<CommandResult> {
     if (command.type === 'PIPELINE') {
+      const pipeline = this.handlers.get('PIPELINE')
+      if (pipeline) return pipeline(command)
       return {
         ok: false,
         operation: 'PIPELINE',

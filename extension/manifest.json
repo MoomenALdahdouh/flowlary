@@ -2,12 +2,17 @@
   "manifest_version": 3,
   "name": "Flowlary",
   "description": "Your AI Writing Companion",
-  "version": "1.0.0",
+  "version": "1.1.0",
+  "version_name": "1.1.0 · popup + dashboard",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
+  },
+  "options_ui": {
+    "page": "src/dashboard/index.html",
+    "open_in_tab": true
   },
   "action": {
     "default_popup": "src/popup/index.html",
@@ -28,14 +33,10 @@
     "extension_pages": "script-src 'self'; object-src 'self'; base-uri 'self';"
   },
   "host_permissions": [
-    "https://api.groq.com/*",
-    "https://flowlary-api.zaixos.com/*",
+    "https://api.flowlary.com/*",
+    "https://writing-api.test/*",
     "http://127.0.0.1:8787/*",
-    "http://127.0.0.1:8003/*",
-    "http://127.0.0.1:8004/*",
-    "http://localhost:8787/*",
-    "http://localhost:8003/*",
-    "http://localhost:8004/*"
+    "http://localhost:8787/*"
   ],
   "content_scripts": [
     {
@@ -43,6 +44,30 @@
       "js": ["src/content_script.ts"],
       "run_at": "document_idle",
       "all_frames": true
+    },
+    {
+      "matches": [
+        "https://flowlary.com/*",
+        "https://*.flowlary.com/*",
+        "https://flowlary.test/*",
+        "https://*.flowlary.test/*",
+        "http://flowlary.test/*",
+        "http://*.flowlary.test/*",
+        "http://flowlary.test:5173/*",
+        "https://flowlary.test:5173/*",
+        "http://www.flowlary.test:5173/*",
+        "https://www.flowlary.test:5173/*",
+        "http://flowlary.test:4173/*",
+        "https://flowlary.test:4173/*",
+        "http://www.flowlary.test:4173/*",
+        "https://www.flowlary.test:4173/*",
+        "http://localhost:5173/*",
+        "http://127.0.0.1:5173/*",
+        "http://localhost:4173/*",
+        "http://127.0.0.1:4173/*"
+      ],
+      "js": ["src/content/websiteBridge.ts"],
+      "run_at": "document_start"
     }
   ],
   "commands": {
@@ -59,6 +84,20 @@
         "mac": "Command+Shift+P"
       },
       "description": "Fix keyboard layout for selected or current text"
+    },
+    "CORRECT": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+E",
+        "mac": "Command+Shift+E"
+      },
+      "description": "Fix English spelling and grammar in selected or current text"
+    },
+    "SPEED_BOX": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+L",
+        "mac": "Command+Shift+L"
+      },
+      "description": "Open Speed Box for layout, translate, and fix"
     }
   }
 }

@@ -1,12 +1,12 @@
 import {
   CORRECTION_DEFAULTS,
-  CORRECTION_SYSTEM_PROMPT,
   isValidAiResponseLength,
   validateCorrectionResponse,
   buildCacheKey,
   CACHE_TTL_MS,
   hashCorrectionContext,
   normalizeCacheText,
+  enrichCorrectionResponseWithExplanations,
   type CorrectionResponse,
   type CorrectRequestContext,
 } from '@flowlary/shared'
@@ -17,16 +17,13 @@ import {
 } from '../storage/cache/index.ts'
 import { stateManager } from '../core/state/StateManager.ts'
 import { getEntitlementService } from '../entitlement/service.ts'
-import { flowlaryStorage, getEntitlement, resolveEntitlementStatus } from '../storage/index.ts'
+import { flowlaryStorage } from '../storage/index.ts'
 import { FLOWLARY_API_BASE } from '../config/endpoints.ts'
-import {
-  buildFlowlaryApiHeaders,
-  ensureInstallAuth,
-  resolveEntitlementHeader,
-} from '../config/auth.ts'
-import { usesManagedCorrection } from '../features/correction/readiness.ts'
-
-const GROQ_CHAT_URL = 'https://api.groq.com/openai/v1/chat/completions'
+import { prepareManagedAiRequest } from '../config/auth.ts'
+import { markApiHealthOk } from '../config/apiHealth.ts'
+import { maybeSyncServerEntitlement } from '../config/accountAuth.ts'
+import { isCorrectionAiReady } from '../features/correction/readiness.ts'
+import { activeAccountContext } from '../storage/activeAccountContext.ts'
 
 const inflight = new Map<string, AbortController>()
 
@@ -40,80 +37,55 @@ function truncateForCorrection(text: string): string {
   return slice
 }
 
-async function callGroqByokOnce(
-  apiKey: string,
-  text: string,
-  context: CorrectRequestContext | undefined,
-  signal?: AbortSignal,
-): Promise<{ data: CorrectionResponse; model: string }> {
-  const model = CORRECTION_DEFAULTS.GROQ_MODEL_DEFAULT
-  const previousText = context?.previousText?.slice(-200)
-  const userPayload = previousText
-    ? { text, previousText, fieldType: context?.fieldType }
-    : { text, fieldType: context?.fieldType }
-
-  const res = await fetch(GROQ_CHAT_URL, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model,
-      temperature: 0.1,
-      max_tokens: 400,
-      messages: [
-        { role: 'system', content: CORRECTION_SYSTEM_PROMPT },
-        { role: 'user', content: JSON.stringify(userPayload) },
-      ],
-      response_format: { type: 'json_object' },
-    }),
-    signal,
-  })
-
-  if (!res.ok) {
-    if (res.status === 401 || res.status === 403) throw new Error('invalid_api_key')
-    if (res.status === 429) throw new Error('rate_limited')
-    throw new Error(`groq_http_${res.status}`)
-  }
-
-  const json = (await res.json()) as {
-    choices?: Array<{ message?: { content?: string | null } }>
-  }
-  const content = json.choices?.[0]?.message?.content
-  if (!content) throw new Error('invalid_response')
-
-  const validated = validateCorrectionResponse(JSON.parse(content), text)
-  if (!validated || !isValidAiResponseLength(validated.correctedText)) {
-    throw new Error('invalid_response')
-  }
-  return { data: validated, model }
-}
-
 async function callManagedCorrectionOnce(
   text: string,
   context: CorrectRequestContext | undefined,
   signal?: AbortSignal,
+  mode?: string,
 ): Promise<{ data: CorrectionResponse; model: string }> {
-  const entitlement = resolveEntitlementStatus(await getEntitlement(flowlaryStorage))
-  const auth = await ensureInstallAuth(flowlaryStorage)
-  const res = await fetch(`${FLOWLARY_API_BASE}/api/ai/correction`, {
-    method: 'POST',
-    headers: buildFlowlaryApiHeaders(auth, resolveEntitlementHeader(entitlement)),
-    body: JSON.stringify({
-      text,
-      fieldType: context?.fieldType,
-      previousText: context?.previousText,
-    }),
-    signal,
-  })
+  const headers = await prepareManagedAiRequest(flowlaryStorage)
+  let res: Response
+  try {
+    res = await fetch(`${FLOWLARY_API_BASE}/api/ai/correction`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        text,
+        fieldType: context?.fieldType,
+        previousText: context?.previousText,
+        mode,
+      }),
+      signal,
+    })
+  } catch {
+    throw new Error('network')
+  }
 
   if (!res.ok) {
-    if (res.status === 401 || res.status === 403) throw new Error('auth_failed')
-    if (res.status === 429) throw new Error('rate_limited')
-    if (res.status === 403) throw new Error('entitlement_denied')
+    let code: string | undefined
+    try {
+      const errBody = (await res.json()) as { error?: { code?: string } }
+      code = errBody.error?.code
+    } catch {
+      /* ignore parse failures */
+    }
+    if (res.status === 401 || code === 'AI_AUTH_FAILED') throw new Error('auth_failed')
+    if (res.status === 429 || code === 'AI_RATE_LIMITED') throw new Error('rate_limited')
+    if (code === 'AI_ENTITLEMENT_DENIED' || res.status === 403) {
+      throw new Error(code === 'AI_ENTITLEMENT_DENIED' ? 'entitlement_denied' : 'usage_exhausted')
+    }
+    if (
+      code === 'AI_UNAVAILABLE' ||
+      code === 'AI_PROVIDER_ERROR' ||
+      code === 'AI_TIMEOUT' ||
+      code === 'AI_INVALID_RESPONSE'
+    ) {
+      throw new Error(code)
+    }
     throw new Error(`gateway_http_${res.status}`)
   }
+
+  markApiHealthOk()
 
   const json = (await res.json()) as {
     ok?: boolean
@@ -137,7 +109,7 @@ export type CorrectTextMessage = {
   text: string
   fieldType?: string
   previousText?: string
-  groqApiKey?: string
+  mode?: string
 }
 
 export type CorrectTextResponse =
@@ -156,45 +128,56 @@ export type CorrectTextResponse =
       aborted?: boolean
     }
 
-function correctionCacheKey(text: string, context?: CorrectRequestContext): string {
+function correctionCacheKey(
+  text: string,
+  context: CorrectRequestContext | undefined,
+  accountId: string | null,
+): string {
   return buildCacheKey({
     operation: 'CORRECT',
     text: normalizeCacheText('CORRECT', text),
     contextHash: hashCorrectionContext(context),
+    accountId,
   })
 }
 
-export async function handleCorrectText(message: CorrectTextMessage): Promise<CorrectTextResponse> {
-  const { requestId, text, fieldType, previousText } = message
-  const settings = stateManager.correction
-  const useManaged = usesManagedCorrection(settings)
-  const groqApiKey = (message.groqApiKey ?? settings.groqApiKey).trim()
-  const ready =
-    settings.consentAccepted && (useManaged || Boolean(groqApiKey))
+function deliverCorrectionResponse(data: CorrectionResponse): CorrectionResponse {
+  try {
+    return enrichCorrectionResponseWithExplanations(data)
+  } catch {
+    return data
+  }
+}
 
-  if (!ready) {
+export async function handleCorrectText(message: CorrectTextMessage): Promise<CorrectTextResponse> {
+  const { requestId, text, fieldType, previousText, mode } = message
+  const settings = stateManager.correction
+
+  if (!isCorrectionAiReady(settings)) {
     return {
       type: 'CORRECT_TEXT_RESULT',
       ok: false,
       requestId,
-      error: useManaged ? 'consent_required' : 'missing_api_key',
+      error: 'consent_required',
     }
   }
 
-  if (useManaged) {
-    const entitlement = await getEntitlementService(flowlaryStorage).canUseFeature('correction')
-    if (!entitlement.allowed) {
-      return {
-        type: 'CORRECT_TEXT_RESULT',
-        ok: false,
-        requestId,
-        error: 'entitlement_denied',
-      }
-    }
-  }
+  await maybeSyncServerEntitlement(flowlaryStorage)
 
-  if (!useManaged && !groqApiKey) {
-    return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'missing_api_key' }
+  const feature = mode === 'practice' ? 'practice' : 'correction'
+  const entitlement = await getEntitlementService(flowlaryStorage).canUseFeature(feature)
+  if (!entitlement.allowed) {
+    return {
+      type: 'CORRECT_TEXT_RESULT',
+      ok: false,
+      requestId,
+      error:
+        entitlement.reason === 'account_required'
+          ? 'account_required'
+          : entitlement.reason === 'usage_exhausted'
+            ? 'usage_exhausted'
+            : 'entitlement_denied',
+    }
   }
 
   const trimmed = text.trim()
@@ -206,17 +189,21 @@ export async function handleCorrectText(message: CorrectTextMessage): Promise<Co
     fieldType: fieldType as CorrectRequestContext['fieldType'],
     previousText,
   }
+  const accountSnapshot = activeAccountContext.snapshot()
   const cache = getFlowlaryCache()
   await cache.initialize()
-  const cacheKey = correctionCacheKey(trimmed, context)
+  const cacheKey = correctionCacheKey(trimmed, context, accountSnapshot.accountId)
   const cached = await cache.getWithL2<CorrectionResponse>(cacheKey)
   if (cached) {
+    if (!activeAccountContext.matches(accountSnapshot)) {
+      return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'account_changed' }
+    }
     getCacheMetrics().ai_requests_avoided += 1
     return {
       type: 'CORRECT_TEXT_RESULT',
       ok: true,
       requestId,
-      data: cached,
+      data: deliverCorrectionResponse(cached),
       timing: { backendMs: 0 },
     }
   }
@@ -230,12 +217,15 @@ export async function handleCorrectText(message: CorrectTextMessage): Promise<Co
     return await coalescer.run(cacheKey, async () => {
       const again = await cache.getWithL2<CorrectionResponse>(cacheKey)
       if (again) {
+        if (!activeAccountContext.matches(accountSnapshot)) {
+          return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'account_changed' }
+        }
         getCacheMetrics().ai_requests_avoided += 1
         return {
           type: 'CORRECT_TEXT_RESULT',
           ok: true,
           requestId,
-          data: again,
+          data: deliverCorrectionResponse(again),
           timing: { backendMs: 0 },
         }
       }
@@ -247,15 +237,16 @@ export async function handleCorrectText(message: CorrectTextMessage): Promise<Co
       for (let attempt = 0; attempt < 2; attempt += 1) {
         try {
           const started = Date.now()
-          const result = useManaged
-            ? await callManagedCorrectionOnce(segment, context, controller.signal)
-            : await callGroqByokOnce(groqApiKey, segment, context, controller.signal)
+          const result = await callManagedCorrectionOnce(segment, context, controller.signal, mode)
+          if (!activeAccountContext.matches(accountSnapshot)) {
+            return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'account_changed' }
+          }
           cache.setWithL2(cacheKey, result.data, 'CORRECT', CACHE_TTL_MS.CORRECT)
           return {
             type: 'CORRECT_TEXT_RESULT',
             ok: true,
             requestId,
-            data: result.data,
+            data: deliverCorrectionResponse(result.data),
             timing: { backendMs: Date.now() - started, model: result.model },
           }
         } catch (err) {
@@ -264,20 +255,30 @@ export async function handleCorrectText(message: CorrectTextMessage): Promise<Co
             return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'aborted', aborted: true }
           }
           if (err instanceof Error) {
-            if (err.message === 'invalid_api_key') {
-              return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'invalid_api_key' }
-            }
             if (err.message === 'rate_limited') {
               return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'rate_limited' }
             }
-            if (err.message === 'auth_failed' || err.message === 'entitlement_denied') {
-              return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'network' }
+            if (
+              err.message === 'auth_failed' ||
+              err.message === 'account_required' ||
+              err.message === 'entitlement_denied' ||
+              err.message === 'usage_exhausted' ||
+              err.message === 'network' ||
+              err.message === 'auth_register_failed' ||
+              err.message === 'auth_register_invalid' ||
+              err.message === 'AI_UNAVAILABLE' ||
+              err.message === 'AI_PROVIDER_ERROR' ||
+              err.message === 'AI_TIMEOUT' ||
+              err.message === 'AI_INVALID_RESPONSE' ||
+              err.message === 'invalid_response'
+            ) {
+              return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: err.message }
             }
           }
         }
       }
 
-      if (lastError instanceof Error && (lastError.message.startsWith('groq_http_') || lastError.message.startsWith('gateway_http_'))) {
+      if (lastError instanceof Error && lastError.message.startsWith('gateway_http_')) {
         return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'network' }
       }
       return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'invalid_response' }

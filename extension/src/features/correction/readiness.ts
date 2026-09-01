@@ -1,11 +1,9 @@
 import type { CorrectionSettings } from '../../core/state/StateManager.ts'
 
 export function isCorrectionAiReady(settings: CorrectionSettings): boolean {
-  if (!settings.consentAccepted) return false
-  if (settings.aiProvider === 'byok') return Boolean(settings.groqApiKey.trim())
-  return true
+  return settings.consentAccepted
 }
 
-export function usesManagedCorrection(settings: CorrectionSettings): boolean {
-  return settings.aiProvider !== 'byok'
+export function usesManagedCorrection(_settings: CorrectionSettings): boolean {
+  return true
 }

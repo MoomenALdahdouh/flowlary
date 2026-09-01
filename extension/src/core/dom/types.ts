@@ -36,5 +36,7 @@ export type DiscardReason =
   | 'invalid-replacement'
   | 'mapping-stale'
   | 'stale-generation'
+  | 'unfinished-token'
+  | 'neighbor-mismatch'
 
 export type SelectionRange = { start: number; end: number }

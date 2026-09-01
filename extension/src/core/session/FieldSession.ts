@@ -1,4 +1,5 @@
 import type { WriterTag } from '@flowlary/shared'
+import { hashWritingSample } from '@flowlary/shared'
 import type { FieldSnapshot } from '../dom/types.ts'
 import { resolveEditableKind } from '../dom/read.ts'
 
@@ -52,10 +53,29 @@ export class FieldSession {
   private generation = 0
   private requestSequence = 0
   private activeRequest: ActiveRequest | null = null
+  private readonly generationRequests = new Set<AbortController>()
   private lastCommittedSnapshot: FieldSnapshot | null = null
   private composing = false
   private lastWriter: WriterTag | null = null
   private lastInputAt = 0
+  private cooldownUntil = 0
+  private translationSessionId: string | null = null
+  private translationPaused = false
+  private translatedRanges: { start: number; end: number; hash: string }[] = []
+  private correctedRanges: { start: number; end: number; hash: string }[] = []
+  private lastPipelineTranslateKey: string | null = null
+  private inputSource: 'typing' | 'paste' | 'drop' | 'programmatic' | 'unknown' = 'unknown'
+  private lastEngineSpan: { start: number; end: number; hash: string; generation: number } | null = null
+  private overrideRanges: { start: number; end: number }[] = []
+  private commitOpenToken = false
+  private pendingLayoutRun: {
+    direction: 'en_on_ar' | 'ar_on_en'
+    consecutiveCount: number
+    end: number
+  } | null = null
+  private reviewHashes = new Set<string>()
+  private lastReviewAt = 0
+  private pauseReviewTimer: ReturnType<typeof setTimeout> | null = null
 
   constructor(element: Element) {
     this.element = element
@@ -69,7 +89,43 @@ export class FieldSession {
   bumpGeneration(): number {
     this.generation += 1
     this.abortActiveRequest()
+    for (const controller of this.generationRequests) controller.abort()
+    this.generationRequests.clear()
+    this.clearCooldown()
+    this.clearPausedReview()
     return this.generation
+  }
+
+  beginGenerationRequest(expectedGeneration: number): {
+    signal: AbortSignal
+    release: () => void
+  } {
+    const controller = new AbortController()
+    if (expectedGeneration !== this.generation) {
+      controller.abort()
+    } else {
+      this.generationRequests.add(controller)
+    }
+    return {
+      signal: controller.signal,
+      release: () => this.generationRequests.delete(controller),
+    }
+  }
+
+  enterCooldown(ms: number): void {
+    this.cooldownUntil = Date.now() + Math.max(0, ms)
+  }
+
+  clearCooldown(): void {
+    this.cooldownUntil = 0
+  }
+
+  isInCooldown(now = Date.now()): boolean {
+    return this.cooldownUntil > now
+  }
+
+  getCooldownUntil(): number {
+    return this.cooldownUntil
   }
 
   getRequestSequence(): number {
@@ -163,12 +219,225 @@ export class FieldSession {
     this.lastInputAt = Date.now()
   }
 
+  requestCommitOpenToken(): void {
+    this.commitOpenToken = true
+  }
+
+  consumeCommitOpenToken(): boolean {
+    const pending = this.commitOpenToken
+    this.commitOpenToken = false
+    return pending
+  }
+
+  noteLayoutRun(direction: 'en_on_ar' | 'ar_on_en', end: number, addedTokens: number): void {
+    if (this.pendingLayoutRun?.direction === direction) {
+      this.pendingLayoutRun.consecutiveCount += Math.max(1, addedTokens)
+      this.pendingLayoutRun.end = end
+      return
+    }
+    this.pendingLayoutRun = {
+      direction,
+      consecutiveCount: Math.max(1, addedTokens),
+      end,
+    }
+  }
+
+  getPendingLayoutRun(text: string, caret: number): { direction: 'en_on_ar' | 'ar_on_en'; consecutiveCount: number } | null {
+    const pending = this.pendingLayoutRun
+    if (!pending) return null
+    if (pending.end > text.length || caret < pending.end) {
+      this.pendingLayoutRun = null
+      return null
+    }
+    const between = text.slice(pending.end, caret)
+    if (!/^\s*\S*\s*$/.test(between)) {
+      this.pendingLayoutRun = null
+      return null
+    }
+    return { direction: pending.direction, consecutiveCount: pending.consecutiveCount }
+  }
+
+  clearPendingLayoutRun(): void {
+    this.pendingLayoutRun = null
+  }
+
+  noteInputSource(source: 'typing' | 'paste' | 'drop' | 'programmatic' | 'unknown'): void {
+    this.inputSource = source
+  }
+
+  getInputSource(): 'typing' | 'paste' | 'drop' | 'programmatic' | 'unknown' {
+    return this.inputSource
+  }
+
+  noteEngineSpan(start: number, end: number, text: string): void {
+    if (end <= start) return
+    this.lastEngineSpan = {
+      start,
+      end,
+      hash: hashWritingSample(text),
+      generation: this.generation,
+    }
+  }
+
+  detectUserOverride(text: string): void {
+    const last = this.lastEngineSpan
+    if (!last) return
+    if (this.generation <= last.generation) return
+    if (last.end > text.length || last.start < 0) {
+      this.lastEngineSpan = null
+      return
+    }
+    const current = text.slice(last.start, last.end)
+    if (hashWritingSample(current) !== last.hash) {
+      this.overrideRanges.push({ start: last.start, end: last.end })
+      this.pendingLayoutRun = null
+    }
+    this.lastEngineSpan = null
+  }
+
+  getOverrideRanges(): readonly { start: number; end: number }[] {
+    return this.overrideRanges
+  }
+
+  noteUserOverride(start: number, end: number): void {
+    if (end <= start) return
+    this.overrideRanges.push({ start, end })
+    this.pendingLayoutRun = null
+    this.lastEngineSpan = null
+  }
+
+  pruneOverrideRanges(text: string): void {
+    this.overrideRanges = this.overrideRanges.filter((range) => range.end <= text.length && range.start >= 0)
+  }
+
   getLastInputAt(): number {
     return this.lastInputAt
   }
 
   getLastWriter(): WriterTag | null {
     return this.lastWriter
+  }
+
+  hasCachedReview(hash: string): boolean {
+    return this.reviewHashes.has(hash)
+  }
+
+  cacheReview(hash: string): void {
+    this.reviewHashes.add(hash)
+    if (this.reviewHashes.size > 48) {
+      const first = this.reviewHashes.values().next().value
+      if (first) this.reviewHashes.delete(first)
+    }
+  }
+
+  getLastReviewAt(): number {
+    return this.lastReviewAt
+  }
+
+  noteReviewAttempt(): void {
+    this.lastReviewAt = Date.now()
+  }
+
+  schedulePausedReview(fn: () => void, delayMs: number): void {
+    this.clearPausedReview()
+    this.pauseReviewTimer = setTimeout(() => {
+      this.pauseReviewTimer = null
+      fn()
+    }, Math.max(0, delayMs))
+  }
+
+  clearPausedReview(): void {
+    if (this.pauseReviewTimer) {
+      clearTimeout(this.pauseReviewTimer)
+      this.pauseReviewTimer = null
+    }
+  }
+
+  pauseTranslationOnField(): void {
+    this.translationPaused = true
+    this.translationSessionId = null
+  }
+
+  resumeTranslationOnField(): void {
+    this.translationPaused = false
+  }
+
+  isTranslationPaused(): boolean {
+    return this.translationPaused
+  }
+
+  ensureTranslationSession(): string | null {
+    if (this.translationPaused) return null
+    if (!this.translationSessionId) {
+      this.translationSessionId = `ts-${this.field.id}-${Date.now()}`
+    }
+    return this.translationSessionId
+  }
+
+  endTranslationSession(): void {
+    this.translationSessionId = null
+  }
+
+  getTranslationSessionId(): string | null {
+    return this.translationSessionId
+  }
+
+  tagTranslatedOutput(start: number, end: number, text = ''): void {
+    if (end <= start) return
+    this.translatedRanges.push({
+      start,
+      end,
+      hash: text ? hashWritingSample(text) : '',
+    })
+  }
+
+  pruneTranslatedTags(text: string): void {
+    this.translatedRanges = this.translatedRanges.filter((range) => {
+      if (range.end > text.length || range.start < 0) return false
+      if (!range.hash) return true
+      return hashWritingSample(text.slice(range.start, range.end)) === range.hash
+    })
+  }
+
+  hasTranslatedOverlap(start: number, end: number): boolean {
+    return this.translatedRanges.some((range) => range.start < end && range.end > start)
+  }
+
+  clearTranslatedTags(): void {
+    this.translatedRanges = []
+  }
+
+  getTranslatedRanges(): readonly { start: number; end: number }[] {
+    return this.translatedRanges.map(({ start, end }) => ({ start, end }))
+  }
+
+  tagCorrectedOutput(start: number, end: number, text = ''): void {
+    if (end <= start) return
+    this.correctedRanges.push({
+      start,
+      end,
+      hash: text ? hashWritingSample(text) : '',
+    })
+  }
+
+  pruneCorrectedTags(text: string): void {
+    this.correctedRanges = this.correctedRanges.filter((range) => {
+      if (range.end > text.length || range.start < 0) return false
+      if (!range.hash) return true
+      return hashWritingSample(text.slice(range.start, range.end)) === range.hash
+    })
+  }
+
+  getCorrectedRanges(): readonly { start: number; end: number }[] {
+    return this.correctedRanges.map(({ start, end }) => ({ start, end }))
+  }
+
+  notePipelineTranslateKey(key: string | null): void {
+    this.lastPipelineTranslateKey = key
+  }
+
+  getLastPipelineTranslateKey(): string | null {
+    return this.lastPipelineTranslateKey
   }
 
   getLastCommittedSnapshot(): FieldSnapshot | null {

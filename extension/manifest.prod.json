@@ -2,12 +2,17 @@
   "manifest_version": 3,
   "name": "Flowlary",
   "description": "Your AI Writing Companion",
-  "version": "1.0.0",
+  "version": "1.1.0",
+  "version_name": "1.1.0 · popup + dashboard",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
+  },
+  "options_ui": {
+    "page": "src/dashboard/index.html",
+    "open_in_tab": true
   },
   "action": {
     "default_popup": "src/popup/index.html",
@@ -28,8 +33,7 @@
     "extension_pages": "script-src 'self'; object-src 'self'; base-uri 'self';"
   },
   "host_permissions": [
-    "https://api.groq.com/*",
-    "https://flowlary-api.zaixos.com/*"
+    "https://api.flowlary.com/*"
   ],
   "content_scripts": [
     {
@@ -37,6 +41,11 @@
       "js": ["src/content_script.ts"],
       "run_at": "document_idle",
       "all_frames": true
+    },
+    {
+      "matches": ["https://flowlary.com/*", "https://*.flowlary.com/*"],
+      "js": ["src/content/websiteBridge.ts"],
+      "run_at": "document_start"
     }
   ],
   "commands": {
@@ -53,6 +62,20 @@
         "mac": "Command+Shift+P"
       },
       "description": "Fix keyboard layout for selected or current text"
+    },
+    "CORRECT": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+E",
+        "mac": "Command+Shift+E"
+      },
+      "description": "Fix English spelling and grammar in selected or current text"
+    },
+    "SPEED_BOX": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+L",
+        "mac": "Command+Shift+L"
+      },
+      "description": "Open Speed Box for layout, translate, and fix"
     }
   }
 }

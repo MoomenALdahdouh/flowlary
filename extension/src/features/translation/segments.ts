@@ -58,13 +58,9 @@ export function isLiveBoundaryKey(key: string): boolean {
 }
 
 /**
- * After a deliberate pause, translate the current writing unit.
- * Prefer a punctuated sentence; otherwise the current paragraph / field.
- * Never used on each keystroke — only after the live timer.
+ * Live / enforce translation unit: completed sentence only.
+ * Does not fall back to the whole paragraph or field.
  */
 export function liveSegmentOnPause(text: string, caret: number): Segment | null {
-  return (
-    lastCompletedSegment(text, caret, { requireBoundary: true }) ??
-    currentParagraph(text, caret)
-  )
+  return lastCompletedSegment(text, caret, { requireBoundary: true })
 }

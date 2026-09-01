@@ -1,5 +1,6 @@
+import { applyUserPolicyToMemory, resolveWritingPolicy } from '../core/policy/writingPolicy.ts'
 import { stateManager } from '../core/state/StateManager.ts'
-import { toUserLayoutProfile } from '../features/layout/profile/index.ts'
+import { toUserLayoutProfile, applyLayoutProfileToMemory } from '../features/layout/profile/index.ts'
 import {
   getCorrectionSettings,
   getEntitlementPublicView,
@@ -35,6 +36,9 @@ export async function hydrateStateFromStorage(storage: FlowlaryStorage): Promise
   } else if (layout.sourceLayout) {
     toUserLayoutProfile(layout.sourceLayout, layout.targetLayouts)
   }
+
+  applyLayoutProfileToMemory(profile)
+  applyUserPolicyToMemory(resolveWritingPolicy())
 }
 
 export async function getHydratedEntitlementView(storage: FlowlaryStorage) {

@@ -1,0 +1,44 @@
+/**
+ * Candidates derived from span-level hypotheses. Local evidence only.
+ */
+import { stateManager } from '../state/StateManager.ts'
+import type { CandidateAction, FieldContext, Hypothesis, SharedAnalysis } from './types.ts'
+import { collectHypotheses } from './hypotheses.ts'
+
+export function candidatesFromHypotheses(
+  hypotheses: Hypothesis[],
+  context?: FieldContext,
+): CandidateAction[] {
+  return hypotheses
+    .filter((item) => item.candidateAction)
+    .map((item) => {
+      const high = item.localScore >= 0.8 && item.risk === 'low' && !item.needsLLM
+      const short = item.evidence.some((entry) => entry.kind === 'short_token')
+      return {
+        id: item.id,
+        capability: item.candidateAction!,
+        range: item.span,
+        sourceChunkIds: item.sourceChunkIds,
+        confidence: {
+          score: item.localScore,
+          class: high ? 'high' : short ? 'ambiguous' : item.localScore >= 0.55 ? 'medium' : 'low',
+        },
+        evidence: item.evidence,
+        eligibleForAuto:
+          high
+          && Boolean(item.replacement || item.candidateAction === 'translation')
+          && (item.candidateAction !== 'english_correction' || stateManager.correction.mode === 'direct')
+          && context?.capabilities.autoWrite !== false,
+        replacement: item.replacement,
+      }
+    })
+}
+
+export function collectShadowCandidates(
+  text: string,
+  caret: number,
+  context: FieldContext,
+  analysis: SharedAnalysis,
+): CandidateAction[] {
+  return candidatesFromHypotheses(collectHypotheses(text, caret, context, analysis))
+}

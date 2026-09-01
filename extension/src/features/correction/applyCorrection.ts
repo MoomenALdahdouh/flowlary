@@ -1,7 +1,7 @@
 import type { CorrectionResponse } from '@flowlary/shared'
 import { evaluateFieldSafety } from '../../core/safety/index.ts'
 import { readFieldText } from '../../core/dom/read.ts'
-import { writeReplacement } from '../../core/dom/editor.ts'
+import { commitWriteTransaction } from '../../core/writeGate/writeGate.ts'
 import type { EditableElement } from '../../core/dom/types.ts'
 import type { FieldSession } from '../../core/session/FieldSession.ts'
 import { stateManager } from '../../core/state/StateManager.ts'
@@ -14,10 +14,22 @@ import {
 import { isEligibleForCorrection } from './language.ts'
 import { requestCorrectionRemote } from './client.ts'
 import { isCorrectionAiReady } from './readiness.ts'
+import { allowAutomaticNetworkAssist } from '../../core/policy/writingPolicy.ts'
+import { allowsAutomaticFieldWrite } from '../../core/safety/autoWrite.ts'
+import {
+  fieldKindFromElement,
+  recordWriteTelemetry,
+} from '../../core/observability/writeTelemetry.ts'
 import { recordHistory } from '../../storage/history/record.ts'
+import {
+  recordCorrectionAccepted,
+  recordCorrectionDetected,
+  recordCorrectionRejected,
+} from '../learning/recordCorrectionLearning.ts'
 import type { CorrectionMetrics } from './metrics.ts'
 import type { CorrectionCard } from './ui/CorrectionCard.ts'
 import type { CorrectionSuggestionBinding } from './ui/types.ts'
+import type { IntelligentDebouncer } from './debounce.ts'
 
 export type FieldCorrectionState = {
   lastSentText: string
@@ -25,6 +37,10 @@ export type FieldCorrectionState = {
   pendingRequestId: string | null
   card: CorrectionCard | null
   cardMounted: boolean
+}
+
+export type FieldCorrectionStateEntry = FieldCorrectionState & {
+  debouncer: IntelligentDebouncer
 }
 
 export type ApplyCorrectionOptions = {
@@ -50,6 +66,27 @@ export async function runCorrectionRequest(
   if (!stateManager.isActive() || !stateManager.correction.enabled) return 'noop'
   if (!stateManager.correction.consentAccepted) return 'blocked'
   if (!isCorrectionAiReady(stateManager.correction)) return 'blocked'
+  const commandLocked = Boolean(options.orchestratorLock)
+  if (!commandLocked && !allowAutomaticNetworkAssist()) {
+    recordWriteTelemetry({
+      capability: 'correction',
+      trigger: 'auto',
+      outcome: 'noop',
+      reasonCodes: ['shortcuts_only'],
+      fieldKind: fieldKindFromElement(element),
+    })
+    return 'noop'
+  }
+  if (!commandLocked && stateManager.correction.mode === 'direct' && !allowsAutomaticFieldWrite(element)) {
+    recordWriteTelemetry({
+      capability: 'correction',
+      trigger: 'auto',
+      outcome: 'blocked',
+      reasonCodes: ['unsupported_editor_auto_write'],
+      fieldKind: fieldKindFromElement(element),
+    })
+    return 'blocked'
+  }
 
   if (debouncerGeneration !== options.currentDebouncerGeneration()) {
     options.metrics.correction_stale_results += 1
@@ -71,10 +108,9 @@ export async function runCorrectionRequest(
     return 'blocked'
   }
 
-  if (!isEligibleForCorrection(fullText)) return 'noop'
-
   const segment = extractWritingContext(fullText)
   if (!segment.trim()) return 'noop'
+  if (!isEligibleForCorrection(segment)) return 'noop'
 
   if (segment === options.fieldState.lastCorrectedFor) return 'noop'
   if (segment === options.fieldState.lastSentText && options.fieldState.pendingRequestId) {
@@ -121,7 +157,6 @@ export async function runCorrectionRequest(
       segment,
       session.field.kind,
       previousText,
-      stateManager.correction.aiProvider === 'byok' ? stateManager.correction.groqApiKey : undefined,
       signal,
     )
 
@@ -220,6 +255,7 @@ async function deliverCorrectionResult(
     }
     options.getCard(element).setReady(binding)
     options.metrics.correction_card_shown += 1
+    recordCorrectionDetected(remoteRequestId, segment, binding.response)
     return 'pending'
   }
 
@@ -227,6 +263,9 @@ async function deliverCorrectionResult(
   return await commitMergedCorrection(element, session, segment, correctedSegment, options, {
     requestId: options.orchestratorLock?.requestId,
     generation: options.orchestratorLock?.generation,
+    response: data,
+    batchId: remoteRequestId,
+    auto: !options.orchestratorLock,
   })
 }
 
@@ -283,6 +322,7 @@ export async function acceptCorrectionSuggestion(
     binding.segment,
     binding.response.correctedText,
     options,
+    { response: binding.response, batchId: binding.remoteRequestId },
   )
   if (result === 'committed') {
     options.metrics.correction_card_accepted += 1
@@ -292,9 +332,13 @@ export async function acceptCorrectionSuggestion(
 
 export function dismissCorrectionSuggestion(
   element: EditableElement,
+  binding: CorrectionSuggestionBinding | null,
   options: ApplyCorrectionOptions,
 ): void {
   options.metrics.correction_card_dismissed += 1
+  if (binding) {
+    recordCorrectionRejected(binding.remoteRequestId, binding.segment, binding.response)
+  }
   options.getCard(element).hide()
 }
 
@@ -304,7 +348,13 @@ export async function commitMergedCorrection(
   segment: string,
   correctedSegment: string,
   options: ApplyCorrectionOptions,
-  existingLock?: { requestId: number; generation: number },
+  meta?: {
+    requestId?: number
+    generation?: number
+    response?: CorrectionResponse
+    batchId?: string
+    auto?: boolean
+  },
 ): Promise<'committed' | 'stale' | 'busy'> {
   const liveText = readFieldText(element)
   const merged = mergeCorrectionIntoField(liveText, segment, correctedSegment)
@@ -314,8 +364,8 @@ export async function commitMergedCorrection(
     return 'stale'
   }
 
-  let requestId = existingLock?.requestId
-  let generation = existingLock?.generation
+  let requestId = meta?.requestId
+  let generation = meta?.generation
   let releaseAfter = false
 
   if (requestId === undefined || generation === undefined) {
@@ -326,13 +376,19 @@ export async function commitMergedCorrection(
     releaseAfter = true
   }
 
-  const write = writeReplacement(element, 0, liveText.length, merged, {
+  const write = commitWriteTransaction(element, 0, liveText.length, merged, {
     origin: 'CORRECT',
     session,
     requestId: requestId!,
     expectedGeneration: generation!,
+    cycleGeneration: generation!,
     placeCaretAfter: false,
     allowActiveEdit: true,
+    auto: meta?.auto === true,
+    capability: 'correction',
+    trigger: meta?.auto === true ? 'auto' : 'shortcut',
+    textOrigin: 'original_en',
+    action: 'english_correction',
   })
 
   if (releaseAfter) {
@@ -349,6 +405,9 @@ export async function commitMergedCorrection(
   options.fieldState.lastSentText = options.fieldState.lastCorrectedFor
   options.getCard(element).hide()
   options.metrics.correction_commits += 1
+  if (meta?.response && meta.batchId) {
+    recordCorrectionAccepted(meta.batchId, segment, meta.response)
+  }
   void recordHistory({
     operation: 'CORRECT',
     element,
@@ -399,14 +458,31 @@ function invalidateCardSuggestion(
 
 function mapError(code: string): string {
   switch (code) {
-    case 'missing_api_key':
-      return 'Add your Groq API key in the Flowlary popup.'
-    case 'invalid_api_key':
-      return 'Groq API key looks invalid.'
+    case 'consent_required':
+      return 'Enable Flowlary AI to use Writing Correction.'
+    case 'usage_exhausted':
+      return "Today's AI writing checks are used up. You can continue using Flowlary's local tools."
+    case 'account_required':
+      return 'Sign in to use Flowlary AI. Your local tools remain available without an account.'
     case 'rate_limited':
-      return 'Groq rate limit — try again shortly.'
+      return "You're sending requests too quickly. Try again shortly."
+    case 'entitlement_denied':
+      return "Today's AI writing checks are used up. You can continue using Flowlary's local tools."
+    case 'auth_failed':
+      return 'Please sign in again.'
+    case 'network':
+      return "You're offline. Check your connection and try again."
+    case 'AI_UNAVAILABLE':
+    case 'AI_PROVIDER_ERROR':
+    case 'AI_TIMEOUT':
+    case 'AI_INVALID_RESPONSE':
+    case 'invalid_response':
+      return "Couldn't complete that AI request. Try again in a moment."
     default:
-      return 'Could not reach Groq.'
+      if (code.startsWith('gateway_http_')) {
+        return "Couldn't complete that AI request. Try again in a moment."
+      }
+      return 'Something went wrong. Try again.'
   }
 }
 

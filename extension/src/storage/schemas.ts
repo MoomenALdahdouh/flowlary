@@ -42,6 +42,12 @@ export function normalizeSettings(raw: unknown): FlowlarySettings {
     typeof value.pausedUntil === 'number' && Number.isFinite(value.pausedUntil)
       ? value.pausedUntil
       : null
+  const helpStyle =
+    value.helpStyle === 'auto' ||
+    value.helpStyle === 'suggestions' ||
+    value.helpStyle === 'shortcuts_only'
+      ? value.helpStyle
+      : null
   return {
     enabled: asBoolean(value.enabled, DEFAULT_SETTINGS.enabled),
     pausedUntil,
@@ -49,30 +55,49 @@ export function normalizeSettings(raw: unknown): FlowlarySettings {
       ? normalizeExcludedDomains(value.excludedDomains)
       : [],
     version: STORAGE_VERSION,
+    helpStyle,
+    fixWrongTyping: typeof value.fixWrongTyping === 'boolean' ? value.fixWrongTyping : null,
+    improveEnglish: typeof value.improveEnglish === 'boolean' ? value.improveEnglish : null,
+    arabicToEnglishMode:
+      typeof value.arabicToEnglishMode === 'boolean' ? value.arabicToEnglishMode : null,
+    polishAfterTranslate:
+      typeof value.polishAfterTranslate === 'boolean'
+        ? value.polishAfterTranslate
+        : typeof value.improveEnglishAfterTranslate === 'boolean'
+          ? value.improveEnglishAfterTranslate
+          : null,
+    improveEnglishAfterTranslate:
+      typeof value.improveEnglishAfterTranslate === 'boolean'
+        ? value.improveEnglishAfterTranslate
+        : typeof value.polishAfterTranslate === 'boolean'
+          ? value.polishAfterTranslate
+          : null,
+    aiAdvisorEnabled:
+      typeof value.aiAdvisorEnabled === 'boolean'
+        ? value.aiAdvisorEnabled
+        : DEFAULT_SETTINGS.aiAdvisorEnabled,
+    aiWritingReviewEnabled:
+      typeof value.aiWritingReviewEnabled === 'boolean'
+        ? value.aiWritingReviewEnabled
+        : DEFAULT_SETTINGS.aiWritingReviewEnabled,
   }
 }
 
-export function normalizeCorrection(raw: unknown, groqApiKey = ''): CorrectionSettings {
+export function normalizeCorrection(raw: unknown): CorrectionSettings {
   const value = stripVersion<CorrectionSettings>(raw)
   const mode = value.mode === 'box' || value.mode === 'direct' ? value.mode : DEFAULT_CORRECTION.mode
-  const aiProvider =
-    value.aiProvider === 'byok' || value.aiProvider === 'managed'
-      ? value.aiProvider
-      : groqApiKey.trim()
-        ? 'byok'
-        : DEFAULT_CORRECTION.aiProvider
   return {
     enabled: asBoolean(value.enabled, DEFAULT_CORRECTION.enabled),
     mode,
     highlights: asBoolean(value.highlights, DEFAULT_CORRECTION.highlights),
     consentAccepted: asBoolean(value.consentAccepted, DEFAULT_CORRECTION.consentAccepted),
-    aiProvider,
-    groqApiKey: typeof groqApiKey === 'string' ? groqApiKey.trim() : '',
   }
 }
 
 export function normalizeTranslation(raw: unknown): TranslationSettings {
   const value = stripVersion<TranslationSettings>(raw)
+  const mode =
+    value.mode === 'box' || value.mode === 'direct' ? value.mode : DEFAULT_TRANSLATION.mode
   const sourceLanguage = normalizeLanguage(value.sourceLanguage, DEFAULT_SOURCE_LANGUAGE)
   let targetLanguage = normalizeLanguage(value.targetLanguage, DEFAULT_TARGET_LANGUAGE)
   if (targetLanguage === sourceLanguage) {
@@ -81,8 +106,10 @@ export function normalizeTranslation(raw: unknown): TranslationSettings {
         ? DEFAULT_SOURCE_LANGUAGE
         : DEFAULT_TARGET_LANGUAGE
   }
+  const liveEnabled = mode === 'box' ? false : value.liveEnabled === true
   return {
-    liveEnabled: value.liveEnabled === true,
+    mode,
+    liveEnabled,
     shortcutEnabled: value.shortcutEnabled !== false,
     sourceLanguage,
     targetLanguage,
@@ -91,6 +118,7 @@ export function normalizeTranslation(raw: unknown): TranslationSettings {
 
 export function normalizeLayout(raw: unknown): LayoutSettings {
   const value = stripVersion<LayoutSettings>(raw)
+  const mode = value.mode === 'box' || value.mode === 'direct' ? value.mode : DEFAULT_LAYOUT.mode
   const sourceLayout =
     typeof value.sourceLayout === 'string' && isSupportedLayout(value.sourceLayout)
       ? value.sourceLayout
@@ -100,6 +128,7 @@ export function normalizeLayout(raw: unknown): LayoutSettings {
     : DEFAULT_LAYOUT.targetLayouts
   const uniqueTargets = [...new Set(targetLayouts.filter((id) => id !== sourceLayout))]
   return {
+    mode,
     autoEnabled: value.autoEnabled !== false,
     manualConversionEnabled: value.manualConversionEnabled !== false,
     directShortcutEnabled: value.directShortcutEnabled !== false,
@@ -137,11 +166,15 @@ export function isValidCorrection(value: CorrectionSettings): boolean {
 }
 
 export function isValidTranslation(value: TranslationSettings): boolean {
-  return typeof value.sourceLanguage === 'string' && typeof value.targetLanguage === 'string'
+  return (
+    (value.mode === 'box' || value.mode === 'direct') &&
+    typeof value.sourceLanguage === 'string' &&
+    typeof value.targetLanguage === 'string'
+  )
 }
 
 export function isValidLayout(value: LayoutSettings): boolean {
-  return isSupportedLayout(value.sourceLayout)
+  return (value.mode === 'box' || value.mode === 'direct') && isSupportedLayout(value.sourceLayout)
 }
 
 export function withVersion<T extends Record<string, unknown>>(value: T): StoredRecord<T> {

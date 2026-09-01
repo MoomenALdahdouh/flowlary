@@ -56,6 +56,7 @@ export * from './domains.ts'
 export * from './markdown.ts'
 export * from './tokenKind.ts'
 export * from './codeEditor.ts'
+export { allowsAutomaticFieldWrite, AUTO_WRITE_BLOCKED_REASON } from './autoWrite.ts'
 export {
   isBoundaryChar,
   lastCompletedToken,

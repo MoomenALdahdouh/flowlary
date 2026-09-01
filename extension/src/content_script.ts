@@ -1,19 +1,12 @@
 import { InputEngine } from './core/input/InputEngine.ts'
 import { CommandRouter } from './core/router/CommandRouter.ts'
 import { CommandOrchestrator } from './core/router/CommandOrchestrator.ts'
+import { bootstrapContentScriptAccount } from './content/accountBootstrap.ts'
+import { startWritingRuntime } from './content/startWritingRuntime.ts'
 import { createCorrectionFeature } from './features/correction/index.ts'
 import { createTranslationFeature } from './features/translation/index.ts'
 import { createLayoutFeature } from './features/layout/index.ts'
-import { flowlaryStorage, hydrateStateFromStorage, runStorageMigration } from './storage/index.ts'
-import { ensureHistoryInitialized } from './storage/history/record.ts'
-import { initializeFlowlaryCache } from './storage/cache/index.ts'
-
-void (async () => {
-  await runStorageMigration()
-  await hydrateStateFromStorage(flowlaryStorage)
-  await ensureHistoryInitialized()
-  await initializeFlowlaryCache(flowlaryStorage)
-})()
+import { runWritingPipeline } from './core/writeGate/pipeline.ts'
 
 const engine = new InputEngine()
 const router = new CommandRouter()
@@ -26,6 +19,7 @@ router.registerTranslation(translation)
 
 const layout = createLayoutFeature({ engine })
 router.registerLayout(layout)
+router.register('PIPELINE', () => runWritingPipeline(engine))
 
 const orchestrator = new CommandOrchestrator({
   engine,
@@ -33,10 +27,13 @@ const orchestrator = new CommandOrchestrator({
   onSpeedBox: () => layout.handleSpeedBox(),
 })
 
-engine.start()
-correction.start()
-layout.start()
-translation.start()
-orchestrator.start()
+void startWritingRuntime({
+  engine,
+  bootstrap: () => bootstrapContentScriptAccount({ layout, correction }),
+  correction,
+  layout,
+  translation,
+  orchestrator,
+})
 
 export { engine, router, orchestrator, correction, layout, translation }

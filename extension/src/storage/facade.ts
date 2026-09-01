@@ -5,6 +5,9 @@ import {
   type FlowlarySettings,
   type LayoutSettings,
   type TranslationSettings,
+  DEFAULT_CORRECTION,
+  DEFAULT_LAYOUT,
+  DEFAULT_TRANSLATION,
 } from '../core/state/StateManager.ts'
 import { normalizeLayoutProfileState, type LayoutProfileState } from '../features/layout/profile/index.ts'
 import {
@@ -34,6 +37,8 @@ import {
   type HistoryStats,
 } from './history/index.ts'
 import type { FlowlaryStorage } from './index.ts'
+import { getAccountScopedStorage } from './accountScopedStorage.ts'
+import { activeAccountContext } from './activeAccountContext.ts'
 
 export async function getSettings(storage: FlowlaryStorage): Promise<FlowlarySettings> {
   const raw = await storage.get(storage.keys.settings, 'local')
@@ -48,55 +53,57 @@ export async function setSettings(
 }
 
 export async function getCorrectionSettings(storage: FlowlaryStorage): Promise<CorrectionSettings> {
-  const raw = await storage.get(storage.keys.correction, 'local')
-  const groqApiKey = readStoredString(await storage.get(storage.keys.correctionGroqKey, 'local'))
-  return normalizeCorrection(raw, groqApiKey)
+  if (!activeAccountContext.getAccountId()) return { ...DEFAULT_CORRECTION }
+  const raw = await getAccountScopedStorage(storage).get('correction')
+  return normalizeCorrection(raw)
 }
 
 export async function setCorrectionSettings(
   storage: FlowlaryStorage,
   value: CorrectionSettings,
 ): Promise<void> {
-  const { groqApiKey, ...rest } = value
-  await storage.set(storage.keys.correction, withVersion(rest), 'local')
-  if (groqApiKey.trim()) {
-    await storage.setPrimitive(storage.keys.correctionGroqKey, groqApiKey, 'local')
-  } else {
-    await storage.remove(storage.keys.correctionGroqKey, 'local')
-  }
+  await storage.remove(storage.keys.correctionGroqKey, 'local')
+  if (!activeAccountContext.getAccountId()) return
+  await getAccountScopedStorage(storage).set('correction', withVersion(value))
 }
 
 export async function getTranslationSettings(storage: FlowlaryStorage): Promise<TranslationSettings> {
-  return normalizeTranslation(await storage.get(storage.keys.translation, 'local'))
+  if (!activeAccountContext.getAccountId()) return { ...DEFAULT_TRANSLATION }
+  return normalizeTranslation(await getAccountScopedStorage(storage).get('translation'))
 }
 
 export async function setTranslationSettings(
   storage: FlowlaryStorage,
   value: TranslationSettings,
 ): Promise<void> {
-  await storage.set(storage.keys.translation, withVersion(value), 'local')
+  await getAccountScopedStorage(storage).set('translation', withVersion(value))
 }
 
 export async function getLayoutSettings(storage: FlowlaryStorage): Promise<LayoutSettings> {
-  return normalizeLayout(await storage.get(storage.keys.layout, 'local'))
+  if (!activeAccountContext.getAccountId()) return { ...DEFAULT_LAYOUT }
+  return normalizeLayout(await getAccountScopedStorage(storage).get('layout'))
 }
 
 export async function setLayoutSettings(
   storage: FlowlaryStorage,
   value: LayoutSettings,
 ): Promise<void> {
-  await storage.set(storage.keys.layout, withVersion(value), 'local')
+  await getAccountScopedStorage(storage).set('layout', withVersion(value))
 }
 
 export async function getLayoutProfile(storage: FlowlaryStorage): Promise<LayoutProfileState> {
-  return normalizeLayoutProfileState(await storage.get(storage.keys.layoutProfile, 'local'))
+  if (!activeAccountContext.getAccountId()) return normalizeLayoutProfileState(undefined)
+  return normalizeLayoutProfileState(await getAccountScopedStorage(storage).get('layoutProfile'))
 }
 
 export async function setLayoutProfile(
   storage: FlowlaryStorage,
   value: LayoutProfileState,
 ): Promise<void> {
-  await storage.set(storage.keys.layoutProfile, withVersion(value as unknown as Record<string, unknown>), 'local')
+  await getAccountScopedStorage(storage).set(
+    'layoutProfile',
+    withVersion(value as unknown as Record<string, unknown>),
+  )
 }
 
 export async function getEntitlement(storage: FlowlaryStorage, now = Date.now()): Promise<FlowlaryEntitlement> {
@@ -128,35 +135,43 @@ export async function setLicenseKey(storage: FlowlaryStorage, key: string): Prom
 }
 
 export async function getHistoryPreserve(storage: FlowlaryStorage): Promise<FlowlaryHistoryPreserve> {
-  return normalizeHistoryPreserve(await storage.get(storage.keys.history, 'local'))
+  if (!activeAccountContext.getAccountId()) return normalizeHistoryPreserve(undefined)
+  return normalizeHistoryPreserve(await getAccountScopedStorage(storage).get('history'))
 }
 
 export async function getHistory(storage: FlowlaryStorage): Promise<HistoryEntry[]> {
+  if (!activeAccountContext.getAccountId()) return []
   const service = getHistoryService(storage)
   await service.initialize()
   return service.list()
 }
 
 export async function getHistoryStats(storage: FlowlaryStorage): Promise<HistoryStats> {
+  if (!activeAccountContext.getAccountId()) {
+    return { total: 0, byOperation: { CORRECT: 0, TRANSLATE: 0, FIX_LAYOUT: 0 } }
+  }
   const service = getHistoryService(storage)
   await service.initialize()
   return service.getStats()
 }
 
 export async function removeHistoryEntry(storage: FlowlaryStorage, id: string): Promise<boolean> {
+  if (!activeAccountContext.getAccountId()) return false
   const service = getHistoryService(storage)
   await service.initialize()
   return service.remove(id)
 }
 
 export async function clearHistory(storage: FlowlaryStorage): Promise<void> {
+  if (!activeAccountContext.getAccountId()) return
   const service = getHistoryService(storage)
   await service.initialize()
   await service.clear()
 }
 
 export async function getUnifiedHistoryStore(storage: FlowlaryStorage) {
-  const raw = await storage.get(storage.keys.history, 'local')
+  if (!activeAccountContext.getAccountId()) return normalizeHistoryStore(undefined)
+  const raw = await getAccountScopedStorage(storage).get('history')
   return normalizeHistoryStore(raw)
 }
 
@@ -183,12 +198,17 @@ export function createMigrationReader(storage: FlowlaryStorage) {
       Boolean(await storage.get(storage.keys.correction, 'local')),
     hasFlowlaryGroqKey: async () =>
       Boolean(await storage.get(storage.keys.correctionGroqKey, 'local')),
-    getFlowlaryCorrection: () => getCorrectionSettings(storage),
+    getFlowlaryCorrection: async () =>
+      normalizeCorrection(await storage.get(storage.keys.correction, 'local')),
     getFlowlaryGroqKey: async () =>
       readStoredString(await storage.get(storage.keys.correctionGroqKey, 'local')),
-    setFlowlaryCorrection: (value: CorrectionSettings) => setCorrectionSettings(storage, value),
+    setFlowlaryCorrection: async (value: CorrectionSettings) => {
+      await storage.set(storage.keys.correction, withVersion(value), 'local')
+      await storage.remove(storage.keys.correctionGroqKey, 'local')
+    },
     setGroqKey: (key: string) => storage.setPrimitive(storage.keys.correctionGroqKey, key, 'local'),
-    getFlowlaryHistory: () => getHistoryPreserve(storage),
+    getFlowlaryHistory: async () =>
+      normalizeHistoryPreserve(await storage.get(storage.keys.history, 'local')),
     setFlowlaryHistory: async (value: FlowlaryHistoryPreserve) => {
       await storage.set(storage.keys.history, value, 'local')
     },
@@ -200,18 +220,29 @@ export function createMigrationReader(storage: FlowlaryStorage) {
     hasFlowlaryTranslation: async () => Boolean(await storage.get(storage.keys.translation, 'local')),
     hasFlowlarySettings: async () => Boolean(await storage.get(storage.keys.settings, 'local')),
     getFlowlarySettings: () => getSettings(storage),
-    setFlowlaryTranslation: (value: TranslationSettings) => setTranslationSettings(storage, value),
+    setFlowlaryTranslation: async (value: TranslationSettings) => {
+      await storage.set(storage.keys.translation, withVersion(value), 'local')
+    },
     setFlowlarySettings: (value: FlowlarySettings) => setSettings(storage, value),
     getFlowlaryLayout: async () => {
       const raw = await storage.get(storage.keys.layout, 'local')
       if (!raw) return undefined
       return normalizeLayout(raw)
     },
-    setFlowlaryLayout: (value: LayoutSettings) => setLayoutSettings(storage, value),
+    setFlowlaryLayout: async (value: LayoutSettings) => {
+      await storage.set(storage.keys.layout, withVersion(value), 'local')
+    },
     hasFlowlaryLayout: async () => Boolean(await storage.get(storage.keys.layout, 'local')),
     hasFlowlaryLayoutProfile: async () => Boolean(await storage.get(storage.keys.layoutProfile, 'local')),
-    getFlowlaryLayoutProfile: () => getLayoutProfile(storage),
-    setFlowlaryLayoutProfile: (value: LayoutProfileState) => setLayoutProfile(storage, value),
+    getFlowlaryLayoutProfile: async () =>
+      normalizeLayoutProfileState(await storage.get(storage.keys.layoutProfile, 'local')),
+    setFlowlaryLayoutProfile: async (value: LayoutProfileState) => {
+      await storage.set(
+        storage.keys.layoutProfile,
+        withVersion(value as unknown as Record<string, unknown>),
+        'local',
+      )
+    },
     getFlowlaryEntitlement: () => getEntitlement(storage),
     setFlowlaryEntitlement: (value: FlowlaryEntitlement) => setEntitlement(storage, value),
     getFlowlaryLicenseKey: () => getLicenseKey(storage),
@@ -221,18 +252,9 @@ export function createMigrationReader(storage: FlowlaryStorage) {
 }
 
 export async function ensureDefaultNamespaces(storage: FlowlaryStorage, now = Date.now()): Promise<void> {
+  // Device-scoped defaults only. Account-owned namespaces are created lazily on login.
   if (!(await storage.get(storage.keys.settings, 'local'))) {
     await setSettings(storage, stateManager.settings)
-  }
-  if (!(await storage.get(storage.keys.correction, 'local'))) {
-    const { groqApiKey: _k, ...rest } = stateManager.correction
-    await storage.set(storage.keys.correction, withVersion(rest), 'local')
-  }
-  if (!(await storage.get(storage.keys.translation, 'local'))) {
-    await setTranslationSettings(storage, stateManager.translation)
-  }
-  if (!(await storage.get(storage.keys.layout, 'local'))) {
-    await setLayoutSettings(storage, stateManager.layout)
   }
   if (!(await storage.get(storage.keys.entitlement, 'local'))) {
     await setEntitlement(storage, createDefaultEntitlement(now))

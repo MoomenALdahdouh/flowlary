@@ -1,6 +1,9 @@
 import type { CorrectionResponse } from '@flowlary/shared'
 import { buildHighlightedTokens } from '../diff/tokenDiff.ts'
 import { applyHostSurface, readHostSurface } from './hostStyleAdapter.ts'
+import { ExplanationPanel } from './ExplanationPanel.ts'
+import { getCorrectionExplainStrings } from './explanationStrings.ts'
+import { resolveCardActionStrings } from '../../shared/cardStrings.ts'
 import type { CardState, CorrectionSuggestionBinding } from './types.ts'
 
 export type CorrectionCardOptions = {
@@ -18,7 +21,9 @@ export class CorrectionCard {
   private root: HTMLElement
   private contentEl: HTMLElement
   private applyEl: HTMLButtonElement
+  private explainEl: HTMLButtonElement
   private dismissEl: HTMLButtonElement
+  private explanationPanel: ExplanationPanel
   private state: CardState = 'hidden'
   private binding: CorrectionSuggestionBinding | null = null
   private displayedText = ''
@@ -31,9 +36,12 @@ export class CorrectionCard {
   private scrollTargets: EventTarget[] = []
   private appliedTimer: ReturnType<typeof setTimeout> | null = null
   private gapPx = DEFAULT_GAP_PX
+  private readonly cardStrings = resolveCardActionStrings()
 
   constructor(private readonly options: CorrectionCardOptions) {
     this.highlights = options.highlights
+    this.explanationPanel = new ExplanationPanel()
+    const strings = getCorrectionExplainStrings()
     this.host = document.createElement('div')
     this.host.setAttribute(HOST_ATTR, 'true')
     this.host.setAttribute('aria-live', 'polite')
@@ -82,7 +90,7 @@ export class CorrectionCard {
         }
         .status { display: none; }
         .row.analyzing .status { display: inline-flex; }
-        .apply, .dismiss {
+        .apply, .explain, .dismiss {
           display: none;
           align-items: center;
           justify-content: center;
@@ -102,9 +110,10 @@ export class CorrectionCard {
           white-space: nowrap;
         }
         .row.ready .apply,
+        .row.ready .explain,
         .row.ready .dismiss,
         .row.ready.analyzing .apply { display: inline-flex; }
-        .apply:hover, .dismiss:hover { color: var(--flowlary-fg, #111827); }
+        .apply:hover, .explain:hover, .dismiss:hover { color: var(--flowlary-fg, #111827); }
         .row.applied .apply { opacity: 0.7; }
         .dots {
           display: inline-flex;
@@ -137,16 +146,16 @@ export class CorrectionCard {
           -webkit-box-decoration-break: clone;
         }
         .spelling {
-          color: #be123c;
-          background: rgba(244, 63, 94, 0.12);
+          color: var(--fl-teach-spelling, #be123c);
+          background: var(--fl-teach-spelling-soft, rgba(244, 63, 94, 0.12));
         }
         .grammar {
-          color: #a16207;
-          background: rgba(202, 138, 4, 0.16);
+          color: var(--fl-teach-grammar, #a16207);
+          background: var(--fl-teach-grammar-soft, rgba(202, 138, 4, 0.16));
         }
         .wording {
-          color: #3730a3;
-          background: rgba(99, 102, 241, 0.12);
+          color: var(--fl-teach-wording, #3730a3);
+          background: var(--fl-teach-wording-soft, rgba(99, 102, 241, 0.12));
         }
         .error-label {
           font-size: 0.92em;
@@ -159,6 +168,7 @@ export class CorrectionCard {
           <span class="status" aria-hidden="true">
             <span class="dots" aria-label="Checking"><i></i><i></i><i></i></span>
           </span>
+          <button class="explain" type="button"></button>
           <button class="apply" type="button" aria-label="Accept correction">Apply</button>
           <button class="dismiss" type="button" aria-label="Dismiss correction">Dismiss</button>
         </div>
@@ -167,14 +177,21 @@ export class CorrectionCard {
     this.root = this.shadow.querySelector('.row') as HTMLElement
     this.contentEl = this.shadow.querySelector('.content') as HTMLElement
     this.applyEl = this.shadow.querySelector('.apply') as HTMLButtonElement
+    this.explainEl = this.shadow.querySelector('.explain') as HTMLButtonElement
     this.dismissEl = this.shadow.querySelector('.dismiss') as HTMLButtonElement
+    this.explainEl.textContent = strings.explain
+    this.explainEl.setAttribute('aria-label', strings.explainAria)
+    this.applyEl.textContent = this.cardStrings.apply
+    this.applyEl.setAttribute('aria-label', this.cardStrings.apply)
+    this.dismissEl.textContent = this.cardStrings.dismiss
+    this.dismissEl.setAttribute('aria-label', this.cardStrings.dismiss)
 
     this.root.addEventListener('pointerdown', (e) => {
       e.preventDefault()
       e.stopPropagation()
     })
     this.root.addEventListener('click', (e) => {
-      if (e.target === this.dismissEl) return
+      if (e.target === this.dismissEl || e.target === this.explainEl) return
       e.preventDefault()
       e.stopPropagation()
       this.applyIfReady()
@@ -183,6 +200,10 @@ export class CorrectionCard {
       if (e.key === 'Escape') {
         e.preventDefault()
         e.stopPropagation()
+        if (this.explanationPanel.isOpen()) {
+          this.explanationPanel.hide()
+          return
+        }
         this.dismiss()
         return
       }
@@ -201,6 +222,11 @@ export class CorrectionCard {
       e.preventDefault()
       e.stopPropagation()
       this.dismiss()
+    })
+    this.explainEl.addEventListener('click', (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      this.openExplanation()
     })
   }
 
@@ -239,6 +265,7 @@ export class CorrectionCard {
   }
 
   destroy(): void {
+    this.explanationPanel.clear()
     this.unmount()
   }
 
@@ -278,8 +305,14 @@ export class CorrectionCard {
 
   private dismiss(): void {
     const binding = this.binding
+    this.explanationPanel.clear()
     this.options.onDismiss(binding)
     this.hide()
+  }
+
+  private openExplanation(): void {
+    if (!this.binding) return
+    this.explanationPanel.show(this.binding, this.explainEl)
   }
 
   markApplied(): void {
@@ -290,7 +323,7 @@ export class CorrectionCard {
     this.appliedTimer = setTimeout(() => {
       this.appliedTimer = null
       if (!this.binding) return
-      this.applyEl.textContent = 'Apply'
+      this.applyEl.textContent = this.cardStrings.apply
       this.root.classList.remove('applied')
     }, 900)
   }
@@ -337,6 +370,7 @@ export class CorrectionCard {
   }
 
   setReady(binding: CorrectionSuggestionBinding): void {
+    this.explanationPanel.clear()
     const response = binding.response
     if (response.correctedText === response.originalText) {
       this.showPlain(response.originalText)
@@ -345,7 +379,7 @@ export class CorrectionCard {
     this.state = 'ready'
     this.binding = binding
     this.displayedText = response.correctedText
-    this.applyEl.textContent = 'Apply'
+    this.applyEl.textContent = this.cardStrings.apply
     this.root.classList.remove('applied')
     this.renderDiff(response.originalText, response.correctedText, response.changes)
     this.showRow('ready')
@@ -371,10 +405,11 @@ export class CorrectionCard {
       clearTimeout(this.appliedTimer)
       this.appliedTimer = null
     }
+    this.explanationPanel.clear()
     this.state = 'hidden'
     this.binding = null
     this.displayedText = ''
-    this.applyEl.textContent = 'Apply'
+    this.applyEl.textContent = this.cardStrings.apply
     this.contentEl.replaceChildren()
     this.root.classList.remove('analyzing', 'error', 'ready', 'idle', 'applied')
     this.root.hidden = true

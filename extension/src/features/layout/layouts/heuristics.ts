@@ -63,13 +63,6 @@ export function inferSourceLayout(
   if (chars.length === 0 || !hasLetter(word)) return null
 
   if (
-    chars.every((char) => /[\u0590-\u05FF]/.test(char)) &&
-    isEnabledLayout(profile, 'he-standard')
-  ) {
-    return 'he-standard'
-  }
-
-  if (
     chars.every((char) => /[\u0370-\u03FF]/.test(char)) &&
     isEnabledLayout(profile, 'el-standard')
   ) {

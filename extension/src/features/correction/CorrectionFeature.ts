@@ -5,15 +5,10 @@ import { evaluateFieldSafety } from '../../core/safety/index.ts'
 import type { EditableElement } from '../../core/dom/types.ts'
 import { stateManager } from '../../core/state/StateManager.ts'
 import { isEligibleForCorrection } from './language.ts'
-import {
-  runCorrectionRequest,
-  type FieldCorrectionState,
-} from './applyCorrection.ts'
+import { runExplicitEnglishAssist } from '../../core/writeGate/pipelineEnglish.ts'
+import { type FieldCorrectionStateEntry } from './applyCorrection.ts'
 import { createCorrectionMetrics, type CorrectionMetrics } from './metrics.ts'
 import { CorrectionScheduler } from './scheduler.ts'
-import { CorrectionCard } from './ui/CorrectionCard.ts'
-import { IntelligentDebouncer, debounceOptionsForMode } from './debounce.ts'
-import { isCorrectionAiReady } from './readiness.ts'
 
 export type CorrectionModuleOptions = {
   engine: InputEngine
@@ -22,30 +17,14 @@ export type CorrectionModuleOptions = {
 export type CorrectionModule = CorrectionFeature & {
   start(): void
   stop(): void
+  clearFieldStates(): void
   metrics: CorrectionMetrics
 }
 
 export function createCorrectionFeature(options: CorrectionModuleOptions): CorrectionModule {
   const metrics = createCorrectionMetrics()
-  const fieldStates = new Map<string, FieldCorrectionState & { debouncer: IntelligentDebouncer }>()
-
-  function getFieldState(fieldId: string) {
-    let state = fieldStates.get(fieldId)
-    if (!state) {
-      state = {
-        debouncer: new IntelligentDebouncer(() => undefined, debounceOptionsForMode(stateManager.correction.mode)),
-        lastSentText: '',
-        lastCorrectedFor: '',
-        pendingRequestId: null,
-        card: null,
-        cardMounted: false,
-      }
-      fieldStates.set(fieldId, state)
-    }
-    return state
-  }
-
-  const scheduler = new CorrectionScheduler({ engine: options.engine, metrics })
+  const fieldStates = new Map<string, FieldCorrectionStateEntry>()
+  const scheduler = new CorrectionScheduler({ engine: options.engine, metrics, fieldStates })
 
   let started = false
 
@@ -64,15 +43,16 @@ export function createCorrectionFeature(options: CorrectionModuleOptions): Corre
       scheduler.stop()
     },
 
+    clearFieldStates() {
+      scheduler.clearFieldStates()
+    },
+
     async execute(command: Command): Promise<CommandResult> {
       if (!stateManager.correction.enabled) {
         return { ok: false, operation: 'CORRECT', error: 'disabled' }
       }
       if (!stateManager.correction.consentAccepted) {
         return { ok: false, operation: 'CORRECT', error: 'consent_required' }
-      }
-      if (!isCorrectionAiReady(stateManager.correction)) {
-        return { ok: false, operation: 'CORRECT', error: 'missing_api_key' }
       }
 
       const element = options.engine.sessions.resolveElement(command.field.id)
@@ -97,53 +77,21 @@ export function createCorrectionFeature(options: CorrectionModuleOptions): Corre
         return { ok: false, operation: 'CORRECT', error: 'not_english' }
       }
 
-      const fieldState = getFieldState(session.field.id)
-      const active = session.getActiveRequest()
-      const applyOptions = {
-        metrics,
-        fieldState,
-        currentDebouncerGeneration: () => fieldState.debouncer.currentGeneration(),
-        orchestratorLock:
-          active?.operation === 'CORRECT' && command.requestId !== undefined
-            ? {
-                requestId: command.requestId,
-                generation: command.generation ?? session.getGeneration(),
-                signal: active.signal,
-              }
-            : undefined,
-        getCard: (el: EditableElement) => {
-          if (!fieldState.card) {
-            fieldState.card = new CorrectionCard({
-              highlights: stateManager.correction.highlights,
-              onApply: () => undefined,
-              onDismiss: () => undefined,
-            })
-          }
-          if (!fieldState.cardMounted) {
-            fieldState.card.mount(el)
-            fieldState.cardMounted = true
-          }
-          return fieldState.card
-        },
-      }
-
-      const gen = fieldState.debouncer.schedule(text)
-      const result = await runCorrectionRequest(editable, session, text, gen, applyOptions)
-
-      if (result === 'committed' || result === 'pending') {
+      const outcome = await runExplicitEnglishAssist(editable, session)
+      if (outcome === 'applied') {
         return {
           ok: true,
           operation: 'CORRECT',
-          data: { applied: result === 'committed', mode: stateManager.correction.mode },
+          data: { applied: true, mode: stateManager.correction.mode },
         }
       }
-      if (result === 'stale' || result === 'aborted') {
-        return { ok: false, operation: 'CORRECT', stale: true, aborted: result === 'aborted' }
+      if (outcome === 'stale') {
+        return { ok: false, operation: 'CORRECT', stale: true }
       }
-      if (result === 'busy') {
+      if (outcome === 'blocked') {
         return { ok: false, operation: 'CORRECT', error: 'busy' }
       }
-      return { ok: false, operation: 'CORRECT', error: result }
+      return { ok: false, operation: 'CORRECT', error: 'noop' }
     },
   }
 }

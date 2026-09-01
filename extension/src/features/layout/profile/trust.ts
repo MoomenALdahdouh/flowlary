@@ -1,5 +1,7 @@
 import { addException, normalizeExceptionToken } from './exceptions.ts'
+import { hashWritingSample } from '@flowlary/shared'
 import {
+  ACCEPTED_VOCAB_THRESHOLD,
   MAX_EVENTS,
   REVERT_EXCEPTION_THRESHOLD,
   type CorrectionEvent,
@@ -89,4 +91,23 @@ export function applyCorrectionEvent(
     exceptions: [...exceptions],
     addedException: false,
   }
+}
+
+/** Tokens accepted at least N times become personal vocabulary hashes. */
+export function vocabularyHashesFromEvents(
+  events: readonly CorrectionEvent[],
+  threshold = ACCEPTED_VOCAB_THRESHOLD,
+): string[] {
+  const counts = new Map<string, number>()
+  for (const event of events) {
+    if (event.kind !== 'accepted') continue
+    const key = event.token.toLocaleLowerCase()
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+  const hashes: string[] = []
+  for (const [token, count] of counts) {
+    if (count < threshold) continue
+    hashes.push(hashWritingSample(token))
+  }
+  return hashes
 }

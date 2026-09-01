@@ -50,16 +50,39 @@ export function readFieldText(element: EditableElement): string {
     .join('')
 }
 
+function subtreeTextLength(node: Node): number {
+  if (node.nodeType === Node.TEXT_NODE) return (node as Text).data.length
+  let total = 0
+  for (const child of node.childNodes) total += subtreeTextLength(child)
+  return total
+}
+
+/** Logical offset matching `readFieldText` (text-node concatenation, not Range#toString). */
 function offsetFromPoint(
   element: EditableElement,
   container: Node,
   offset: number,
 ): number | null {
-  if (!element.contains(container)) return null
-  const before = document.createRange()
-  before.selectNodeContents(element)
-  before.setEnd(container, offset)
-  return before.toString().length
+  if (element !== container && !element.contains(container)) return null
+  let total = 0
+  if (container.nodeType === Node.TEXT_NODE) {
+    total = Math.max(0, Math.min(offset, (container as Text).data.length))
+  } else {
+    const limit = Math.max(0, Math.min(offset, container.childNodes.length))
+    for (let i = 0; i < limit; i += 1) {
+      total += subtreeTextLength(container.childNodes[i]!)
+    }
+  }
+  let cursor: Node | null = container
+  while (cursor && cursor !== element) {
+    let prev = cursor.previousSibling
+    while (prev) {
+      total += subtreeTextLength(prev)
+      prev = prev.previousSibling
+    }
+    cursor = cursor.parentNode
+  }
+  return total
 }
 
 export function readCaret(element: EditableElement): number | null {

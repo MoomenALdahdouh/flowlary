@@ -1,10 +1,15 @@
-import { FLOWLARY_PRODUCT_ID } from '@flowlary/shared'
+import { ACCOUNT_TRIAL_DURATION_MS, FLOWLARY_PRODUCT_ID } from '@flowlary/shared'
 
-/** Entitlement constants aligned with legacy Lingo/Layfix engines. */
-export const TRIAL_DURATION_MS = 7 * 24 * 60 * 60 * 1000
-export const FREE_MAX_BALANCE_MS = 2 * 60 * 60 * 1000
+/**
+ * Local entitlement storage is UX / migration only.
+ * Managed AI authority is the server account JWT (Phase 26/27).
+ * Local trial no longer unlocks AI without sign-in.
+ */
+export const TRIAL_DURATION_MS = ACCOUNT_TRIAL_DURATION_MS
+/** @deprecated Latency balance retired — always normalize to 0. */
+export const FREE_MAX_BALANCE_MS = 0
 export const LICENSE_CACHE_TTL_MS = 900 * 1000
-export const USAGE_STATE_VERSION = 1
+export const USAGE_STATE_VERSION = 2
 
 export type EntitlementStatus = 'trial' | 'free' | 'pro' | 'unknown'
 
@@ -12,6 +17,7 @@ export type UsageState = {
   version: number
   firstActivatedAt: number
   trialEndsAt: number
+  /** @deprecated Always 0 after Phase 27 migration. */
   usageBalanceMs: number
   lastUsageUpdateAt: number
   lastActivityAt: number
@@ -40,18 +46,17 @@ export type EntitlementPublicView = {
   hasLicenseKey: boolean
   isPro: boolean
   inTrial: boolean
+  /** @deprecated Prefer creditsRemaining from server. */
   remainingMs: number
+  creditsRemaining: number
+  creditsUsed: number
+  dailyLimit: number
+  resetAt: number
+  capabilities: string[]
 }
 
 function isValidTimestamp(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0
-}
-
-function clampBalance(value: unknown): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return FREE_MAX_BALANCE_MS
-  if (value < 0) return 0
-  if (value > FREE_MAX_BALANCE_MS) return FREE_MAX_BALANCE_MS
-  return Math.floor(value)
 }
 
 export function createInitialUsageState(now: number): UsageState {
@@ -60,7 +65,7 @@ export function createInitialUsageState(now: number): UsageState {
     version: USAGE_STATE_VERSION,
     firstActivatedAt: activated,
     trialEndsAt: activated + TRIAL_DURATION_MS,
-    usageBalanceMs: FREE_MAX_BALANCE_MS,
+    usageBalanceMs: 0,
     lastUsageUpdateAt: activated,
     lastActivityAt: 0,
     lastRefillAt: activated,
@@ -81,7 +86,8 @@ export function normalizeUsageState(raw: unknown, now: number): UsageState {
     version: USAGE_STATE_VERSION,
     firstActivatedAt,
     trialEndsAt,
-    usageBalanceMs: clampBalance(value.usageBalanceMs),
+    // Phase 27: never treat legacy latency ms as credits.
+    usageBalanceMs: 0,
     lastUsageUpdateAt: isValidTimestamp(value.lastUsageUpdateAt)
       ? value.lastUsageUpdateAt
       : firstActivatedAt,
@@ -121,6 +127,10 @@ export function isInTrial(usage: UsageState, now: number): boolean {
   return now < ends
 }
 
+/**
+ * Local status without server: never invents free AI credits.
+ * Unsigned clients get `unknown` so AI UX asks for sign-in.
+ */
 export function resolveEntitlementStatus(
   entitlement: FlowlaryEntitlement,
   now: number,
@@ -128,7 +138,6 @@ export function resolveEntitlementStatus(
 ): EntitlementStatus {
   if (isVerifiedPro(entitlement.license.cache, now, online)) return 'pro'
   if (isInTrial(entitlement.usage, now)) return 'trial'
-  if (entitlement.usage.usageBalanceMs > 0) return 'free'
   return 'unknown'
 }
 
@@ -161,7 +170,7 @@ export function normalizeEntitlement(raw: unknown, now = Date.now()): FlowlaryEn
   return entitlement
 }
 
-/** Conservative merge: earliest trial start, lowest balance — never grants extra privilege. */
+/** Conservative merge: earliest trial start — never invents credits. */
 export function mergeUsageStates(a: UsageState, b: UsageState): UsageState {
   const firstActivatedAt = Math.min(a.firstActivatedAt, b.firstActivatedAt)
   const trialEndsAt = Math.min(a.trialEndsAt, b.trialEndsAt, firstActivatedAt + TRIAL_DURATION_MS)
@@ -169,7 +178,7 @@ export function mergeUsageStates(a: UsageState, b: UsageState): UsageState {
     version: USAGE_STATE_VERSION,
     firstActivatedAt,
     trialEndsAt,
-    usageBalanceMs: Math.min(a.usageBalanceMs, b.usageBalanceMs),
+    usageBalanceMs: 0,
     lastUsageUpdateAt: Math.min(a.lastUsageUpdateAt, b.lastUsageUpdateAt),
     lastActivityAt: Math.max(a.lastActivityAt, b.lastActivityAt),
     lastRefillAt: Math.min(a.lastRefillAt, b.lastRefillAt),
@@ -200,7 +209,12 @@ export function toPublicView(
     hasLicenseKey,
     isPro,
     inTrial,
-    remainingMs: entitlement.usage.usageBalanceMs,
+    remainingMs: 0,
+    creditsRemaining: 0,
+    creditsUsed: 0,
+    dailyLimit: 0,
+    resetAt: 0,
+    capabilities: [],
   }
 }
 
@@ -209,5 +223,6 @@ export function canFeatureUseEntitlement(
   now = Date.now(),
 ): boolean {
   const status = resolveEntitlementStatus(entitlement, now)
-  return status === 'pro' || status === 'trial' || status === 'free'
+  // Local license/trial alone no longer unlocks managed AI.
+  return status === 'pro'
 }

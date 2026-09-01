@@ -1,6 +1,6 @@
 import type { FlowlaryStorage } from '../index.ts'
 import type { HistoryEntry, HistoryRecordInput, HistoryStats, HistoryStoreV1 } from './types.ts'
-import { HISTORY_STORE_VERSION, MAX_HISTORY_ENTRIES } from './types.ts'
+import { HISTORY_STORE_VERSION } from './types.ts'
 import { isDuplicateHistoryEntry } from './dedupe.ts'
 import { extractLegacyPreserve, importLegacyHistoryArrays } from './legacyImport.ts'
 import {
@@ -15,6 +15,13 @@ import {
   sortHistoryEntries,
 } from './validation.ts'
 import { stateManager } from '../../core/state/StateManager.ts'
+import {
+  assertWriteGuard,
+  captureWriteGuard,
+  getAccountScopedStorage,
+  type AccountWriteGuard,
+} from '../accountScopedStorage.ts'
+import { activeAccountContext } from '../activeAccountContext.ts'
 
 let sequence = 0
 
@@ -41,12 +48,15 @@ export class HistoryService {
   }
 
   private async readStore(): Promise<HistoryStoreV1> {
-    const raw = await this.storage.get(this.storage.keys.history, 'local')
+    if (!activeAccountContext.getAccountId()) return normalizeHistoryStore(undefined)
+    const raw = await getAccountScopedStorage(this.storage).get('history')
     return normalizeHistoryStore(raw)
   }
 
-  private async writeStore(store: HistoryStoreV1): Promise<void> {
-    const raw = await this.storage.get(this.storage.keys.history, 'local')
+  private async writeStore(store: HistoryStoreV1, guard: AccountWriteGuard): Promise<boolean> {
+    if (!assertWriteGuard(guard)) return false
+    const scoped = getAccountScopedStorage(this.storage)
+    const raw = await scoped.get('history')
     const legacy = extractLegacyPreserve(raw)
     const payload: Record<string, unknown> = {
       ...store,
@@ -54,12 +64,14 @@ export class HistoryService {
     }
     if (legacy.ewa?.length) payload.ewa = legacy.ewa
     if (legacy.layfix?.length) payload.layfix = legacy.layfix
-    await this.storage.set(this.storage.keys.history, payload, 'local')
+    return scoped.set('history', payload, guard)
   }
 
   async initialize(): Promise<void> {
     await this.enqueue(async () => {
-      const raw = await this.storage.get(this.storage.keys.history, 'local')
+      if (!activeAccountContext.getAccountId()) return
+      const guard = captureWriteGuard()
+      const raw = await getAccountScopedStorage(this.storage).get('history')
       let store = normalizeHistoryStore(raw)
 
       if (!store.legacyImported) {
@@ -78,7 +90,7 @@ export class HistoryService {
             entries: pruneHistoryEntries(deduped),
             legacyImported: true,
           }
-          await this.writeStore(store)
+          await this.writeStore(store, guard)
         }
       }
     })
@@ -105,6 +117,8 @@ export class HistoryService {
   async record(input: HistoryRecordInput): Promise<boolean> {
     return this.enqueue(async () => {
       try {
+        if (!activeAccountContext.getAccountId()) return false
+        const guard = captureWriteGuard()
         const hostname = typeof location !== 'undefined' ? location.hostname : undefined
         const sourceText = input.sourceText.trim()
         const resultText = input.resultText.trim()
@@ -145,8 +159,7 @@ export class HistoryService {
           entries: pruneHistoryEntries([candidate, ...store.entries]),
           legacyImported: store.legacyImported ?? true,
         }
-        await this.writeStore(next)
-        return true
+        return await this.writeStore(next, guard)
       } catch {
         return false
       }
@@ -155,21 +168,27 @@ export class HistoryService {
 
   async remove(id: string): Promise<boolean> {
     return this.enqueue(async () => {
+      if (!activeAccountContext.getAccountId()) return false
+      const guard = captureWriteGuard()
       const store = await this.readStore()
       const nextEntries = store.entries.filter((entry) => entry.id !== id)
       if (nextEntries.length === store.entries.length) return false
-      await this.writeStore({ ...store, entries: nextEntries })
-      return true
+      return await this.writeStore({ ...store, entries: nextEntries }, guard)
     })
   }
 
   async clear(): Promise<void> {
     await this.enqueue(async () => {
-      await this.writeStore({
-        version: HISTORY_STORE_VERSION,
-        entries: [],
-        legacyImported: true,
-      })
+      if (!activeAccountContext.getAccountId()) return
+      const guard = captureWriteGuard()
+      await this.writeStore(
+        {
+          version: HISTORY_STORE_VERSION,
+          entries: [],
+          legacyImported: true,
+        },
+        guard,
+      )
     })
   }
 }

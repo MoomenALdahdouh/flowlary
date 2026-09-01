@@ -1,10 +1,11 @@
 import type { InputEngine } from '../../core/input/InputEngine.ts'
 import { evaluateFieldSafety } from '../../core/safety/index.ts'
 import { readFieldText, isEditableElement } from '../../core/dom/read.ts'
-import { writeReplacement } from '../../core/dom/editor.ts'
+import { commitWriteTransaction } from '../../core/writeGate/writeGate.ts'
 import type { EditableElement } from '../../core/dom/types.ts'
 import { stateManager } from '../../core/state/StateManager.ts'
-import { applyInstantSpelling } from './instantSpell.ts'
+import { applyInstantSpellingIfSafe } from './instantSpell.ts'
+import { isEnforceEngineEnabled } from '../../core/engine/flag.ts'
 import { shouldShowEnglishAssistant } from './language.ts'
 import {
   debounceOptionsForMode,
@@ -20,46 +21,49 @@ import {
   invalidateCardIfStale,
   syncCardVisibility,
   type FieldCorrectionState,
+  type FieldCorrectionStateEntry,
 } from './applyCorrection.ts'
 import type { CorrectionMetrics } from './metrics.ts'
 import { CorrectionCard } from './ui/CorrectionCard.ts'
 import { cancelCorrectionRemote } from './client.ts'
 import { isCorrectionHost } from './ui/CorrectionCard.ts'
+import { allowsAutomaticFieldWrite } from '../../core/safety/autoWrite.ts'
+import { allowAutomaticNetworkAssist, isShortcutsOnly } from '../../core/policy/writingPolicy.ts'
+import {
+  fieldKindFromElement,
+  recordWriteTelemetry,
+} from '../../core/observability/writeTelemetry.ts'
 
 export type CorrectionSchedulerOptions = {
   engine: InputEngine
   metrics: CorrectionMetrics
+  /** Shared per-field correction state (single source of truth with CorrectionFeature). */
+  fieldStates?: Map<string, FieldCorrectionStateEntry>
 }
 
 export class CorrectionScheduler {
   private unsubscribe: (() => void) | null = null
-  private fieldStates = new Map<string, FieldCorrectionState & { debouncer: IntelligentDebouncer }>()
+  private fieldStates: Map<string, FieldCorrectionStateEntry>
+  private ownsFieldStates: boolean
 
-  constructor(private options: CorrectionSchedulerOptions) {}
+  constructor(private options: CorrectionSchedulerOptions) {
+    this.fieldStates = options.fieldStates ?? new Map()
+    this.ownsFieldStates = !options.fieldStates
+  }
 
   start(): void {
-    if (this.unsubscribe) return
-    this.unsubscribe = this.options.engine.eventBus.subscribe((event) => {
-      if (!stateManager.correction.enabled) return
-
-      if (event.type === 'input') {
-        if (event.origin !== 'USER' || event.composing) return
-        this.onInput(event.target as EditableElement)
-      }
-
-      if (event.type === 'composition-end') {
-        this.onInput(event.target as EditableElement)
-      }
-
-      if (event.type === 'focus-out') {
-        this.teardownField(event.target)
-      }
-    })
+    // Retired as an EventBus writer. Auto English assist runs in the enforce pipeline.
   }
 
   stop(): void {
     this.unsubscribe?.()
     this.unsubscribe = null
+    if (this.ownsFieldStates) {
+      this.clearFieldStates()
+    }
+  }
+
+  clearFieldStates(): void {
     for (const state of this.fieldStates.values()) {
       state.debouncer.cancel()
       state.card?.destroy()
@@ -67,9 +71,7 @@ export class CorrectionScheduler {
     this.fieldStates.clear()
   }
 
-  private buildApplyOptions(
-    fieldState: FieldCorrectionState & { debouncer: IntelligentDebouncer },
-  ) {
+  private buildApplyOptions(fieldState: FieldCorrectionStateEntry) {
     return {
       metrics: this.options.metrics,
       fieldState,
@@ -78,10 +80,7 @@ export class CorrectionScheduler {
     }
   }
 
-  private ensureCard(
-    element: EditableElement,
-    fieldState: FieldCorrectionState & { debouncer: IntelligentDebouncer },
-  ): CorrectionCard {
+  private ensureCard(element: EditableElement, fieldState: FieldCorrectionStateEntry): CorrectionCard {
     if (!fieldState.card) {
       const applyOptions = this.buildApplyOptions(fieldState)
       fieldState.card = new CorrectionCard({
@@ -90,8 +89,8 @@ export class CorrectionScheduler {
           const session = this.options.engine.sessions.getOrCreate(element)
           void acceptCorrectionSuggestion(element, session, binding, applyOptions)
         },
-        onDismiss: () => {
-          dismissCorrectionSuggestion(element, applyOptions)
+        onDismiss: (binding) => {
+          dismissCorrectionSuggestion(element, binding, applyOptions)
         },
       })
     }
@@ -152,21 +151,83 @@ export class CorrectionScheduler {
 
     invalidateCardIfStale(element, session, text, applyOptions)
 
+    if (isEnforceEngineEnabled()) {
+      fieldState.debouncer.cancel()
+      return
+    }
+    if (session.hasTranslatedOverlap(0, text.length) && !stateManager.settings.polishAfterTranslate) {
+      fieldState.debouncer.cancel()
+      return
+    }
+
+    if (isShortcutsOnly()) {
+      recordWriteTelemetry({
+        capability: 'correction',
+        trigger: 'auto',
+        outcome: 'noop',
+        reasonCodes: ['shortcuts_only'],
+        fieldKind: fieldKindFromElement(element),
+        composing: session.isComposing(),
+      })
+      fieldState.debouncer.cancel()
+      return
+    }
+
+    if (!allowsAutomaticFieldWrite(element)) {
+      recordWriteTelemetry({
+        capability: 'correction',
+        trigger: 'auto',
+        outcome: 'blocked',
+        reasonCodes: ['unsupported_editor_auto_write'],
+        fieldKind: fieldKindFromElement(element),
+        composing: session.isComposing(),
+      })
+      if (stateManager.correction.mode === 'direct') {
+        fieldState.debouncer.cancel()
+        return
+      }
+    }
+
     let workingText = text
-    if (stateManager.correction.mode === 'direct') {
+    if (
+      stateManager.correction.mode === 'direct' &&
+      allowsAutomaticFieldWrite(element)
+    ) {
       if (endsWithWordBoundary(text) || endsWithSentenceBoundary(text)) {
-        const fixed = applyInstantSpelling(text)
+        const fixed = applyInstantSpellingIfSafe(text)
         if (fixed !== text) {
           const acquired = session.tryAcquireWrite('CORRECT')
-          if (acquired.ok) {
-            const write = writeReplacement(element, 0, text.length, fixed, {
+          if (!acquired.ok) {
+            recordWriteTelemetry({
+              capability: 'correction',
+              trigger: 'auto',
+              outcome: 'blocked',
+              reasonCodes: [acquired.reason === 'composing' ? 'composing' : 'mutex_busy'],
+              fieldKind: fieldKindFromElement(element),
+              composing: session.isComposing(),
+              rangeLength: text.length,
+            })
+          } else {
+            const write = commitWriteTransaction(element, 0, text.length, fixed, {
               origin: 'CORRECT',
               session,
               requestId: acquired.requestId,
               expectedGeneration: acquired.generation,
               allowActiveEdit: true,
+              auto: true,
+              capability: 'correction',
+              trigger: 'auto',
             })
             session.releaseWrite('CORRECT', acquired.requestId)
+            recordWriteTelemetry({
+              capability: 'correction',
+              trigger: 'auto',
+              outcome: write.verdict === 'written' ? 'applied' : write.verdict === 'stale' ? 'stale' : 'blocked',
+              reasonCodes: [write.verdict === 'written' ? 'written' : write.reason === 'mutex' ? 'mutex_busy' : 'text_mismatch'],
+              fieldKind: fieldKindFromElement(element),
+              composing: session.isComposing(),
+              rangeLength: text.length,
+            })
             if (write.verdict === 'written') {
               workingText = fixed
               const segment = extractWritingContext(fixed)
@@ -191,9 +252,27 @@ export class CorrectionScheduler {
       return
     }
 
-    if (!shouldShowEnglishAssistant(workingText)) {
+    const assistSegment = extractWritingContext(workingText)
+    if (!assistSegment.trim() || !shouldShowEnglishAssistant(assistSegment)) {
       fieldState.debouncer.cancel()
       fieldState.card?.hide()
+      return
+    }
+
+    if (!allowAutomaticNetworkAssist()) {
+      recordWriteTelemetry({
+        capability: 'correction',
+        trigger: 'auto',
+        outcome: 'skipped',
+        reasonCodes: ['shortcuts_only'],
+        fieldKind: fieldKindFromElement(element),
+      })
+      fieldState.debouncer.cancel()
+      return
+    }
+
+    if (!allowsAutomaticFieldWrite(element) && stateManager.correction.mode === 'direct') {
+      fieldState.debouncer.cancel()
       return
     }
 

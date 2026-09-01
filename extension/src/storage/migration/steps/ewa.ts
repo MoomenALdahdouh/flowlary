@@ -33,17 +33,12 @@ export function createStorageReader(storage: FlowlaryStorage): StorageReader {
     getFlowlaryCorrection: async () => {
       const raw = await storage.get(storage.keys.correction, 'local')
       if (!raw) return undefined
-      const groq = readStoredString(await storage.get(storage.keys.correctionGroqKey, 'local'))
-      return normalizeCorrection(raw, groq)
+      return normalizeCorrection(raw)
     },
     getFlowlaryGroqKey: async () =>
       readStoredString(await storage.get(storage.keys.correctionGroqKey, 'local')),
     setFlowlaryCorrection: async (value) => {
-      const { groqApiKey, ...rest } = value
-      await storage.set(storage.keys.correction, withVersion(rest), 'local')
-      if (groqApiKey.trim()) {
-        await storage.setPrimitive(storage.keys.correctionGroqKey, groqApiKey, 'local')
-      }
+      await storage.set(storage.keys.correction, withVersion(value), 'local')
     },
     setGroqKey: (key) => storage.setPrimitive(storage.keys.correctionGroqKey, key, 'local'),
     getFlowlaryHistory: async () =>
@@ -67,17 +62,12 @@ export async function migrateEwaCorrection(reader: StorageReader): Promise<Migra
     const raw = await reader.getSync<Record<string, unknown>>(LEGACY_EWA.settings)
     if (!raw) return { id: step, ok: true, skipped: true }
 
-    const groqKey = await reader.getFlowlaryGroqKey()
-    const legacyGroq = readStoredString(await reader.getLocal(LEGACY_EWA.groqApiKey))
-    const merged = normalizeCorrection(
-      {
-        enabled: raw.enabled,
-        highlights: raw.highlights,
-        mode: normalizeEwaMode(raw.correctionMode),
-        consentAccepted: raw.consentAccepted,
-      },
-      groqKey || legacyGroq,
-    )
+    const merged = normalizeCorrection({
+      enabled: raw.enabled,
+      highlights: raw.highlights,
+      mode: normalizeEwaMode(raw.correctionMode),
+      consentAccepted: raw.consentAccepted,
+    })
 
     await reader.setFlowlaryCorrection(merged)
 

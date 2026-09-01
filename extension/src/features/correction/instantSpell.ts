@@ -1,6 +1,10 @@
 /**
  * Conservative common English typo map for instant local fixes.
+ * 1–2 letter tokens are never auto-applied (ambiguous / layout-collision risk).
  */
+import { isSafeToken } from '../../core/safety/tokenKind.ts'
+import { analyzeFieldText } from '../../core/engine/chunks.ts'
+
 const COMMON_TYPOS: Record<string, string> = {
   hwo: 'how',
   yuo: 'you',
@@ -12,8 +16,6 @@ const COMMON_TYPOS: Record<string, string> = {
   waht: 'what',
   whihc: 'which',
   wiht: 'with',
-  fo: 'of',
-  ot: 'to',
   tehse: 'these',
   thier: 'their',
   recive: 'receive',
@@ -37,14 +39,28 @@ const COMMON_TYPOS: Record<string, string> = {
   didnt: "didn't",
   havent: "haven't",
   hasnt: "hasn't",
-  im: "I'm",
   ive: "I've",
   youre: "you're",
   theyre: "they're",
   weve: "we've",
 }
 
+/** Tokens shorter than this MUST NOT auto-replace (`fo`, `ot`, `im`, …). */
+export const MIN_AUTO_SPELL_CHARS = 3
+
 const WORD_RE = /[A-Za-z]+(?:'[A-Za-z]+)?/g
+
+export function lookupKnownTypo(token: string): string | null {
+  const key = token.toLowerCase()
+  return COMMON_TYPOS[key] ?? null
+}
+
+export function isAutoSpellCandidate(token: string): boolean {
+  if (!lookupKnownTypo(token)) return false
+  if ([...token].length < MIN_AUTO_SPELL_CHARS) return false
+  if (!isSafeToken(token)) return false
+  return true
+}
 
 export function applyInstantSpelling(text: string): string {
   if (!text) return text
@@ -54,7 +70,7 @@ export function applyInstantSpelling(text: string): string {
     const m = text.match(/^(.*?)([A-Za-z]+(?:'[A-Za-z]+)?)$/)
     if (m) {
       const last = m[2]!
-      if (!COMMON_TYPOS[last.toLowerCase()]) {
+      if (!isAutoSpellCandidate(last)) {
         cut = m[1]!.length
       }
     }
@@ -62,9 +78,8 @@ export function applyInstantSpelling(text: string): string {
   const head = text.slice(0, cut)
   const tail = text.slice(cut)
   const fixedHead = head.replace(WORD_RE, (word) => {
-    const key = word.toLowerCase()
-    const repl = COMMON_TYPOS[key]
-    if (!repl) return word
+    if (!isAutoSpellCandidate(word)) return word
+    const repl = COMMON_TYPOS[word.toLowerCase()]!
     if (word[0] === word[0]!.toUpperCase() && word.slice(1) === word.slice(1).toLowerCase()) {
       return repl.charAt(0).toUpperCase() + repl.slice(1)
     }
@@ -72,4 +87,12 @@ export function applyInstantSpelling(text: string): string {
     return repl
   })
   return fixedHead + tail
+}
+
+/** Never apply instant English spelling on text that looks like a layout mismatch. */
+export function applyInstantSpellingIfSafe(text: string): string {
+  if (!text) return text
+  const analysis = analyzeFieldText(text)
+  if (analysis.hasLayoutSuspicion) return text
+  return applyInstantSpelling(text)
 }

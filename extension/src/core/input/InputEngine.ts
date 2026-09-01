@@ -33,6 +33,7 @@ export class InputEngine {
     keyDown: (event: KeyboardEvent) => this.onKeyDown(event),
     keyUp: (event: KeyboardEvent) => this.onKeyUp(event),
     compositionStart: (event: CompositionEvent) => this.onCompositionStart(event),
+    compositionUpdate: (event: CompositionEvent) => this.onCompositionUpdate(event),
     compositionEnd: (event: CompositionEvent) => this.onCompositionEnd(event),
   }
 
@@ -53,6 +54,7 @@ export class InputEngine {
     document.addEventListener('keydown', this.bound.keyDown, opts)
     document.addEventListener('keyup', this.bound.keyUp, opts)
     document.addEventListener('compositionstart', this.bound.compositionStart, opts)
+    document.addEventListener('compositionupdate', this.bound.compositionUpdate, opts)
     document.addEventListener('compositionend', this.bound.compositionEnd, opts)
   }
 
@@ -65,6 +67,7 @@ export class InputEngine {
     document.removeEventListener('keydown', this.bound.keyDown, true)
     document.removeEventListener('keyup', this.bound.keyUp, true)
     document.removeEventListener('compositionstart', this.bound.compositionStart, true)
+    document.removeEventListener('compositionupdate', this.bound.compositionUpdate, true)
     document.removeEventListener('compositionend', this.bound.compositionEnd, true)
     this.activeElement = null
   }
@@ -141,6 +144,7 @@ export class InputEngine {
     const inputEvent = event as InputEvent
     const session = this.sessions.getOrCreate(target)
     session.noteInput()
+    session.noteInputSource(inputSourceFromType(inputEvent.inputType))
 
     const composing = session.isComposing() || isComposing()
     const ignoreGeneration =
@@ -222,6 +226,21 @@ export class InputEngine {
     })
   }
 
+  private onCompositionUpdate(event: CompositionEvent): void {
+    const target =
+      this.resolveEditableTarget(event.target) ?? this.activeElement
+    if (!target || !this.shouldAssist(target)) return
+    const session = this.sessions.getOrCreate(target)
+    session.setComposing(true)
+    this.emit({
+      type: 'composition-update',
+      target,
+      session,
+      composing: true,
+      origin: 'USER',
+    })
+  }
+
   private onCompositionStart(event: CompositionEvent): void {
     beginComposition()
     const target =
@@ -260,6 +279,14 @@ export class InputEngine {
   private emit(event: NormalizedInputEvent): void {
     this.eventBus.emit(event)
   }
+}
+
+function inputSourceFromType(inputType?: string): 'typing' | 'paste' | 'drop' | 'programmatic' | 'unknown' {
+  if (inputType === 'insertFromPaste') return 'paste'
+  if (inputType === 'insertFromDrop') return 'drop'
+  if (inputType === 'insertReplacementText') return 'paste'
+  if (inputType) return 'typing'
+  return 'unknown'
 }
 
 /** Detect whether an element is a supported editable target. */

@@ -6,7 +6,7 @@ export type CorrectTextMessage = {
   text: string
   fieldType?: string
   previousText?: string
-  groqApiKey?: string
+  mode?: 'practice'
 }
 
 export type CorrectTextResponse =
@@ -29,8 +29,8 @@ export async function requestCorrectionRemote(
   text: string,
   fieldType: string | undefined,
   previousText: string | undefined,
-  groqApiKey: string | undefined,
   signal?: AbortSignal,
+  mode?: string,
 ): Promise<CorrectTextResponse> {
   if (signal?.aborted) {
     return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'aborted', aborted: true }
@@ -41,23 +41,25 @@ export async function requestCorrectionRemote(
   }
 
   try {
-    const payload: CorrectTextMessage = {
+    const response = (await chrome.runtime.sendMessage({
       type: 'CORRECT_TEXT',
       requestId,
       text,
       fieldType,
       previousText,
-    }
-    if (groqApiKey?.trim()) payload.groqApiKey = groqApiKey.trim()
-
-    const response = (await chrome.runtime.sendMessage(payload)) as CorrectTextResponse | undefined
+      mode,
+    })) as CorrectTextResponse | undefined
 
     if (signal?.aborted) {
       return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'aborted', aborted: true }
     }
     if (!response) return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'network' }
     return response
-  } catch {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : ''
+    if (/could not establish connection|receiving end does not exist/i.test(message)) {
+      return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'extension_disconnected' }
+    }
     return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'network' }
   }
 }

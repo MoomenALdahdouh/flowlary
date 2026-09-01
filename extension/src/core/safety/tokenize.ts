@@ -25,7 +25,16 @@ const TRAIL_PUNCT = /[\])}'"»”,.!?;:؟،؛]+$/u
 const TRUE_TRAIL = /[)}'"»”!?؟:،؛]+$/u
 /** Arabic 101 shifted letters that surface as math/dash glyphs, not words. */
 const LAYOUT_SYMBOL_BREAK = /[÷×—–]/u
+/** Shifted KeyI / KeyO on Arabic 101 (`I` / `O` on QWERTY). */
+const LAYOUT_SHIFT_LETTER = /[÷×]/u
 const WHITESPACE = /\s/u
+
+function isStandaloneShiftLetter(text: string, index: number): boolean {
+  if (!LAYOUT_SHIFT_LETTER.test(text[index]!)) return false
+  const left = text[index - 1]
+  const right = text[index + 1]
+  return (!left || WHITESPACE.test(left)) && (!right || WHITESPACE.test(right))
+}
 
 export function splitTrueTrail(raw: string): { core: string; trail: string } {
   const trail = raw.match(TRUE_TRAIL)?.[0] ?? ''
@@ -68,8 +77,9 @@ export function tokenizeText(text: string): { pieces: TextPiece[]; tokens: Token
       continue
     }
     if (LAYOUT_SYMBOL_BREAK.test(text[index]!)) {
+      const asToken = isStandaloneShiftLetter(text, index)
       pieces.push({
-        kind: 'delimiter',
+        kind: asToken ? 'token' : 'delimiter',
         value: text[index]!,
         start: index,
         end: index + 1,

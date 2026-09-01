@@ -1,811 +1,186 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
 import { BRAND } from '@flowlary/shared'
-import type { ExtensionStatus } from '../messaging/types.ts'
-import { SUPPORTED_LANGUAGES } from '../features/translation/languages.ts'
+import { PopupLogo, ThemeToggle, AccountAvatar } from './components.tsx'
+import { t } from './i18n/index.ts'
+import { HeaderStatusPill } from '../ui/SystemStatus.tsx'
+import { useFeatureMutations } from '../ui/useFeatureMutations.ts'
+import { resolveAccountPlanLabel } from './status.ts'
+import { openDashboard } from './openDashboard.ts'
+import { useExtensionSession } from './useExtensionSession.ts'
+import { HomeView } from './views/HomeView.tsx'
+import { ContextualFeedbackPrompt, HelpFeedbackLink } from './components/ContextualFeedbackPrompt.tsx'
+import { FirstWinView } from './views/FirstWinView.tsx'
 import {
-  clearAllHistory,
-  deleteHistoryEntry,
   dispatchCommand,
-  fetchHistory,
+  fetchDailyBrief,
   fetchStatus,
-  patchCorrection,
-  patchLayout,
-  patchTranslation,
+  markFirstWin,
+  patchWritingPolicy,
   PopupApiError,
-  removeGroqKey,
-  acceptManagedCorrection,
-  saveGroqKey,
-  setGlobalActive,
 } from './api.ts'
-import { FeatureCard, ToggleSwitch } from './components.tsx'
-import {
-  computeFeatureStatus,
-  formatLanguagePair,
-  groqKeyLabel,
-  correctionAiLabel,
-  readinessLabel,
-} from './status.ts'
-import { getShortcutLabels } from './shortcuts.ts'
-import {
-  formatHistoryTimestamp,
-  historyMetaLine,
-  operationLabel,
-  truncateHistoryText,
-} from './history.ts'
-import type { HistoryEntry } from '@flowlary/shared'
-
-type View = 'home' | 'settings' | 'history'
-
-function languageName(code: string): string {
-  return SUPPORTED_LANGUAGES.find((item) => item.code === code)?.name ?? code.toUpperCase()
-}
+import { policyPatchFromFirstWin } from '../core/policy/writingPolicy.ts'
+import type { FirstWinAnswers } from './views/FirstWinView.tsx'
+import { useEffect, useState } from 'react'
+import { openDashboard as openDash } from './openDashboard.ts'
 
 export function App() {
-  const [view, setView] = useState<View>('home')
-  const [status, setStatus] = useState<ExtensionStatus | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [busy, setBusy] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [groqDraft, setGroqDraft] = useState('')
-  const [showKeyForm, setShowKeyForm] = useState(false)
+  const session = useExtensionSession()
+  const { status, loading, busy, error, domain, mutate, setError } = session
+  const mutations = useFeatureMutations(session)
+  const [briefLine, setBriefLine] = useState<string | null>(null)
 
-  const shortcuts = useMemo(() => getShortcutLabels(), [])
-  const featureStatus = useMemo(() => computeFeatureStatus(status), [status])
-
-  const reload = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const next = await fetchStatus()
-      setStatus(next)
-    } catch (err) {
-      setError(err instanceof PopupApiError ? err.message : 'Could not load settings.')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const showFirstWin = Boolean(status && !status.firstWin?.completed)
 
   useEffect(() => {
-    void reload()
-  }, [reload])
+    if (!status?.account.signedIn || showFirstWin) {
+      setBriefLine(null)
+      return
+    }
+    let cancelled = false
+    const timer = setTimeout(() => {
+      if (!cancelled) setBriefLine(null)
+    }, 4000)
+    void fetchDailyBrief()
+      .then((brief) => {
+        if (cancelled) return
+        clearTimeout(timer)
+        const focus = brief.focusCategory
+        if (focus) {
+          setBriefLine(t('popup.briefTeaser', { focus }))
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setBriefLine(null)
+      })
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [status?.account.signedIn, showFirstWin])
 
-  async function mutate(
-    key: string,
-    fn: () => Promise<ExtensionStatus>,
-    rollback?: () => void,
-  ): Promise<void> {
-    setBusy(key)
+  async function completeFirstWin(patch: { completed?: boolean; localSuccess?: boolean }) {
+    await mutate('first-win', async () => {
+      await markFirstWin({ completed: true, ...patch })
+      return fetchStatus()
+    })
+  }
+
+  async function handleTryLayout() {
     setError(null)
     try {
-      const next = await fn()
-      setStatus(next)
+      await dispatchCommand('FIX_LAYOUT')
+      await completeFirstWin({ localSuccess: true })
     } catch (err) {
-      rollback?.()
-      setError(err instanceof PopupApiError ? err.message : 'Could not save your settings. Try again.')
-    } finally {
-      setBusy(null)
+      setError(err instanceof PopupApiError ? err.message : t('errors.saveSettings'))
     }
   }
 
-  const active = status?.active ?? false
-  const correctionOn = status?.correction.enabled ?? false
-  const translationOn = status?.translation.shortcutEnabled ?? false
-  const liveOn = status?.translation.liveEnabled ?? false
-  const layoutOn = status?.layout.autoEnabled ?? false
-  const hasGroqKey = status?.correction.hasGroqKey ?? false
-  const correctionAi =
-    status &&
-    correctionAiLabel({
-      aiProvider: status.correction.aiProvider,
-      aiReady: status.correction.aiReady,
-      hasGroqKey,
-    })
-
-  const languagePair =
-    status &&
-    formatLanguagePair(
-      status.translation.sourceLanguage,
-      status.translation.targetLanguage,
-      languageName(status.translation.sourceLanguage),
-      languageName(status.translation.targetLanguage),
-    )
+  async function handleFirstWinSave(answers: FirstWinAnswers) {
+    setError(null)
+    try {
+      await mutate('first-win', async () => {
+        const mapped = policyPatchFromFirstWin(answers)
+        await patchWritingPolicy(mapped.policy)
+        await markFirstWin({ completed: true })
+        return fetchStatus()
+      })
+    } catch (err) {
+      setError(err instanceof PopupApiError ? err.message : t('errors.saveSettings'))
+    }
+  }
 
   return (
     <div className="fl-popup">
       <header className="fl-header">
-        <div>
-          <h1 className="fl-title">{BRAND.name}</h1>
-          <p className="fl-subtitle">Write better. Understand. Fix layout mistakes.</p>
+        <div className="fl-brand-block">
+          <PopupLogo />
+          <div>
+            <h1 className="fl-title">{t('brand.name')}</h1>
+            <p className="fl-subtitle">{t('brand.tagline')}</p>
+          </div>
         </div>
-        <button
-          type="button"
-          className="fl-icon-btn"
-          aria-label={view === 'home' ? 'Open settings' : 'Back to home'}
-          onClick={() => {
-            if (view === 'history') setView('home')
-            else setView(view === 'home' ? 'settings' : 'home')
-          }}
-        >
-          {view === 'home' ? '⚙' : '←'}
-        </button>
+        <div className="fl-header-actions">
+          <HeaderStatusPill domain={domain} />
+          <ThemeToggle />
+          <AccountAvatar
+            signedIn={Boolean(status?.account.signedIn)}
+            email={status?.account.email ?? null}
+            onClick={() => openDashboard('account')}
+          />
+        </div>
       </header>
-
-      <div
-        className={`fl-global-status tone-${featureStatus.summaryTone}`}
-        role="status"
-        aria-live="polite"
-      >
-        <span className={`fl-status-dot${active ? ' is-active' : ''}`} aria-hidden />
-        <span>{loading ? 'Loading…' : featureStatus.summary}</span>
-      </div>
 
       {error ? (
         <div className="fl-error" role="alert">
-          {error}
+          <p>{error}</p>
+          {error.includes('editable') || error.includes('page') ? (
+            <button type="button" className="fl-link-btn" onClick={() => void handleTryLayout()}>
+              {t('errors.retryLayout')}
+            </button>
+          ) : null}
         </div>
       ) : null}
 
-      {view === 'home' ? (
-        <>
-          <section className="fl-section" aria-labelledby="features-heading">
-            <h2 id="features-heading" className="fl-section-label">
-              Writing intelligence
-            </h2>
+      <main className="fl-main">
+        {loading && !status ? (
+          <p className="fl-loading fl-skel" role="status">
+            {t('connection.checking')}
+          </p>
+        ) : null}
 
-            <FeatureCard
-              primary
-              title="Writing Correction"
-              description="Improve English while you write"
-              meta="English writing"
-              status={readinessLabel(featureStatus.correction)}
-              statusTone={featureStatus.correction === 'setup' ? 'warn' : 'ok'}
-              toggle={
-                <ToggleSwitch
-                  id="toggle-correction"
-                  label="Writing Correction"
-                  checked={correctionOn}
-                  disabled={!active || loading}
-                  busy={busy === 'correction'}
-                  onChange={(next) => {
-                    const prev = correctionOn
-                    setStatus((s) =>
-                      s ? { ...s, correction: { ...s.correction, enabled: next } } : s,
-                    )
-                    void mutate(
-                      'correction',
-                      () => patchCorrection({ enabled: next }),
-                      () =>
-                        setStatus((s) =>
-                          s ? { ...s, correction: { ...s.correction, enabled: prev } } : s,
-                        ),
-                    )
-                  }}
-                />
-              }
-            >
-              <div className="fl-inline-meta">
-                <span>Correction AI</span>
-                <strong>{correctionAi ?? 'Loading…'}</strong>
-              </div>
-              {status?.correction.aiProvider === 'managed' && !status.correction.aiReady ? (
-                <button
-                  type="button"
-                  className="fl-link-btn"
-                  onClick={() => void mutate('consent', () => acceptManagedCorrection())}
-                >
-                  Enable Flowlary AI
-                </button>
-              ) : null}
-              {status?.correction.aiProvider === 'byok' && !hasGroqKey ? (
-                <button
-                  type="button"
-                  className="fl-link-btn"
-                  onClick={() => {
-                    setView('settings')
-                    setShowKeyForm(true)
-                  }}
-                >
-                  Add API key
-                </button>
-              ) : null}
-            </FeatureCard>
+        {showFirstWin ? (
+          <FirstWinView
+            busy={busy === 'first-win'}
+            onSave={(answers) => void handleFirstWinSave(answers)}
+            onSkip={() =>
+              void handleFirstWinSave({
+                fixWrongTyping: true,
+                improveEnglishAuto: true,
+                arabicToEnglishMode: false,
+              })
+            }
+          />
+        ) : null}
 
-            <FeatureCard
-              title="Translation"
-              description="Translate selected or current text"
-              meta={languagePair ?? '—'}
-              status={readinessLabel(featureStatus.translation)}
-              toggle={
-                <ToggleSwitch
-                  id="toggle-translation"
-                  label="Translation"
-                  checked={translationOn}
-                  disabled={!active || loading}
-                  busy={busy === 'translation'}
-                  onChange={(next) => {
-                    const prev = translationOn
-                    const prevLive = liveOn
-                    setStatus((s) =>
-                      s
-                        ? {
-                            ...s,
-                            translation: {
-                              ...s.translation,
-                              shortcutEnabled: next,
-                              liveEnabled: next ? s.translation.liveEnabled : false,
-                            },
-                          }
-                        : s,
-                    )
-                    void mutate(
-                      'translation',
-                      () =>
-                        patchTranslation({
-                          shortcutEnabled: next,
-                          liveEnabled: next ? liveOn : false,
-                        }),
-                      () =>
-                        setStatus((s) =>
-                          s
-                            ? {
-                                ...s,
-                                translation: {
-                                  ...s.translation,
-                                  shortcutEnabled: prev,
-                                  liveEnabled: prevLive,
-                                },
-                              }
-                            : s,
-                        ),
-                    )
-                  }}
-                />
-              }
-            >
-              <div className="fl-subrow">
-                <div>
-                  <p className="fl-subrow-title">Live Translation</p>
-                  <p className="fl-subrow-desc">Translate while you type</p>
-                </div>
-                <ToggleSwitch
-                  id="toggle-live"
-                  label="Live Translation"
-                  checked={liveOn}
-                  disabled={!active || !translationOn || loading}
-                  busy={busy === 'live'}
-                  onChange={(next) => {
-                    const prev = liveOn
-                    setStatus((s) =>
-                      s ? { ...s, translation: { ...s.translation, liveEnabled: next } } : s,
-                    )
-                    void mutate(
-                      'live',
-                      () => patchTranslation({ liveEnabled: next }),
-                      () =>
-                        setStatus((s) =>
-                          s ? { ...s, translation: { ...s.translation, liveEnabled: prev } } : s,
-                        ),
-                    )
-                  }}
-                />
-              </div>
-            </FeatureCard>
+        {status && !showFirstWin ? (
+          <>
+            <ContextualFeedbackPrompt signedIn={Boolean(status.account.signedIn)} />
+            <HomeView
+            status={status}
+            domain={domain}
+            loading={loading}
+            busy={busy}
+            showSignInBanner={!status.firstWin?.localSuccess && !status.firstWin?.aiSuccess}
+            {...mutations}
+            onOpenDashboard={openDashboard}
+          />
+          </>
+        ) : null}
+      </main>
 
-            <FeatureCard
-              title="Keyboard Layout"
-              description="Automatically fix text typed with the wrong keyboard layout"
-              status={readinessLabel(featureStatus.layout)}
-              toggle={
-                <ToggleSwitch
-                  id="toggle-layout"
-                  label="Keyboard Layout"
-                  checked={layoutOn}
-                  disabled={!active || loading}
-                  busy={busy === 'layout'}
-                  onChange={(next) => {
-                    const prev = layoutOn
-                    setStatus((s) =>
-                      s ? { ...s, layout: { ...s.layout, autoEnabled: next } } : s,
-                    )
-                    void mutate(
-                      'layout',
-                      () => patchLayout({ autoEnabled: next }),
-                      () =>
-                        setStatus((s) =>
-                          s ? { ...s, layout: { ...s.layout, autoEnabled: prev } } : s,
-                        ),
-                    )
-                  }}
-                />
-              }
-            />
-          </section>
-
-          <section className="fl-section" aria-labelledby="quick-actions-heading">
-            <h2 id="quick-actions-heading" className="fl-section-label">
-              Quick actions
-            </h2>
-            <div className="fl-action-row">
+      {status ? (
+        <footer className="fl-popup-footbar">
+          <div className="fl-popup-footbar-main">
+            <span>{resolveAccountPlanLabel(status)}</span>
+            {briefLine ? (
               <button
                 type="button"
-                className="fl-action-btn"
-                disabled={!active || !translationOn || busy === 'cmd-translate'}
-                onClick={() => void mutate('cmd-translate', () => dispatchCommand('TRANSLATE').then(() => fetchStatus()))}
+                className="fl-link-btn fl-popup-brief-teaser"
+                onClick={() => openDash('overview')}
               >
-                Translate
+                {briefLine}
               </button>
-              <button
-                type="button"
-                className="fl-action-btn"
-                disabled={!active || !layoutOn || busy === 'cmd-layout'}
-                onClick={() => void mutate('cmd-layout', () => dispatchCommand('FIX_LAYOUT').then(() => fetchStatus()))}
-              >
-                Fix Layout
-              </button>
-            </div>
-          </section>
-
-          <section className="fl-section" aria-labelledby="shortcuts-heading">
-            <h2 id="shortcuts-heading" className="fl-section-label">
-              Shortcuts
-            </h2>
-            <ul className="fl-shortcut-list">
-              <li>
-                <span>Translate</span>
-                <kbd>{shortcuts.translate}</kbd>
-              </li>
-              <li>
-                <span>Fix Layout</span>
-                <kbd>{shortcuts.fixLayout}</kbd>
-              </li>
-              <li>
-                <span>Speed Box</span>
-                <kbd>{shortcuts.speedBox}</kbd>
-              </li>
-            </ul>
-          </section>
-
-          <section className="fl-section" aria-labelledby="global-heading">
-            <h2 id="global-heading" className="fl-section-label">
-              Extension
-            </h2>
-            <div className="fl-subrow">
-              <div>
-                <p className="fl-subrow-title">Flowlary</p>
-                <p className="fl-subrow-desc">{active ? 'Active on this browser' : 'Paused'}</p>
-              </div>
-              <ToggleSwitch
-                id="toggle-global"
-                label="Flowlary active"
-                checked={active}
-                disabled={loading}
-                busy={busy === 'global'}
-                onChange={(next) => {
-                  const prev = active
-                  setStatus((s) => (s ? { ...s, active: next } : s))
-                  void mutate(
-                    'global',
-                    () => setGlobalActive(next),
-                    () => setStatus((s) => (s ? { ...s, active: prev } : s)),
-                  )
-                }}
-              />
-            </div>
-          </section>
-          <section className="fl-section" aria-labelledby="history-link-heading">
-            <h2 id="history-link-heading" className="fl-section-label">
-              History
-            </h2>
-            <button type="button" className="fl-action-btn fl-action-btn-wide" onClick={() => setView('history')}>
-              View local history
-            </button>
-            <p className="fl-card-desc">Recent corrections, translations, and layout fixes stored on this device.</p>
-          </section>
-        </>
-      ) : view === 'history' ? (
-        <HistoryPanel busy={busy} setBusy={setBusy} setError={setError} />
+            ) : null}
+          </div>
+          <button type="button" className="fl-link-btn fl-dash-open" onClick={() => openDashboard()}>
+            {t('dashboard.open')}
+          </button>
+          <HelpFeedbackLink />
+        </footer>
       ) : (
-        <SettingsPanel
-          status={status}
-          busy={busy}
-          groqDraft={groqDraft}
-          showKeyForm={showKeyForm}
-          onGroqDraft={setGroqDraft}
-          onShowKeyForm={setShowKeyForm}
-          onMutate={mutate}
-          onStatus={setStatus}
-        />
+        <footer className="fl-footer">
+          <span>v{BRAND.version}</span>
+        </footer>
       )}
-
-      <footer className="fl-footer">
-        <span>v{status?.version ?? BRAND.version}</span>
-        {view === 'home' ? (
-          <button type="button" className="fl-link-btn" onClick={() => setView('settings')}>
-            Settings & privacy
-          </button>
-        ) : view === 'history' ? (
-          <button type="button" className="fl-link-btn" onClick={() => setView('home')}>
-            Back to home
-          </button>
-        ) : null}
-      </footer>
-    </div>
-  )
-}
-
-type HistoryPanelProps = {
-  busy: string | null
-  setBusy: (value: string | null) => void
-  setError: (value: string | null) => void
-}
-
-function HistoryPanel({ busy, setBusy, setError }: HistoryPanelProps) {
-  const [entries, setEntries] = useState<HistoryEntry[]>([])
-  const [loading, setLoading] = useState(true)
-
-  const reload = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const response = await fetchHistory()
-      setEntries(response.entries)
-    } catch (err) {
-      setError(err instanceof PopupApiError ? err.message : 'Could not load history.')
-    } finally {
-      setLoading(false)
-    }
-  }, [setError])
-
-  useEffect(() => {
-    void reload()
-  }, [reload])
-
-  async function runHistoryAction(key: string, fn: () => Promise<{ entries: HistoryEntry[] }>) {
-    setBusy(key)
-    setError(null)
-    try {
-      const response = await fn()
-      setEntries(response.entries)
-    } catch (err) {
-      setError(err instanceof PopupApiError ? err.message : 'History action failed.')
-    } finally {
-      setBusy(null)
-    }
-  }
-
-  return (
-    <section className="fl-section fl-history" aria-labelledby="history-heading">
-      <div className="fl-history-toolbar">
-        <h2 id="history-heading" className="fl-section-label">
-          Local history
-        </h2>
-        {entries.length > 0 ? (
-          <button
-            type="button"
-            className="fl-link-btn"
-            disabled={busy === 'clear-history'}
-            onClick={() => void runHistoryAction('clear-history', clearAllHistory)}
-          >
-            Clear all
-          </button>
-        ) : null}
-      </div>
-
-      {loading ? <p className="fl-card-desc">Loading history…</p> : null}
-
-      {!loading && entries.length === 0 ? (
-        <p className="fl-history-empty">No history yet. Successful corrections, translations, and layout fixes appear here.</p>
-      ) : null}
-
-      <ul className="fl-history-list">
-        {entries.map((entry) => {
-          const meta = historyMetaLine(entry)
-          return (
-            <li key={entry.id} className="fl-history-item">
-              <div className="fl-history-item-head">
-                <strong>{operationLabel(entry.operation)}</strong>
-                <time dateTime={new Date(entry.timestamp).toISOString()}>
-                  {formatHistoryTimestamp(entry.timestamp)}
-                </time>
-              </div>
-              {meta ? <p className="fl-history-meta">{meta}</p> : null}
-              <p className="fl-history-diff">
-                <span>{truncateHistoryText(entry.sourceText)}</span>
-                <span aria-hidden> → </span>
-                <span>{truncateHistoryText(entry.resultText)}</span>
-              </p>
-              <button
-                type="button"
-                className="fl-link-btn"
-                disabled={busy === `delete-${entry.id}`}
-                onClick={() => void runHistoryAction(`delete-${entry.id}`, () => deleteHistoryEntry(entry.id))}
-              >
-                Delete
-              </button>
-            </li>
-          )
-        })}
-      </ul>
-    </section>
-  )
-}
-
-type SettingsPanelProps = {
-  status: ExtensionStatus | null
-  busy: string | null
-  groqDraft: string
-  showKeyForm: boolean
-  onGroqDraft: (value: string) => void
-  onShowKeyForm: (value: boolean) => void
-  onMutate: (key: string, fn: () => Promise<ExtensionStatus>, rollback?: () => void) => Promise<void>
-  onStatus: (status: ExtensionStatus) => void
-}
-
-function SettingsPanel({
-  status,
-  busy,
-  groqDraft,
-  showKeyForm,
-  onGroqDraft,
-  onShowKeyForm,
-  onMutate,
-  onStatus,
-}: SettingsPanelProps) {
-  const hasGroqKey = status?.correction.hasGroqKey ?? false
-  const mode = status?.correction.mode ?? 'direct'
-
-  return (
-    <div className="fl-settings">
-      <section className="fl-section">
-        <h2 className="fl-section-label">Writing</h2>
-        <div className="fl-settings-block">
-          <p className="fl-settings-row">
-            <span>Correction mode</span>
-            <select
-              aria-label="Correction mode"
-              value={mode}
-              disabled={busy === 'mode'}
-              onChange={(e) => {
-                const next = e.target.value as 'box' | 'direct'
-                const prev = mode
-                onStatus({
-                  ...(status as ExtensionStatus),
-                  correction: { ...status!.correction, mode: next },
-                })
-                void onMutate(
-                  'mode',
-                  () => patchCorrection({ mode: next }),
-                  () =>
-                    onStatus({
-                      ...(status as ExtensionStatus),
-                      correction: { ...status!.correction, mode: prev },
-                    }),
-                )
-              }}
-            >
-              <option value="direct">Direct edit</option>
-              <option value="box">Suggestion card</option>
-            </select>
-          </p>
-          <p className="fl-settings-row">
-            <span>Highlights</span>
-            <ToggleSwitch
-              id="toggle-highlights"
-              label="Correction highlights"
-              checked={status?.correction.highlights ?? true}
-              busy={busy === 'highlights'}
-              onChange={(next) => {
-                const prev = status?.correction.highlights ?? true
-                onStatus({
-                  ...(status as ExtensionStatus),
-                  correction: { ...status!.correction, highlights: next },
-                })
-                void onMutate(
-                  'highlights',
-                  () => patchCorrection({ highlights: next }),
-                  () =>
-                    onStatus({
-                      ...(status as ExtensionStatus),
-                      correction: { ...status!.correction, highlights: prev },
-                    }),
-                )
-              }}
-            />
-          </p>
-        </div>
-
-        <div className="fl-settings-block">
-          <h3 className="fl-block-title">Writing correction AI</h3>
-          <p className="fl-card-desc">
-            Default: Flowlary managed AI (no Groq account required). Optional BYOK sends correction directly to your Groq key from this browser only.
-          </p>
-          <p className="fl-inline-meta">
-            <span>Mode</span>
-            <strong>{status ? correctionAiLabel({
-              aiProvider: status.correction.aiProvider,
-              aiReady: status.correction.aiReady,
-              hasGroqKey: status.correction.hasGroqKey,
-            }) : '…'}</strong>
-          </p>
-          {status?.correction.aiProvider === 'managed' ? (
-            <button
-              type="button"
-              className="fl-action-btn"
-              disabled={busy === 'byok-mode'}
-              onClick={() => {
-                onShowKeyForm(true)
-                void onMutate('byok-mode', () => patchCorrection({ aiProvider: 'byok' }))
-              }}
-            >
-              Use my Groq key (BYOK)
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="fl-action-btn fl-action-btn-muted"
-              disabled={busy === 'managed-mode'}
-              onClick={() => void onMutate('managed-mode', () => patchCorrection({ aiProvider: 'managed', groqApiKey: '' }))}
-            >
-              Switch to Flowlary managed AI
-            </button>
-          )}
-        </div>
-
-        <div className="fl-settings-block">
-          <h3 className="fl-block-title">Groq API (BYOK only)</h3>
-          <p className="fl-card-desc">
-            Your key stays in the browser. It is never sent to Flowlary servers.
-          </p>
-          <p className="fl-inline-meta">
-            <span>Status</span>
-            <strong>{groqKeyLabel(hasGroqKey)}</strong>
-          </p>
-          {hasGroqKey && !showKeyForm ? (
-            <div className="fl-action-row">
-              <button type="button" className="fl-action-btn" onClick={() => onShowKeyForm(true)}>
-                Change key
-              </button>
-              <button
-                type="button"
-                className="fl-action-btn fl-action-btn-muted"
-                disabled={busy === 'remove-key'}
-                onClick={() =>
-                  void onMutate('remove-key', () => removeGroqKey(), undefined)
-                }
-              >
-                Remove key
-              </button>
-            </div>
-          ) : (
-            <form
-              className="fl-key-form"
-              onSubmit={(e) => {
-                e.preventDefault()
-                if (!groqDraft.trim()) return
-                void onMutate('save-key', () => saveGroqKey(groqDraft), undefined).then(() => {
-                  onGroqDraft('')
-                  onShowKeyForm(false)
-                })
-              }}
-            >
-              <label className="fl-field-label" htmlFor="groq-key-input">
-                API key
-              </label>
-              <input
-                id="groq-key-input"
-                type="password"
-                autoComplete="off"
-                placeholder="gsk_…"
-                value={groqDraft}
-                onChange={(e) => onGroqDraft(e.target.value)}
-              />
-              <button type="submit" className="fl-action-btn" disabled={!groqDraft.trim() || busy === 'save-key'}>
-                Save key
-              </button>
-            </form>
-          )}
-        </div>
-      </section>
-
-      <section className="fl-section">
-        <h2 className="fl-section-label">Translation</h2>
-        <div className="fl-settings-block">
-          <p className="fl-settings-row">
-            <span>Source</span>
-            <select
-              aria-label="Source language"
-              value={status?.translation.sourceLanguage ?? 'ar'}
-              disabled={busy === 'source-lang'}
-              onChange={(e) => {
-                const next = e.target.value
-                const prev = status?.translation.sourceLanguage ?? 'ar'
-                void onMutate(
-                  'source-lang',
-                  () => patchTranslation({ sourceLanguage: next }),
-                  () =>
-                    onStatus({
-                      ...(status as ExtensionStatus),
-                      translation: { ...status!.translation, sourceLanguage: prev },
-                    }),
-                )
-              }}
-            >
-              {SUPPORTED_LANGUAGES.map((lang) => (
-                <option key={lang.code} value={lang.code}>
-                  {lang.name}
-                </option>
-              ))}
-            </select>
-          </p>
-          <p className="fl-settings-row">
-            <span>Target</span>
-            <select
-              aria-label="Target language"
-              value={status?.translation.targetLanguage ?? 'en'}
-              disabled={busy === 'target-lang'}
-              onChange={(e) => {
-                const next = e.target.value
-                const prev = status?.translation.targetLanguage ?? 'en'
-                void onMutate(
-                  'target-lang',
-                  () => patchTranslation({ targetLanguage: next }),
-                  () =>
-                    onStatus({
-                      ...(status as ExtensionStatus),
-                      translation: { ...status!.translation, targetLanguage: prev },
-                    }),
-                )
-              }}
-            >
-              {SUPPORTED_LANGUAGES.map((lang) => (
-                <option key={lang.code} value={lang.code}>
-                  {lang.name}
-                </option>
-              ))}
-            </select>
-          </p>
-        </div>
-      </section>
-
-      <section className="fl-section">
-        <h2 className="fl-section-label">Keyboard layout</h2>
-        <div className="fl-settings-block">
-          <p className="fl-settings-row">
-            <span>Manual shortcut</span>
-            <ToggleSwitch
-              id="toggle-layout-shortcut"
-              label="Layout shortcut"
-              checked={status?.layout.directShortcutEnabled ?? true}
-              busy={busy === 'layout-shortcut'}
-              onChange={(next) => {
-                const prev = status?.layout.directShortcutEnabled ?? true
-                onStatus({
-                  ...(status as ExtensionStatus),
-                  layout: { ...status!.layout, directShortcutEnabled: next },
-                })
-                void onMutate(
-                  'layout-shortcut',
-                  () => patchLayout({ directShortcutEnabled: next }),
-                  () =>
-                    onStatus({
-                      ...(status as ExtensionStatus),
-                      layout: { ...status!.layout, directShortcutEnabled: prev },
-                    }),
-                )
-              }}
-            />
-          </p>
-        </div>
-      </section>
-
-      <section className="fl-section">
-        <h2 className="fl-section-label">Privacy</h2>
-        <div className="fl-privacy">
-          <p>Flowlary runs primarily in your browser. Protected fields like passwords are blocked.</p>
-          <p>Correction uses Flowlary managed AI by default, or your own Groq key (BYOK). Translation and layout classification use the Flowlary API. Layout remapping stays local-first.</p>
-          <p>Your writing is not collected for analytics.</p>
-        </div>
-      </section>
     </div>
   )
 }

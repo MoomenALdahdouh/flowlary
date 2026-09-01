@@ -7,7 +7,6 @@
     { "id": "de-qwertz", "language": "de", "name": "German QWERTZ" },
     { "id": "fr-azerty", "language": "fr", "name": "French AZERTY" },
     { "id": "tr-q", "language": "tr", "name": "Turkish Q" },
-    { "id": "he-standard", "language": "he", "name": "Hebrew" },
     { "id": "el-standard", "language": "el", "name": "Greek" },
     { "id": "es-latam", "language": "es", "name": "Spanish Latin American" },
     { "id": "it-standard", "language": "it", "name": "Italian" },

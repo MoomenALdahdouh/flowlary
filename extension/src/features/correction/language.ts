@@ -271,11 +271,10 @@ export function isNonEnglishWriting(text: string): boolean {
   );
 }
 
-/** Gate for showing the correction UI at all — English / Latin drafts only. */
+/** Gate for showing the correction UI — English / Latin drafts on the active writing segment. */
 export function shouldShowEnglishAssistant(text: string): boolean {
   const trimmed = text.trim();
   if (!trimmed) return false;
-  if (trimmed.length > CORRECTION_DEFAULTS.MAX_ASSIST_CHARS) return false;
   if (hasDominantNonLatinScript(trimmed)) return false;
   if (isNonEnglishWriting(trimmed)) return false;
   // Must contain Latin letters (English alphabet)
@@ -285,7 +284,7 @@ export function shouldShowEnglishAssistant(text: string): boolean {
 export function isEligibleForCorrection(text: string): boolean {
   const trimmed = text.trim();
   if (!trimmed) return false;
-  if (trimmed.length > CORRECTION_DEFAULTS.MAX_ASSIST_CHARS) return false;
+  if (trimmed.length > CORRECTION_DEFAULTS.MAX_CORRECTION_CHARS) return false;
   if (!shouldShowEnglishAssistant(trimmed)) return false;
   const words = trimmed.match(LATIN_WORD) ?? [];
   if (trimmed.length < CORRECTION_DEFAULTS.MIN_CHARS && words.length < CORRECTION_DEFAULTS.MIN_WORDS) return false;

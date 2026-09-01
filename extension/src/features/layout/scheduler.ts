@@ -22,8 +22,11 @@ import { applyLayoutFix } from './fixCurrentText.ts'
 import type { LayoutClassifier } from './classifier/LayoutClassifier.ts'
 import type { SpeedBox } from './speedBox.ts'
 import type { LayoutMetrics } from './metrics.ts'
-
-const TRIGGER_KEYS = new Set([' ', 'Enter', 'Tab'])
+import { allowAutomaticNetworkAssist } from '../../core/policy/writingPolicy.ts'
+import {
+  fieldKindFromElement,
+  recordWriteTelemetry,
+} from '../../core/observability/writeTelemetry.ts'
 
 export type LayoutSchedulerOptions = {
   engine: InputEngine
@@ -41,30 +44,10 @@ export class LayoutScheduler {
 
   start(): void {
     if (this.unsubscribe) return
+    // Speed Box escape only. Auto layout writes go through the enforce pipeline.
     this.unsubscribe = this.options.engine.eventBus.subscribe((event) => {
-      if (this.options.getSpeedBox().isOpen()) return
-
-      if (event.type === 'keydown') {
-        if (event.key === 'Escape') {
-          this.options.getSpeedBox().handleEscape()
-        }
-        if (event.key === 'Enter' || event.key === 'Tab') {
-          this.evaluate(event.target, true)
-        }
-      }
-
-      if (event.type === 'keyup' && TRIGGER_KEYS.has(event.key)) {
-        this.evaluate(event.target, event.key !== ' ')
-      }
-
-      if (event.type === 'input') {
-        const inputType = event.inputType
-        if (inputType === 'insertFromPaste' || inputType === 'insertFromDrop') return
-        if (inputType === 'insertLineBreak') this.evaluate(event.target, false)
-      }
-
-      if (event.type === 'focus-out') {
-        this.evaluate(event.target, true)
+      if (event.type === 'keydown' && event.key === 'Escape') {
+        this.options.getSpeedBox().handleEscape()
       }
     })
   }
@@ -75,21 +58,8 @@ export class LayoutScheduler {
   }
 
   private shouldRun(element: Element): element is EditableElement {
-    if (!stateManager.isActive() || !stateManager.layout.autoEnabled) return false
-    if (!isEditableElement(element)) return false
-    const text = readFieldText(element)
-    const safety = evaluateFieldSafety(element, {
-      hostname: typeof location !== 'undefined' ? location.hostname : undefined,
-      excludedDomains: stateManager.settings.excludedDomains,
-      text,
-    })
-    if (!safety.allowed) {
-      this.options.metrics.layout_blocked += 1
-      return false
-    }
-    const session = this.options.engine.sessions.get(element)
-    if (session?.isComposing()) return false
-    return true
+    void element
+    return false
   }
 
   private evaluate(element: Element | null | undefined, finalizeAll: boolean): void {
@@ -101,6 +71,16 @@ export class LayoutScheduler {
     const generation = session.getGeneration()
 
     this.applyLocalFixes(element, session, profile, personalExceptions, finalizeAll, generation)
+    if (!allowAutomaticNetworkAssist()) {
+      recordWriteTelemetry({
+        capability: 'layout',
+        trigger: 'auto',
+        outcome: 'skipped',
+        reasonCodes: ['shortcuts_only'],
+        fieldKind: fieldKindFromElement(element),
+      })
+      return
+    }
     void this.evaluateRemote(
       element,
       session,

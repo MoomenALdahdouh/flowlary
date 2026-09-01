@@ -34,6 +34,12 @@ export function getCorrectCoalescer() {
   return correctCoalescer
 }
 
+/** Drop in-flight coalesced AI work on account switch so B cannot join A's promise. */
+export function resetAiRequestCoalescers(): void {
+  translateCoalescer.reset()
+  correctCoalescer.reset()
+}
+
 export async function initializeFlowlaryCache(storage = flowlaryStorage): Promise<void> {
   await getFlowlaryCache(storage).initialize()
 }

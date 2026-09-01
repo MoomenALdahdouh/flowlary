@@ -5,6 +5,7 @@ import {
   CACHE_TTL_MS,
   isValidAiResponseLength,
   normalizeCacheText,
+  predictClientTranslationStrategy,
 } from '@flowlary/shared'
 import {
   getCacheMetrics,
@@ -14,11 +15,11 @@ import {
 import { getEntitlementService } from '../entitlement/service.ts'
 import { flowlaryStorage, getEntitlement, resolveEntitlementStatus } from '../storage/index.ts'
 import { FLOWLARY_API_BASE } from '../config/endpoints.ts'
-import {
-  buildFlowlaryApiHeaders,
-  ensureInstallAuth,
-  resolveEntitlementHeader,
-} from '../config/auth.ts'
+import { prepareManagedAiRequest } from '../config/auth.ts'
+import { maybeSyncServerEntitlement } from '../config/accountAuth.ts'
+import { stateManager } from '../core/state/StateManager.ts'
+import { isCorrectionAiReady } from '../features/correction/readiness.ts'
+import { activeAccountContext } from '../storage/activeAccountContext.ts'
 
 export type TranslateTextRequest = {
   type: 'TRANSLATE_TEXT'
@@ -38,15 +39,20 @@ export type TranslateTextResponse =
     }
   | { type: 'TRANSLATE_TEXT_ERROR'; ok: false; code: string }
 
-function mapHttpFailure(status: number): string {
-  if (status === 401 || status === 403) return 'license'
-  if (status === 429) return 'rate-limited'
+function mapHttpFailure(status: number, code?: string): string {
+  if (code === 'AI_AUTH_FAILED' || status === 401) return 'auth_failed'
+  if (code === 'AI_RATE_LIMITED' || status === 429) return 'rate_limited'
+  if (code === 'AI_ENTITLEMENT_DENIED' || status === 403) return 'usage_exhausted'
   return 'upstream'
 }
 
 export async function handleTranslateText(
   message: TranslateTextRequest,
 ): Promise<TranslateTextResponse> {
+  if (!isCorrectionAiReady(stateManager.correction)) {
+    return { type: 'TRANSLATE_TEXT_ERROR', ok: false, code: 'consent_required' }
+  }
+
   const blocked = canTranslateRequest({
     sourceLanguage: message.sourceLanguage,
     targetLanguage: message.targetLanguage,
@@ -68,6 +74,13 @@ export async function handleTranslateText(
     }
   }
 
+  const plan = resolveEntitlementStatus(await getEntitlement(flowlaryStorage))
+  const translationStrategy = predictClientTranslationStrategy({
+    plan,
+    mode: message.mode,
+  })
+
+  const accountSnapshot = activeAccountContext.snapshot()
   const cache = getFlowlaryCache()
   await cache.initialize()
   const cacheKey = cache.buildKey({
@@ -75,6 +88,8 @@ export async function handleTranslateText(
     text: normalizeCacheText('TRANSLATE', message.text),
     sourceLanguage: message.sourceLanguage,
     targetLanguage: message.targetLanguage,
+    translationStrategy,
+    accountId: accountSnapshot.accountId,
   })
   const cached = await cache.getWithL2<string>(cacheKey)
   if (cached) {
@@ -104,11 +119,11 @@ export async function handleTranslateText(
 
     getCacheMetrics().ai_requests_translate += 1
     try {
-      const entitlement = resolveEntitlementStatus(await getEntitlement(flowlaryStorage))
-      const auth = await ensureInstallAuth(flowlaryStorage)
+      await maybeSyncServerEntitlement(flowlaryStorage)
+      const headers = await prepareManagedAiRequest(flowlaryStorage)
       const response = await fetch(`${FLOWLARY_API_BASE}/api/ai/translation`, {
         method: 'POST',
-        headers: buildFlowlaryApiHeaders(auth, resolveEntitlementHeader(entitlement)),
+        headers,
         body: JSON.stringify({
           text: message.text,
           source_language: message.sourceLanguage,
@@ -118,10 +133,17 @@ export async function handleTranslateText(
       })
 
       if (!response.ok) {
+        let code: string | undefined
+        try {
+          const errBody = (await response.json()) as { error?: { code?: string } }
+          code = errBody.error?.code
+        } catch {
+          /* ignore */
+        }
         return {
           type: 'TRANSLATE_TEXT_ERROR',
           ok: false,
-          code: response.status === 0 ? 'network' : mapHttpFailure(response.status),
+          code: response.status === 0 ? 'network' : mapHttpFailure(response.status, code),
         }
       }
 
@@ -137,6 +159,10 @@ export async function handleTranslateText(
       }
 
       const normalized = String(translation).trim()
+      // Drop result if the active account changed mid-request (Phase 2 isolation).
+      if (!activeAccountContext.matches(accountSnapshot)) {
+        return { type: 'TRANSLATE_TEXT_ERROR', ok: false, code: 'account_changed' }
+      }
       cache.setWithL2(cacheKey, normalized, 'TRANSLATE', CACHE_TTL_MS.TRANSLATE)
       return {
         type: 'TRANSLATE_TEXT_RESULT',
@@ -145,7 +171,15 @@ export async function handleTranslateText(
         sourceLanguage: message.sourceLanguage,
         targetLanguage: message.targetLanguage,
       }
-    } catch {
+    } catch (err) {
+      if (err instanceof Error) {
+        if (err.message === 'account_required') {
+          return { type: 'TRANSLATE_TEXT_ERROR', ok: false, code: 'account_required' }
+        }
+        if (err.message === 'auth_failed') {
+          return { type: 'TRANSLATE_TEXT_ERROR', ok: false, code: 'auth_failed' }
+        }
+      }
       return { type: 'TRANSLATE_TEXT_ERROR', ok: false, code: 'network' }
     }
   }) as Promise<TranslateTextResponse>

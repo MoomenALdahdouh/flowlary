@@ -7,13 +7,9 @@ import {
 } from '../features/layout/layouts/index.ts'
 
 import { FLOWLARY_API_BASE } from '../config/endpoints.ts'
-import {
-  buildFlowlaryApiHeaders,
-  ensureInstallAuth,
-  resolveEntitlementHeader,
-} from '../config/auth.ts'
+import { prepareManagedAiRequest } from '../config/auth.ts'
 import { getEntitlementService } from '../entitlement/service.ts'
-import { flowlaryStorage, getEntitlement, resolveEntitlementStatus } from '../storage/index.ts'
+import { flowlaryStorage } from '../storage/index.ts'
 
 export type CheckWordRequest = {
   type: 'CHECK_WORD'
@@ -65,11 +61,10 @@ export async function handleCheckWord(message: CheckWordRequest): Promise<CheckW
       return { type: 'CHECK_WORD_ERROR', reason: 'entitlement_denied' }
     }
 
-    const entitlementStatus = resolveEntitlementStatus(await getEntitlement(flowlaryStorage))
-    const auth = await ensureInstallAuth(flowlaryStorage)
+    const headers = await prepareManagedAiRequest(flowlaryStorage)
     const response = await fetch(`${FLOWLARY_API_BASE}/api/ai/layout-classification`, {
       method: 'POST',
-      headers: buildFlowlaryApiHeaders(auth, resolveEntitlementHeader(entitlementStatus)),
+      headers,
       body: JSON.stringify({
         word,
         context: message.context,

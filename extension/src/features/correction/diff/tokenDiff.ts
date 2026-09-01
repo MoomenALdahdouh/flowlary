@@ -180,3 +180,88 @@ export function buildHighlightedTokens(
   }
   return mergeAdjacent(out)
 }
+
+export function markedText(tokens: DiffToken[]): string {
+  return tokens.filter((t) => t.type !== 'equal').map((t) => t.value).join('')
+}
+
+function classifyHistoryChange(original: string, corrected: string): ChangeType {
+  const o = original.trim()
+  const c = corrected.trim()
+  if (!o || !c) return 'grammar'
+  if (/^[A-Za-z]+$/.test(o) && /^[A-Za-z]+$/.test(c)) {
+    const maxLen = Math.max(o.length, c.length)
+    const minLen = Math.min(o.length, c.length)
+    if (maxLen <= 12 && minLen >= maxLen - 3) return 'spelling'
+    return 'wording'
+  }
+  if (/^[^\sA-Za-z0-9]+$/.test(c) || /^[^\sA-Za-z0-9]+$/.test(o)) return 'grammar'
+  if (o.toLowerCase() === c.toLowerCase()) return 'grammar'
+  return 'grammar'
+}
+
+/**
+ * History UI diff: keeps removals (wrongs) and additions (fixes) so activity
+ * can strikethrough mistakes and highlight corrections inline, including
+ * character-level spelling edits when both sides are single words.
+ */
+export function buildHistoryDiffTokens(
+  original: string,
+  corrected: string,
+  changes: CorrectionChange[] = [],
+): DiffToken[] {
+  const a = tokenize(original)
+  const b = tokenize(corrected)
+  const n = a.length
+  const m = b.length
+  const dp = lcsTable(a, b)
+
+  const raw: DiffToken[] = []
+  let i = 0
+  let j = 0
+  while (i < n && j < m) {
+    if (a[i] === b[j]) {
+      raw.push({ value: b[j]!, type: 'equal' })
+      i++
+      j++
+    } else if (dp[i + 1]![j]! >= dp[i]![j + 1]!) {
+      raw.push({ value: a[i]!, type: 'delete' })
+      i++
+    } else {
+      raw.push({ value: b[j]!, type: 'insert', changeType: 'wording' })
+      j++
+    }
+  }
+  while (i < n) {
+    raw.push({ value: a[i++]!, type: 'delete' })
+  }
+  while (j < m) {
+    raw.push({ value: b[j++]!, type: 'insert', changeType: 'wording' })
+  }
+
+  const out: DiffToken[] = []
+  for (let k = 0; k < raw.length; k++) {
+    const cur = raw[k]!
+    const next = raw[k + 1]
+    if (cur.type === 'delete' && next?.type === 'insert') {
+      const changeType =
+        findChangeType(cur.value, changes) ??
+        findChangeType(next.value, changes) ??
+        classifyHistoryChange(cur.value, next.value)
+      out.push({ value: cur.value, type: 'delete', changeType })
+      out.push({ value: next.value, type: 'insert', changeType })
+      k++
+      continue
+    }
+    if (cur.type === 'insert') {
+      out.push({ ...cur, changeType: cur.changeType ?? 'grammar' })
+      continue
+    }
+    if (cur.type === 'delete') {
+      out.push({ ...cur, changeType: cur.changeType ?? 'spelling' })
+      continue
+    }
+    out.push(cur)
+  }
+  return mergeAdjacent(out)
+}

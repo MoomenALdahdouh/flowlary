@@ -1,7 +1,6 @@
 import type { InputEngine } from '../../core/input/InputEngine.ts'
 import { isEditableElement } from '../../core/dom/read.ts'
 import type { EditableElement } from '../../core/dom/types.ts'
-import { stateManager } from '../../core/state/StateManager.ts'
 import type { TranslationEngine } from './engine.ts'
 import {
   runLiveTranslation,
@@ -27,28 +26,7 @@ export class TranslationScheduler {
   constructor(private options: TranslationSchedulerOptions) {}
 
   start(): void {
-    if (this.unsubscribe) return
-    this.unsubscribe = this.options.engine.eventBus.subscribe((event) => {
-      if (!this.isLiveEnabled()) return
-
-      if (event.type === 'input') {
-        if (event.origin !== 'USER' || event.composing) return
-        this.options.metrics.translation_live_events += 1
-        this.schedule(event.target as EditableElement)
-        return
-      }
-
-      if (event.type === 'composition-end') {
-        this.options.metrics.translation_live_events += 1
-        this.schedule(event.target as EditableElement)
-        return
-      }
-
-      if (event.type === 'keydown' && event.key === 'Enter') {
-        this.options.metrics.translation_live_events += 1
-        this.schedule(event.target as EditableElement)
-      }
-    })
+    // Retired as an EventBus writer. Live translation runs in the enforce pipeline.
   }
 
   stop(): void {
@@ -77,7 +55,7 @@ export class TranslationScheduler {
   }
 
   private isLiveEnabled(): boolean {
-    return stateManager.isActive() && stateManager.translation.liveEnabled
+    return false
   }
 
   private cancelPending(): void {

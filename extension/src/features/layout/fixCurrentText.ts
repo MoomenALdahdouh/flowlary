@@ -1,6 +1,6 @@
 import type { EditableElement } from '../../core/dom/types.ts'
 import { readCaret, readFieldText, readSelectionRange } from '../../core/dom/read.ts'
-import { writeReplacement } from '../../core/dom/editor.ts'
+import { commitWriteTransaction } from '../../core/writeGate/writeGate.ts'
 import type { FieldSession } from '../../core/session/FieldSession.ts'
 import {
   canCommitMismatch,
@@ -9,12 +9,22 @@ import {
   type FieldFix,
   type UserLayoutProfile,
 } from './layouts/index.ts'
+import { applyLayoutSpansToText, inferLayoutSpans } from '../../core/engine/layoutSequence.ts'
 import { isExceptedToken } from './profile/exceptions.ts'
 import { isInsideMarkdownCode, isSafeToken, tokenizeText } from '../../core/safety/index.ts'
 import type { LayoutClassifier } from './classifier/LayoutClassifier.ts'
 import type { LayoutMetrics } from './metrics.ts'
 import type { HistoryMode } from '../../storage/history/types.ts'
 import { recordHistory } from '../../storage/history/record.ts'
+import { allowsAutomaticFieldWrite } from '../../core/safety/autoWrite.ts'
+import {
+  fieldKindFromElement,
+  recordWriteTelemetry,
+} from '../../core/observability/writeTelemetry.ts'
+import {
+  buildLayoutLearningBatchId,
+  recordLayoutLearningAccepted,
+} from '../learning/recordLayoutLearning.ts'
 
 export type FixTarget = {
   start: number
@@ -45,6 +55,20 @@ export function planShortcutFixes(
   target: FixTarget,
   personalExceptions: readonly string[] = [],
 ): FieldFix[] {
+  const inferred = inferLayoutSpans(text, undefined, { commitOpenToken: true })
+  const { applied } = applyLayoutSpansToText(text, inferred, { includeMedium: true })
+  const fromEngine = applied
+    .filter((span) => span.range.start >= target.start && span.range.end <= target.end)
+    .map((span) => ({
+      start: span.range.start,
+      end: span.range.end,
+      word: text.slice(span.range.start, span.range.end),
+      corrected: span.replacement,
+      sourceLayout: span.sourceLayout,
+      targetLayout: span.targetLayout,
+    }))
+    .filter((fix) => !isExceptedToken(fix.word, personalExceptions))
+  if (fromEngine.length > 0) return fromEngine
   return planFieldFixes(text, profile, {
     finalizeAll: true,
     personalExceptions,
@@ -118,15 +142,93 @@ export function applyLayoutFix(
   fix: FieldFix,
   generation: number,
   requestId?: number,
-  options: { placeCaretAfter?: boolean; historyMode?: HistoryMode } = {},
+  options: {
+    placeCaretAfter?: boolean
+    historyMode?: HistoryMode
+    sampleText?: string
+    learningBatchId?: string
+  } = {},
 ): boolean {
-  const result = writeReplacement(element, fix.start, fix.end, fix.corrected, {
+  const automatic = options.historyMode === 'automatic'
+  let lockId = requestId
+  let lockGeneration = generation
+  let acquiredLocal = false
+
+  if (lockId === undefined) {
+    const acquired = session.tryAcquireWrite('FIX_LAYOUT')
+    if (!acquired.ok) {
+      recordWriteTelemetry({
+        capability: 'layout',
+        trigger: automatic ? 'auto' : 'shortcut',
+        outcome: 'blocked',
+        reasonCodes: [acquired.reason === 'composing' ? 'composing' : 'mutex_busy'],
+        fieldKind: fieldKindFromElement(element),
+        composing: session.isComposing(),
+        rangeLength: fix.end - fix.start,
+      })
+      return false
+    }
+    lockId = acquired.requestId
+    lockGeneration = acquired.generation
+    acquiredLocal = true
+  }
+
+  const result = commitWriteTransaction(element, fix.start, fix.end, fix.corrected, {
     origin: 'FIX_LAYOUT',
     session,
-    requestId,
-    expectedGeneration: generation,
+    requestId: lockId,
+    expectedGeneration: lockGeneration,
+    cycleGeneration: lockGeneration,
     placeCaretAfter: options.placeCaretAfter,
+    auto: automatic,
+    capability: 'layout',
+    trigger: automatic ? 'auto' : 'shortcut',
+    textOrigin: 'layout_mismatch_suspected',
+    action: 'layout_fix',
   })
+
+  if (acquiredLocal) {
+    session.releaseWrite('FIX_LAYOUT', lockId)
+  }
+
+  recordWriteTelemetry({
+    capability: 'layout',
+    trigger: automatic ? 'auto' : 'shortcut',
+    outcome:
+      result.verdict === 'written'
+        ? 'applied'
+        : result.verdict === 'stale'
+          ? 'stale'
+          : 'blocked',
+    reasonCodes:
+      result.verdict === 'written'
+        ? ['written']
+        : [
+            result.reason === 'unsupported_editor'
+              ? 'unsupported_editor_auto_write'
+              : result.reason === 'mutex'
+                ? 'mutex_busy'
+                : result.reason === 'stale-generation'
+                  ? 'stale_generation'
+                  : result.reason === 'stale-request'
+                    ? 'stale_request'
+                    : result.reason === 'composing'
+                      ? 'composing'
+                      : result.reason === 'shortcuts_only'
+                        ? 'shortcuts_only'
+                        : result.reason === 'aborted'
+                          ? 'aborted'
+                          : 'text_mismatch',
+          ],
+    fieldKind: fieldKindFromElement(element),
+    composing: session.isComposing(),
+    rangeLength: fix.end - fix.start,
+  })
+
+  if (automatic && !allowsAutomaticFieldWrite(element) && result.verdict !== 'written') {
+    return false
+  }
+
   if (result.verdict === 'written' && options.historyMode) {
     void recordHistory({
       operation: 'FIX_LAYOUT',
@@ -139,6 +241,18 @@ export function applyLayoutFix(
         targetLayout: fix.targetLayout,
       },
     })
+    if (
+      options.historyMode === 'manual' &&
+      options.sampleText &&
+      options.learningBatchId
+    ) {
+      recordLayoutLearningAccepted(
+        options.learningBatchId,
+        options.sampleText,
+        fix.word,
+        fix.corrected,
+      )
+    }
   }
   return result.verdict === 'written'
 }
@@ -153,6 +267,8 @@ export type FixCurrentTextOptions = {
   signal: AbortSignal
   classifier: LayoutClassifier
   metrics: LayoutMetrics
+  rangeStart?: number
+  rangeEnd?: number
 }
 
 export async function fixCurrentText(
@@ -168,10 +284,15 @@ export async function fixCurrentText(
     signal,
     classifier,
     metrics,
+    rangeStart,
+    rangeEnd,
   } = options
 
   const text = readFieldText(element)
-  const selection = readSelectionRange(element)
+  const selection =
+    rangeStart != null && rangeEnd != null
+      ? { start: rangeStart, end: rangeEnd }
+      : readSelectionRange(element)
   if (!selection) return { applied: false }
 
   const target = resolveFixTarget(text, selection.start, selection.end)
@@ -179,6 +300,7 @@ export async function fixCurrentText(
 
   const shortcutSession = captureShortcutSession(element, profile, selection, generation)
   const local = planShortcutFixes(text, profile, target, personalExceptions)
+  const learningBatchId = buildLayoutLearningBatchId(requestId)
   let applied = false
 
   for (const fix of [...local].sort((a, b) => b.start - a.start)) {
@@ -187,10 +309,20 @@ export async function fixCurrentText(
       metrics.layout_stale_results += 1
       return { applied, stale: true }
     }
-    if (!canCommitMismatch(profile, fix.word, fix.targetLayout, fix.corrected, text)) {
+    if (
+      !/\s/.test(fix.word)
+      && !canCommitMismatch(profile, fix.word, fix.targetLayout, fix.corrected, text)
+    ) {
       continue
     }
-    if (applyLayoutFix(element, session, fix, generation, requestId, { placeCaretAfter: true, historyMode: 'manual' })) {
+    if (
+      applyLayoutFix(element, session, fix, generation, requestId, {
+        placeCaretAfter: true,
+        historyMode: 'manual',
+        sampleText: text,
+        learningBatchId,
+      })
+    ) {
       applied = true
     }
   }
@@ -249,7 +381,14 @@ export async function fixCurrentText(
       targetLayout: result.verdict.targetLayout,
     }
 
-    if (applyLayoutFix(element, session, fix, generation, requestId, { placeCaretAfter: true, historyMode: 'manual' })) {
+    if (
+      applyLayoutFix(element, session, fix, generation, requestId, {
+        placeCaretAfter: true,
+        historyMode: 'manual',
+        sampleText: text,
+        learningBatchId,
+      })
+    ) {
       applied = true
     }
   }

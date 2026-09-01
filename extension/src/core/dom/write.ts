@@ -1,4 +1,5 @@
 import { adjustCaret } from './caret.ts'
+import { isSimpleContentEditable } from './editorHost.ts'
 import {
   isValueEditable,
   mapOffsetToNode,
@@ -80,7 +81,7 @@ function restoreValueCaret(
   replacementLength: number,
   options?: CommitOptions,
 ): void {
-  const nextCaret = options?.placeCaretAfter
+  let nextCaret = options?.placeCaretAfter
     ? snapshot.wordStart + replacementLength
     : adjustCaret(
         element.selectionStart ?? snapshot.caret,
@@ -88,6 +89,11 @@ function restoreValueCaret(
         snapshot.wordEnd,
         replacementLength,
       )
+  if (!options?.placeCaretAfter && snapshot.caret >= snapshot.wordEnd) {
+    let index = snapshot.wordStart + replacementLength
+    while (index < element.value.length && /\s/.test(element.value[index]!)) index += 1
+    if (index > snapshot.wordStart + replacementLength) nextCaret = index
+  }
   const clamped = Math.max(0, Math.min(nextLength, nextCaret))
   element.setSelectionRange(clamped, clamped)
 }
@@ -98,7 +104,7 @@ function restoreContentCaret(
   replacementLength: number,
   options?: CommitOptions,
 ): void {
-  const nextCaret = options?.placeCaretAfter
+  let nextCaret = options?.placeCaretAfter
     ? snapshot.wordStart + replacementLength
     : adjustCaret(
         readCaret(element) ?? snapshot.caret,
@@ -106,7 +112,14 @@ function restoreContentCaret(
         snapshot.wordEnd,
         replacementLength,
       )
-  const point = mapOffsetToNode(element, nextCaret)
+  if (!options?.placeCaretAfter && snapshot.caret >= snapshot.wordEnd) {
+    const text = readFieldText(element)
+    let index = snapshot.wordStart + replacementLength
+    while (index < text.length && /\s/.test(text[index]!)) index += 1
+    if (index > snapshot.wordStart + replacementLength) nextCaret = index
+  }
+  const clamped = Math.max(0, Math.min(readFieldText(element).length, nextCaret))
+  const point = mapOffsetToNode(element, clamped)
   if (!point) return
   const range = document.createRange()
   range.setStart(point.node, point.offset)
@@ -130,8 +143,26 @@ function writeValue(
 
   writing = true
   try {
-    setNativeValue(snapshot.element, next)
-    snapshot.element.dispatchEvent(
+    const field = snapshot.element
+    field.focus()
+    try {
+      field.setSelectionRange(snapshot.wordStart, snapshot.wordEnd)
+    } catch {
+      /* some input types reject ranges */
+    }
+    const inserted =
+      typeof document !== 'undefined'
+      && typeof document.execCommand === 'function'
+      && document.execCommand('insertText', false, replacement)
+    if (!inserted || field.value !== next) {
+      if (typeof field.setRangeText === 'function') {
+        field.setRangeText(replacement, snapshot.wordStart, snapshot.wordEnd, 'end')
+      }
+      if (field.value !== next) {
+        setNativeValue(field, next)
+      }
+    }
+    field.dispatchEvent(
       new InputEvent('input', {
         bubbles: true,
         composed: true,
@@ -140,9 +171,9 @@ function writeValue(
       }),
     )
     restoreValueCaret(
-      snapshot.element,
+      field,
       snapshot,
-      next.length,
+      field.value.length,
       replacement.length,
       options,
     )
@@ -150,6 +181,46 @@ function writeValue(
     writing = false
   }
   return 'written'
+}
+
+function expectedReplacedText(text: string, start: number, end: number, replacement: string): string {
+  return text.slice(0, start) + replacement + text.slice(end)
+}
+
+function selectLogicalRange(element: HTMLElement, start: number, end: number): boolean {
+  const startPoint = mapOffsetToNode(element, start)
+  const endPoint = mapOffsetToNode(element, end)
+  if (!startPoint || !endPoint) return false
+  const range = document.createRange()
+  range.setStart(startPoint.node, startPoint.offset)
+  range.setEnd(endPoint.node, endPoint.offset)
+  const selection = window.getSelection()
+  selection?.removeAllRanges()
+  selection?.addRange(range)
+  return true
+}
+
+function spliceContentEditableRange(
+  element: HTMLElement,
+  start: number,
+  end: number,
+  replacement: string,
+): boolean {
+  const startPoint = mapOffsetToNode(element, start)
+  const endPoint = mapOffsetToNode(element, end)
+  if (!startPoint || !endPoint) return false
+  if (startPoint.node === endPoint.node) {
+    const node = startPoint.node
+    node.data = node.data.slice(0, startPoint.offset) + replacement + node.data.slice(endPoint.offset)
+    return true
+  }
+  const range = document.createRange()
+  range.setStart(startPoint.node, startPoint.offset)
+  range.setEnd(endPoint.node, endPoint.offset)
+  range.deleteContents()
+  range.insertNode(document.createTextNode(replacement))
+  element.normalize()
+  return true
 }
 
 function writeContentEditable(
@@ -162,18 +233,46 @@ function writeContentEditable(
     return 'discarded'
   }
 
-  const start = mapOffsetToNode(element, snapshot.wordStart)
-  const end = mapOffsetToNode(element, snapshot.wordEnd)
-  if (!start || !end) return 'discarded'
+  const current = readFieldText(element)
+  const next = expectedReplacedText(current, snapshot.wordStart, snapshot.wordEnd, replacement)
+  if (
+    !isSimpleContentEditable(element)
+    && (
+      !mapOffsetToNode(element, snapshot.wordStart)
+      || !mapOffsetToNode(element, snapshot.wordEnd)
+    )
+  ) {
+    return 'discarded'
+  }
 
   writing = true
   try {
-    const range = document.createRange()
-    range.setStart(start.node, start.offset)
-    range.setEnd(end.node, end.offset)
-    range.deleteContents()
-    range.insertNode(document.createTextNode(replacement))
-    element.normalize()
+    element.focus()
+    let wrote = false
+    if (
+      selectLogicalRange(element, snapshot.wordStart, snapshot.wordEnd)
+      && typeof document.execCommand === 'function'
+    ) {
+      wrote = document.execCommand('insertText', false, replacement)
+    }
+    if (!wrote || readFieldText(element) !== next) {
+      spliceContentEditableRange(element, snapshot.wordStart, snapshot.wordEnd, replacement)
+    }
+    if (readFieldText(element) !== next && isSimpleContentEditable(element)) {
+      element.textContent = next
+    }
+    if (readFieldText(element) !== next) {
+      if (isSimpleContentEditable(element)) element.textContent = current
+      return 'discarded'
+    }
+    element.dispatchEvent(
+      new InputEvent('input', {
+        bubbles: true,
+        composed: true,
+        inputType: 'insertReplacementText',
+        data: replacement,
+      }),
+    )
     restoreContentCaret(element, snapshot, replacement.length, options)
   } finally {
     writing = false

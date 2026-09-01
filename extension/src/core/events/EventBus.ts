@@ -55,6 +55,13 @@ export type NormalizedInputEvent =
       origin: WriteOrigin
     }
   | {
+      type: 'composition-update'
+      target: Element
+      session?: FieldSession
+      composing: true
+      origin: WriteOrigin
+    }
+  | {
       type: 'composition-end'
       target: Element
       session?: FieldSession
@@ -99,5 +106,6 @@ export const OWNED_DOCUMENT_EVENTS = [
   'keydown',
   'keyup',
   'compositionstart',
+  'compositionupdate',
   'compositionend',
 ] as const

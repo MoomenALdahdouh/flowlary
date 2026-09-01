@@ -1,6 +1,7 @@
 import { evaluateFieldSafety, isInsideMarkdownCode } from '../../core/safety/index.ts'
 import { readCaret, readFieldText } from '../../core/dom/read.ts'
-import { writeReplacement } from '../../core/dom/editor.ts'
+import { commitWriteTransaction } from '../../core/writeGate/writeGate.ts'
+import { resolveWritingPolicy } from '../../core/policy/writingPolicy.ts'
 import type { EditableElement } from '../../core/dom/types.ts'
 import type { FieldSession } from '../../core/session/FieldSession.ts'
 import { stateManager } from '../../core/state/StateManager.ts'
@@ -13,6 +14,12 @@ import type { LanguageCode, TranslationTicket } from './types.ts'
 import { MAX_TRANSLATION_CHARS } from './types.ts'
 import { DEFAULT_SOURCE_LANGUAGE, DEFAULT_TARGET_LANGUAGE, normalizeLanguage } from './languages.ts'
 import { recordHistory } from '../../storage/history/record.ts'
+import { allowsAutomaticFieldWrite } from '../../core/safety/autoWrite.ts'
+import { allowAutomaticNetworkAssist } from '../../core/policy/writingPolicy.ts'
+import {
+  fieldKindFromElement,
+  recordWriteTelemetry,
+} from '../../core/observability/writeTelemetry.ts'
 
 export type FieldLiveState = {
   lastRequestedKey: string | null
@@ -51,8 +58,34 @@ export async function runLiveTranslation(
   session: FieldSession,
   options: LiveTranslateOptions,
 ): Promise<LiveTranslateResult> {
-  if (!stateManager.isActive() || !stateManager.translation.liveEnabled) {
+  const policy = resolveWritingPolicy()
+  if (!stateManager.isActive() || !policy.arabicToEnglishMode) {
     return 'disabled'
+  }
+  if (session.isTranslationPaused()) {
+    return 'disabled'
+  }
+  session.ensureTranslationSession()
+  if (!allowAutomaticNetworkAssist()) {
+    recordWriteTelemetry({
+      capability: 'translation',
+      trigger: 'auto',
+      outcome: 'noop',
+      reasonCodes: ['shortcuts_only'],
+      fieldKind: fieldKindFromElement(element),
+    })
+    return 'disabled'
+  }
+  if (!allowsAutomaticFieldWrite(element)) {
+    recordWriteTelemetry({
+      capability: 'translation',
+      trigger: 'auto',
+      outcome: 'blocked',
+      reasonCodes: ['unsupported_editor_auto_write'],
+      fieldKind: fieldKindFromElement(element),
+    })
+    options.metrics.translation_live_blocked += 1
+    return 'blocked'
   }
 
   const sourceLanguage = normalizeLanguage(
@@ -176,13 +209,20 @@ export async function runLiveTranslation(
       return commit.reason === 'aborted' ? 'aborted' : 'stale'
     }
 
-    const write = writeReplacement(element, segment.start, segment.end, outcome.translation, {
+    const write = commitWriteTransaction(element, segment.start, segment.end, outcome.translation, {
       origin: 'TRANSLATE',
       session,
       requestId,
       expectedGeneration: generation,
+      cycleGeneration: generation,
       placeCaretAfter: true,
       allowActiveEdit: true,
+      auto: true,
+      capability: 'translation',
+      trigger: 'auto',
+      tagTranslated: true,
+      textOrigin: 'translated_en',
+      action: 'translation',
     })
 
     if (write.verdict !== 'written') {

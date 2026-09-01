@@ -61,7 +61,6 @@ export const LAYOUT_IDS = [
   'de-qwertz',
   'fr-azerty',
   'tr-q',
-  'he-standard',
   'el-standard',
   'es-latam',
   'it-standard',

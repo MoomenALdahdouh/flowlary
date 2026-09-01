@@ -10,6 +10,9 @@ import {
 } from './read.ts'
 import { captureReplacementSnapshot, commitReplacement, type CommitOptions } from './write.ts'
 import { verifyFieldSnapshot } from './verify.ts'
+import { allowsAutomaticFieldWrite } from '../safety/autoWrite.ts'
+import { openTokenRange } from '../engine/layoutSequence.ts'
+import { isShortcutsOnly } from '../policy/writingPolicy.ts'
 import type {
   DiscardReason,
   EditableElement,
@@ -20,7 +23,19 @@ import type {
 
 export type WriteResult = {
   verdict: WriteVerdict | 'stale' | 'rejected'
-  reason?: DiscardReason | 'stale-generation' | 'stale-request' | 'composing' | 'aborted' | 'mutex'
+  reason?:
+    | DiscardReason
+    | 'stale-generation'
+    | 'stale-request'
+    | 'composing'
+    | 'aborted'
+    | 'mutex'
+    | 'unsupported_editor'
+    | 'shortcuts_only'
+    | 'cooldown'
+    | 'shadow_only'
+    | 'unfinished-token'
+    | 'neighbor-mismatch'
 }
 
 export type WriteReplacementOptions = CommitOptions & {
@@ -31,6 +46,17 @@ export type WriteReplacementOptions = CommitOptions & {
   mappingStillValid?: boolean
   /** When set, current field text must still match this snapshot before write. */
   baselineSnapshot?: FieldSnapshot
+  /**
+   * Automatic writers MUST set this. Requires a session lock (requestId).
+   * Simple contenteditable is allowed; structured/rich hosts are not.
+   */
+  auto?: boolean
+  /** Blur/commit: allow writing the token still under the caret. */
+  commitOpenToken?: boolean
+  /** Auto pipeline writes must not mutate the token still being typed. */
+  requireCompletedToken?: boolean
+  /** Surrounding text captured when the decision was made. */
+  neighborGuard?: { before: string; after: string }
 }
 
 /** Canonical read API */
@@ -87,8 +113,24 @@ export function writeReplacement(
     mappingStillValid = true,
     origin = 'SYSTEM',
     baselineSnapshot,
+    auto = false,
+    commitOpenToken = false,
+    requireCompletedToken = false,
+    neighborGuard,
     ...commitOptions
   } = options
+
+  if (auto) {
+    if (isShortcutsOnly()) {
+      return { verdict: 'rejected', reason: 'shortcuts_only' }
+    }
+    if (!allowsAutomaticFieldWrite(element)) {
+      return { verdict: 'rejected', reason: 'unsupported_editor' }
+    }
+    if (!session || requestId === undefined) {
+      return { verdict: 'rejected', reason: 'mutex' }
+    }
+  }
 
   if (baselineSnapshot) {
     const baselineReason = verifyFieldSnapshot(
@@ -104,6 +146,16 @@ export function writeReplacement(
     return { verdict: 'rejected', reason: 'composing' }
   }
 
+  if (session) {
+    const active = session.getActiveRequest()
+    if (active && (requestId === undefined || active.requestId !== requestId)) {
+      return { verdict: 'rejected', reason: 'mutex' }
+    }
+    if (active?.signal.aborted) {
+      return { verdict: 'rejected', reason: 'aborted' }
+    }
+  }
+
   if (session && requestId !== undefined) {
     const gen = expectedGeneration ?? session.getGeneration()
     if (session.isStale(gen, requestId)) {
@@ -112,16 +164,27 @@ export function writeReplacement(
         reason: gen !== session.getGeneration() ? 'stale-generation' : 'stale-request',
       }
     }
-    const active = session.getActiveRequest()
-    if (active && active.requestId !== requestId) {
-      return { verdict: 'rejected', reason: 'mutex' }
-    }
-    if (active?.signal.aborted) {
-      return { verdict: 'rejected', reason: 'aborted' }
-    }
   }
 
-  const originalWord = readFieldText(element).slice(start, end)
+  const liveText = readFieldText(element)
+  if (neighborGuard) {
+    const beforeStart = start - neighborGuard.before.length
+    if (
+      beforeStart < 0
+      || liveText.slice(beforeStart, start) !== neighborGuard.before
+      || liveText.slice(end, end + neighborGuard.after.length) !== neighborGuard.after
+    ) {
+      return { verdict: 'stale', reason: 'neighbor-mismatch' }
+    }
+  }
+  if (auto && requireCompletedToken && !commitOpenToken) {
+    const liveCaret = readCaret(element)
+    const open = openTokenRange(liveText, liveCaret ?? undefined)
+    if (open && start >= open.start && end <= open.end) {
+      return { verdict: 'rejected', reason: 'unfinished-token' }
+    }
+  }
+  const originalWord = liveText.slice(start, end)
   const caret = readCaret(element) ?? end
   const replacementSnapshot = captureReplacementSnapshot(
     element,

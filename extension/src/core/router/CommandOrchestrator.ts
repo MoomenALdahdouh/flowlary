@@ -1,7 +1,7 @@
 import type { Command, OperationType } from '@flowlary/shared'
 import { stateManager } from '../state/StateManager.ts'
 import { evaluateFieldSafety } from '../safety/index.ts'
-import { readFieldText, isEditableElement } from '../dom/read.ts'
+import { readFieldText, isEditableElement, readSelectionRange, readCaret } from '../dom/read.ts'
 import type { InputEngine } from '../input/InputEngine.ts'
 import { resolveCommandTarget } from '../input/resolveTarget.ts'
 import type { ShortcutCommand } from '../input/shortcuts.ts'
@@ -9,6 +9,8 @@ import type { CommandRouter } from './CommandRouter.ts'
 import { mapHandlerResult, type DispatchResult } from './dispatch.ts'
 import { isTrustedExtensionSender } from '../../messaging/sender.ts'
 import { validateContentCommandType } from '../../messaging/validate.ts'
+import { runWritingPipeline } from '../writeGate/pipeline.ts'
+import { shortcutRangeForOperation } from '../engine/shortcutRange.ts'
 
 const DEDUP_MS = 250
 
@@ -124,6 +126,10 @@ export class CommandOrchestrator {
 
   handleRuntimeMessage(message: unknown): Promise<DispatchResult> | null {
     if (!message || typeof message !== 'object' || !('type' in message)) return null
+    const typed = message as { type?: string; operation?: string }
+    if (typed.type === 'RUN_COMMAND' && typed.operation === 'SPEED_BOX') {
+      return this.handleShortcut('SPEED_BOX')
+    }
     const validated = validateContentCommandType(message)
     if (!validated.ok) return null
     return this.dispatch(validated.value)
@@ -144,11 +150,12 @@ export class CommandOrchestrator {
   ): Promise<DispatchResult> {
 
     if (operation === 'PIPELINE') {
+      const pipeline = await runWritingPipeline(this.engine, options.target)
       return {
-        status: 'error',
+        status: pipeline.ok ? 'success' : 'error',
         operation: 'PIPELINE',
-        reason: 'pipeline_not_implemented',
-        handlerExecuted: false,
+        reason: pipeline.ok ? undefined : pipeline.error,
+        handlerExecuted: true,
       }
     }
 
@@ -214,6 +221,15 @@ export class CommandOrchestrator {
       requestId: acquire.requestId,
       sourceLanguage: stateManager.translation.sourceLanguage,
       targetLanguage: stateManager.translation.targetLanguage,
+    }
+    if (isEditableElement(resolved.element)) {
+      const selection = readSelectionRange(resolved.element)
+      const caret = readCaret(resolved.element) ?? text.length
+      const span = shortcutRangeForOperation(text, operation, selection, caret)
+      if (span) {
+        command.rangeStart = span.start
+        command.rangeEnd = span.end
+      }
     }
 
     try {

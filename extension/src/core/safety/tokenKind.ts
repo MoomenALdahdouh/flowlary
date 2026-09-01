@@ -58,6 +58,31 @@ function looksLikeCard(value: string): boolean {
   return digits >= 13 && digits <= 19
 }
 
+/**
+ * Prefixes of secrets/URLs/JWTs that are not yet complete tokens.
+ * Used so sequential typing cannot be treated as a layout mismatch.
+ */
+export function incompleteProtectedReason(token: string, raw = token): TokenSkipReason | null {
+  const value = token.trim()
+  if (!value) return null
+  if (
+    /^(https?:\/\/|www\.)/i.test(value)
+    || /^(https?:|https?|htt|www\.?)$/i.test(value)
+  ) {
+    return 'url'
+  }
+  if (/^eyJ/i.test(value) || value === 'ey' || value === 'eyJ') return 'jwt'
+  if (/^(sk|pk|rk|gsk)$/i.test(value) || /^(sk|pk|rk)[-_]/i.test(value) || /^gsk_/i.test(value)) {
+    return 'api-key'
+  }
+  if (/^(ghp|gho|github_pat|xox[baprs]|AKIA|AIza|ya29|xoxe)([-_].*)?$/i.test(value)) {
+    return 'api-key'
+  }
+  if (/^Bear(er)?$/i.test(value) || /^Bearer\s/i.test(raw)) return 'auth-header'
+  if (value.includes('@') && !/\s/.test(value) && !EMAIL.test(value)) return 'email'
+  return null
+}
+
 export function skipReasonForToken(
   token: string,
   context = '',
@@ -69,7 +94,15 @@ export function skipReasonForToken(
 
   if (/^\d+$/.test(value)) return 'digits'
   if (EMAIL.test(value) || (value.includes('@') && value.includes('.'))) return 'email'
-  if (URL.test(value) || value.includes('://') || HOST_PATH.test(value)) return 'url'
+  if (
+    URL.test(value)
+    || value.includes('://')
+    || HOST_PATH.test(value)
+    || /^(https?|ftps?|sftp|www):?$/i.test(value)
+    || /^https?:/i.test(value)
+  ) {
+    return 'url'
+  }
   if (value.startsWith('eyJ') || JWT.test(value)) return 'jwt'
   if (UUID.test(value)) return 'uuid'
   if (HEX_HASH.test(value)) return 'hash'
@@ -125,7 +158,7 @@ export function skipReasonForToken(
   ) {
     return 'code-identifier'
   }
-  return null
+  return incompleteProtectedReason(value, raw)
 }
 
 export function isSafeToken(token: string, context = '', raw = token): boolean {

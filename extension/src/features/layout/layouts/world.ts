@@ -107,49 +107,6 @@ export const trQ: KeyboardLayout = extend({
   },
 })
 
-/** Hebrew (Windows). Unshifted is Hebrew; Shift is Latin. */
-export const heStandard: KeyboardLayout = extend({
-  id: 'he-standard',
-  language: 'he',
-  name: 'Hebrew',
-  metadata: { direction: 'rtl', hasAltGr: false, variant: 'standard' },
-  keys: {
-    KeyQ: { unshifted: '/', shifted: 'Q' },
-    KeyW: { unshifted: "'", shifted: 'W' },
-    KeyE: { unshifted: 'ק', shifted: 'E' },
-    KeyR: { unshifted: 'ר', shifted: 'R' },
-    KeyT: { unshifted: 'א', shifted: 'T' },
-    KeyY: { unshifted: 'ט', shifted: 'Y' },
-    KeyU: { unshifted: 'ו', shifted: 'U' },
-    KeyI: { unshifted: 'ן', shifted: 'I' },
-    KeyO: { unshifted: 'ם', shifted: 'O' },
-    KeyP: { unshifted: 'פ', shifted: 'P' },
-    BracketLeft: { unshifted: ']', shifted: '}' },
-    BracketRight: { unshifted: '[', shifted: '{' },
-    KeyA: { unshifted: 'ש', shifted: 'A' },
-    KeyS: { unshifted: 'ד', shifted: 'S' },
-    KeyD: { unshifted: 'ג', shifted: 'D' },
-    KeyF: { unshifted: 'כ', shifted: 'F' },
-    KeyG: { unshifted: 'ע', shifted: 'G' },
-    KeyH: { unshifted: 'י', shifted: 'H' },
-    KeyJ: { unshifted: 'ח', shifted: 'J' },
-    KeyK: { unshifted: 'ל', shifted: 'K' },
-    KeyL: { unshifted: 'ך', shifted: 'L' },
-    Semicolon: { unshifted: 'ף', shifted: ':' },
-    Quote: { unshifted: ',', shifted: '"' },
-    KeyZ: { unshifted: 'ז', shifted: 'Z' },
-    KeyX: { unshifted: 'ס', shifted: 'X' },
-    KeyC: { unshifted: 'ב', shifted: 'C' },
-    KeyV: { unshifted: 'ה', shifted: 'V' },
-    KeyB: { unshifted: 'נ', shifted: 'B' },
-    KeyN: { unshifted: 'מ', shifted: 'N' },
-    KeyM: { unshifted: 'צ', shifted: 'M' },
-    Comma: { unshifted: 'ת', shifted: '>' },
-    Period: { unshifted: 'ץ', shifted: '<' },
-    Slash: { unshifted: '.', shifted: '?' },
-  },
-})
-
 /** Greek (Windows). */
 export const elStandard: KeyboardLayout = extend({
   id: 'el-standard',
@@ -346,7 +303,6 @@ export const WORLD_LAYOUTS: KeyboardLayout[] = [
   deQwertz,
   frAzerty,
   trQ,
-  heStandard,
   elStandard,
   esLatam,
   itStandard,

@@ -1,24 +1,37 @@
 import { STORAGE_KEYS } from '@flowlary/shared'
 
+export type HelpStyle = 'auto' | 'suggestions' | 'shortcuts_only'
+
 export type FlowlarySettings = {
   enabled: boolean
   pausedUntil: number | null
   excludedDomains: string[]
   version: number
+  /** Optional explicit policy. Unset → derived from feature toggles (Phase 1). */
+  helpStyle?: HelpStyle | null
+  /** Optional persisted capability overrides. Unset → derived from feature toggles. */
+  fixWrongTyping?: boolean | null
+  improveEnglish?: boolean | null
+  arabicToEnglishMode?: boolean | null
+  polishAfterTranslate?: boolean | null
+  improveEnglishAfterTranslate?: boolean | null
+  /** When false, the LLM advisor is not consulted. Default on. */
+  aiAdvisorEnabled?: boolean | null
+  /** When false, sentence-island writing review is not consulted. Default on. */
+  aiWritingReviewEnabled?: boolean | null
 }
 
-export type CorrectionAiProvider = 'managed' | 'byok'
+export type FeatureApplyMode = 'box' | 'direct'
 
 export type CorrectionSettings = {
   enabled: boolean
-  mode: 'box' | 'direct'
+  mode: FeatureApplyMode
   highlights: boolean
   consentAccepted: boolean
-  aiProvider: CorrectionAiProvider
-  groqApiKey: string
 }
 
 export type TranslationSettings = {
+  mode: FeatureApplyMode
   liveEnabled: boolean
   shortcutEnabled: boolean
   sourceLanguage: string
@@ -26,6 +39,7 @@ export type TranslationSettings = {
 }
 
 export type LayoutSettings = {
+  mode: FeatureApplyMode
   autoEnabled: boolean
   manualConversionEnabled: boolean
   directShortcutEnabled: boolean
@@ -38,6 +52,14 @@ export const DEFAULT_SETTINGS: FlowlarySettings = {
   pausedUntil: null,
   excludedDomains: [],
   version: 1,
+  helpStyle: 'auto',
+  fixWrongTyping: true,
+  improveEnglish: true,
+  arabicToEnglishMode: false,
+  polishAfterTranslate: false,
+  improveEnglishAfterTranslate: false,
+  aiAdvisorEnabled: true,
+  aiWritingReviewEnabled: true,
 }
 
 export const DEFAULT_CORRECTION: CorrectionSettings = {
@@ -45,11 +67,10 @@ export const DEFAULT_CORRECTION: CorrectionSettings = {
   mode: 'direct',
   highlights: true,
   consentAccepted: false,
-  aiProvider: 'managed',
-  groqApiKey: '',
 }
 
 export const DEFAULT_TRANSLATION: TranslationSettings = {
+  mode: 'direct',
   liveEnabled: false,
   shortcutEnabled: true,
   sourceLanguage: 'ar',
@@ -57,6 +78,7 @@ export const DEFAULT_TRANSLATION: TranslationSettings = {
 }
 
 export const DEFAULT_LAYOUT: LayoutSettings = {
+  mode: 'direct',
   autoEnabled: true,
   manualConversionEnabled: true,
   directShortcutEnabled: true,
@@ -69,6 +91,10 @@ export class StateManager {
   correction: CorrectionSettings = { ...DEFAULT_CORRECTION }
   translation: TranslationSettings = { ...DEFAULT_TRANSLATION }
   layout: LayoutSettings = { ...DEFAULT_LAYOUT }
+  /** Runtime copy of layout-profile exceptions. Not a second persist path. */
+  personalExceptions: string[] = []
+  /** Thresholded accepted-token hashes from layout events. */
+  vocabularyHashes: string[] = []
 
   isActive(now = Date.now()): boolean {
     if (!this.settings.enabled) return false

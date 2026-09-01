@@ -198,7 +198,6 @@ export const WORLD_GOLDEN: ReadonlyArray<
   ['yes', 'zes', 'en-US-qwerty', 'de-qwertz'],
   ['quiz', 'quiy', 'en-US-qwerty', 'de-qwertz'],
   ['hello', 'ηελλο', 'en-US-qwerty', 'el-standard'],
-  ['hello', 'יקךךם', 'en-US-qwerty', 'he-standard'],
   [';', 'ñ', 'en-US-qwerty', 'es-latam'],
   [';', 'ç', 'en-US-qwerty', 'pt-abnt'],
   ['i', 'ı', 'en-US-qwerty', 'tr-q'],
