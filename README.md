@@ -1,76 +1,72 @@
 # Flowlary
 
-**Your AI Writing Companion**
+Chrome writing companion for mixed Arabic/English: **keyboard layout repair**, **bounded English help**, and **optional Arabic→English translation** in the field the user is already typing in.
 
-Flowlary is a unified Chrome MV3 extension that combines three writing capabilities:
+LLMs rank hypotheses or propose island spans. They **do not** write the DOM. Only **Write Gate** mutates the field.
 
-- **Keyboard Layout Fix** — local-first layout remapping (13 layouts)
-- **Writing Correction** — English grammar/spelling (BYOK Groq)
-- **Translation** — manual + optional live translation (12 languages)
-
-Original source extensions remain read-only references; all product code lives in this folder.
-
-**On your Mac:** `/Users/moomen/Projects/flowlary` (Finder: home **moomen** → **Projects** → **flowlary**)
-
-Clone this repository into that folder. The GitHub repo root **is** the Flowlary project.
+Launch status: **conditional** — see [docs/audits/FINAL_RELEASE_REPORT.md](docs/audits/FINAL_RELEASE_REPORT.md).
 
 ## Structure
 
 ```
 flowlary/
-├── extension/        # Chrome MV3 extension (Vite + CRXJS)
-├── packages/shared/  # Shared types and contracts
-├── backend/          # Flowlary AI Gateway (Node HTTP)
-├── tests/            # Unit & integration tests
-├── release/          # Store-ready ZIP + checksum (generated)
-└── docs/             # Architecture, privacy, security, release
+├── extension/         Chrome MV3 (Vite + CRXJS)
+├── website/           Marketing, account, pricing, Writing Lab demo
+├── backend/           AI gateway (auth, entitlement, providers, billing)
+├── packages/shared/   Contracts
+├── tests/             Unit, integration, Playwright
+├── deploy/            Docker, nginx, PM2
+├── docs/              Authoritative documentation (start: docs/README.md)
+└── scripts/           Packaging and live probes
 ```
+
+The website Writing Lab is **not** the extension writing engine.
 
 ## Development
 
 ```bash
 npm install
-npm run dev           # Extension dev server (localhost APIs)
-npm run build         # Dev build → extension/dist/
-npm run dev:api       # Local AI gateway → http://127.0.0.1:8787
-npm test              # 477 tests
+npm run dev:api       # http://127.0.0.1:8787
+npm run dev           # extension Vite
+npm run build:ext     # unpacked → extension/dist/
+npm run dev:web
+npm run build:web
+npm test
+npm run test:web
 ```
 
-Load unpacked from `extension/dist/` in Chrome.
+Load unpacked from **`extension/dist/`**. After changes: `npm run build:ext` and Reload in `chrome://extensions`.
+
+Copy `backend/.env.example` to `backend/.env` (never commit secrets). Details: [docs/operations/DEVELOPMENT.md](docs/operations/DEVELOPMENT.md).
 
 ## Release packaging
 
 ```bash
 npm test
-npm run build:release   # Production manifest + HTTPS API defaults
-npm run package:release # → release/flowlary-v1.0.0.zip + .sha256
+npm run build:release
+npm run package:release
 ```
 
-See `release/RELEASE_CHECKLIST.md` before Chrome Web Store submission.
+See `release/RELEASE_CHECKLIST.md` and [docs/operations/PRODUCTION.md](docs/operations/PRODUCTION.md).
 
 ## Shortcuts
 
 | Shortcut | Action |
-|----------|--------|
+| --- | --- |
 | Ctrl/Cmd+Shift+, | Translate |
 | Ctrl/Cmd+Shift+P | Fix keyboard layout |
-| Ctrl/Cmd+Shift+L | Speed Box (manual conversion) |
+| Ctrl/Cmd+Shift+E | English assist (instant + review ingest, not whole-field rewrite) |
+| Ctrl/Cmd+Shift+L | Speed Box |
 
 ## Documentation
 
-- [Architecture](docs/architecture/FLOWLARY_ARCHITECTURE.md)
-- [Phases](docs/development/PHASES.md)
-- [Privacy](docs/privacy/PRIVACY.md) · [Data flow](docs/privacy/DATA_FLOW.md)
-- [Security](docs/security/SECURITY_ARCHITECTURE.md)
-- [Release notes](RELEASE_NOTES.md)
-- [Store description draft](docs/release/CHROME_WEB_STORE_DESCRIPTION.md)
-- [Production readiness audit](docs/production/PRODUCTION_READINESS_AUDIT.md)
-- [AI production architecture](docs/production/AI_PRODUCTION_ARCHITECTURE.md)
-- [Release readiness](docs/release/RELEASE_READINESS.md)
-- [Phase 16 report](PHASE16_REPORT.md)
+**Start here:** [docs/README.md](docs/README.md)
 
-## Status
+| Topic | Document |
+| --- | --- |
+| Architecture freeze | [docs/architecture/ARCHITECTURE_FREEZE.md](docs/architecture/ARCHITECTURE_FREEZE.md) |
+| Writing pipeline | [docs/architecture/WRITING_ENGINE.md](docs/architecture/WRITING_ENGINE.md) |
+| Environment variables | [docs/operations/ENVIRONMENT.md](docs/operations/ENVIRONMENT.md) |
+| Known limitations | [docs/audits/KNOWN_LIMITATIONS.md](docs/audits/KNOWN_LIMITATIONS.md) |
 
-**Version 1.0.0** — Phases 0–16 complete. Local AI gateway + entitlement gating. **Not production-ready** — see [Production Readiness Audit](docs/production/PRODUCTION_READINESS_AUDIT.md).
-
-Release blockers: server-verified entitlement, payment, account auth, privacy URL, support contact, store assets, production API deployment verification.
+Privacy / security / legal folders under `docs/` remain operational. Phase reports and `docs/audit/` are **historical**.

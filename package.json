@@ -1,23 +1,39 @@
 {
   "name": "flowlary",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Flowlary — Your AI Writing Companion",
   "workspaces": [
     "extension",
     "packages/*",
-    "backend"
+    "backend",
+    "website"
   ],
   "scripts": {
     "dev": "npm run dev -w @flowlary/extension",
     "build": "npm run build -w @flowlary/extension",
+    "build:ext": "npm run build -w @flowlary/extension",
     "build:release": "npm run build:release -w @flowlary/extension",
     "package:release": "node scripts/package-release.mjs",
     "test": "npm run test -w @flowlary/shared && npm run test -w @flowlary/backend && npm run test -w @flowlary/extension",
     "dev:api": "npm run dev -w @flowlary/backend",
-    "typecheck": "npm run typecheck -w @flowlary/shared && npm run typecheck -w @flowlary/extension"
+    "dev:web": "node scripts/dev-website.mjs",
+    "serve:web": "node scripts/serve-website.mjs",
+    "build:web": "npm run build -w @flowlary/website",
+    "test:web": "npm run test -w @flowlary/website",
+    "test:reliability": "npm run test -w @flowlary/backend -- ../tests/integration/reliability.test.ts",
+    "test:wl13b-live": "WL13B_LIVE_API=1 npm run test -w @flowlary/extension -- ../tests/integration/wl13b-staging-live.test.ts",
+    "test:e2e": "npx playwright test --config tests/e2e/playwright.config.ts",
+    "probe:advisor-live": "node --import tsx scripts/advisor-live-probe.ts",
+    "probe:writing-review-live": "node --import tsx scripts/writing-review-live-probe.ts",
+    "test:providers": "node --import tsx scripts/provider-connectivity-check.ts",
+    "typecheck": "npm run typecheck -w @flowlary/shared && npm run typecheck -w @flowlary/extension && npm run typecheck -w @flowlary/website"
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "sharp": "^0.35.3"
   }
 }
