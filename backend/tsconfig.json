@@ -6,7 +6,10 @@
     "strict": true,
     "outDir": "dist",
     "declaration": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true
   },
   "include": ["src"]
 }

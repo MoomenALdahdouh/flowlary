@@ -55,8 +55,7 @@ export async function runCorrectionProvider(
   const result = await callGroqChat(config, {
     model: AI_MODELS.CORRECTION,
     temperature: 0.1,
-    maxTokens: 400,
-    responseFormat: 'json_object',
+    maxTokens: 4000,
     messages: [
       { role: 'system', content: CORRECTION_SYSTEM_PROMPT },
       { role: 'user', content: JSON.stringify(userPayload) },
