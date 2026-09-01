@@ -1,0 +1,989 @@
+{
+  "totals": {
+    "all": 2826,
+    "development": 1407,
+    "validation": 704,
+    "holdout": 715,
+    "layoutFamily": 1255,
+    "mixedFamily": 520,
+    "ambigFamily": 520,
+    "techFamily": 520
+  },
+  "holdoutByFamily": {
+    "layout_en_generated_unseen": {
+      "n": 128,
+      "match": 128,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 128,
+      "noop": 0
+    },
+    "layout_en_on_ar_unseen": {
+      "n": 27,
+      "match": 0,
+      "fpLayout": 0,
+      "missLayout": 27,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 27
+    },
+    "layout_ar_generated_unseen": {
+      "n": 102,
+      "match": 11,
+      "fpLayout": 0,
+      "missLayout": 91,
+      "fpEnglish": 0,
+      "autoWrite": 11,
+      "noop": 91
+    },
+    "layout_false_inlex_ar": {
+      "n": 6,
+      "match": 6,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 6
+    },
+    "layout_false_en_sentence": {
+      "n": 1,
+      "match": 1,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 1
+    },
+    "layout_ar_on_en_unseen": {
+      "n": 8,
+      "match": 1,
+      "fpLayout": 0,
+      "missLayout": 7,
+      "fpEnglish": 0,
+      "autoWrite": 1,
+      "noop": 7
+    },
+    "layout_false_unseen_en": {
+      "n": 22,
+      "match": 22,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 22
+    },
+    "layout_false_unseen_ar": {
+      "n": 7,
+      "match": 6,
+      "fpLayout": 1,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 1,
+      "noop": 6
+    },
+    "layout_false_inlex_en": {
+      "n": 8,
+      "match": 8,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 8
+    },
+    "layout_ar_sentence_unseen": {
+      "n": 2,
+      "match": 2,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 2,
+      "noop": 0
+    },
+    "layout_en_sentence_inlex": {
+      "n": 3,
+      "match": 3,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 3,
+      "noop": 0
+    },
+    "mixed_ar_plus_tech": {
+      "n": 40,
+      "match": 32,
+      "fpLayout": 8,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 8,
+      "noop": 32
+    },
+    "mixed_generated": {
+      "n": 87,
+      "match": 66,
+      "fpLayout": 21,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 21,
+      "noop": 66
+    },
+    "mixed_natural": {
+      "n": 3,
+      "match": 2,
+      "fpLayout": 1,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 1,
+      "noop": 2
+    },
+    "ambig_generated_swap": {
+      "n": 112,
+      "match": 0,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 112
+    },
+    "ambig_one_wrong_layout_in_english": {
+      "n": 13,
+      "match": 0,
+      "fpLayout": 0,
+      "missLayout": 13,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 13
+    },
+    "ambig_one_wrong_layout_in_arabic": {
+      "n": 5,
+      "match": 5,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 5,
+      "noop": 0
+    },
+    "tech_generated_mixed": {
+      "n": 95,
+      "match": 89,
+      "fpLayout": 6,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 6,
+      "noop": 89
+    },
+    "tech_in_english": {
+      "n": 11,
+      "match": 11,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 11
+    },
+    "tech_in_arabic": {
+      "n": 10,
+      "match": 10,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 10
+    },
+    "tech_alone": {
+      "n": 9,
+      "match": 9,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 9
+    },
+    "tech_protected_or_name": {
+      "n": 5,
+      "match": 5,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 5
+    },
+    "critical_en_sentence_on_ar": {
+      "n": 1,
+      "match": 1,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 1,
+      "noop": 0
+    },
+    "critical_ar_sentence_on_en": {
+      "n": 1,
+      "match": 1,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 1,
+      "noop": 0
+    },
+    "critical_ar_intentional_en": {
+      "n": 1,
+      "match": 0,
+      "fpLayout": 1,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 1,
+      "noop": 0
+    },
+    "critical_ar_technical_en": {
+      "n": 1,
+      "match": 0,
+      "fpLayout": 1,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 1,
+      "noop": 0
+    },
+    "critical_en_intentional_ar": {
+      "n": 1,
+      "match": 1,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 1
+    },
+    "critical_one_wrong_word": {
+      "n": 1,
+      "match": 0,
+      "fpLayout": 0,
+      "missLayout": 1,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 1
+    },
+    "critical_en_typo_in_ar": {
+      "n": 1,
+      "match": 1,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 1
+    },
+    "critical_unknown_product": {
+      "n": 1,
+      "match": 1,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 1
+    },
+    "critical_punct_layout": {
+      "n": 1,
+      "match": 1,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 1,
+      "noop": 0
+    },
+    "critical_caps": {
+      "n": 1,
+      "match": 1,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 1
+    },
+    "critical_shift_symbol": {
+      "n": 1,
+      "match": 1,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 1
+    }
+  },
+  "allByFamily": {
+    "layout_false_unseen_ar": {
+      "n": 45,
+      "match": 42,
+      "fpLayout": 3,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 3,
+      "noop": 42
+    },
+    "layout_ar_generated_unseen": {
+      "n": 467,
+      "match": 49,
+      "fpLayout": 0,
+      "missLayout": 418,
+      "fpEnglish": 0,
+      "autoWrite": 49,
+      "noop": 418
+    },
+    "layout_en_generated_unseen": {
+      "n": 462,
+      "match": 462,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 462,
+      "noop": 0
+    },
+    "layout_ar_on_en_unseen": {
+      "n": 45,
+      "match": 1,
+      "fpLayout": 0,
+      "missLayout": 44,
+      "fpEnglish": 0,
+      "autoWrite": 1,
+      "noop": 44
+    },
+    "layout_en_on_ar_unseen": {
+      "n": 82,
+      "match": 0,
+      "fpLayout": 0,
+      "missLayout": 82,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 82
+    },
+    "layout_en_on_ar_inlex": {
+      "n": 17,
+      "match": 17,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 17,
+      "noop": 0
+    },
+    "layout_en_sentence_inlex": {
+      "n": 5,
+      "match": 5,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 5,
+      "noop": 0
+    },
+    "layout_false_unseen_en": {
+      "n": 82,
+      "match": 82,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 80
+    },
+    "layout_en_sentence_unseen": {
+      "n": 5,
+      "match": 5,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 5,
+      "noop": 0
+    },
+    "layout_ar_on_en_inlex": {
+      "n": 9,
+      "match": 7,
+      "fpLayout": 0,
+      "missLayout": 2,
+      "fpEnglish": 0,
+      "autoWrite": 7,
+      "noop": 2
+    },
+    "layout_false_inlex_en": {
+      "n": 17,
+      "match": 17,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 17
+    },
+    "layout_false_inlex_ar": {
+      "n": 9,
+      "match": 9,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 9
+    },
+    "layout_ar_sentence_inlex": {
+      "n": 4,
+      "match": 4,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 4,
+      "noop": 0
+    },
+    "layout_ar_sentence_unseen": {
+      "n": 4,
+      "match": 4,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 4,
+      "noop": 0
+    },
+    "layout_false_ar_sentence": {
+      "n": 1,
+      "match": 1,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 1
+    },
+    "layout_false_en_sentence": {
+      "n": 1,
+      "match": 1,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 1
+    },
+    "mixed_natural": {
+      "n": 15,
+      "match": 14,
+      "fpLayout": 1,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 1,
+      "noop": 14
+    },
+    "mixed_generated": {
+      "n": 331,
+      "match": 230,
+      "fpLayout": 101,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 101,
+      "noop": 230
+    },
+    "mixed_ar_plus_tech": {
+      "n": 174,
+      "match": 145,
+      "fpLayout": 29,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 29,
+      "noop": 145
+    },
+    "ambig_generated_swap": {
+      "n": 440,
+      "match": 0,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 440
+    },
+    "spell_known": {
+      "n": 10,
+      "match": 10,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 10,
+      "noop": 0
+    },
+    "spell_unseen_should_fix_or_abstain": {
+      "n": 10,
+      "match": 0,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 10
+    },
+    "ambig_one_wrong_layout_in_english": {
+      "n": 40,
+      "match": 0,
+      "fpLayout": 0,
+      "missLayout": 40,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 40
+    },
+    "ambig_english_typo_in_arabic": {
+      "n": 3,
+      "match": 3,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 3
+    },
+    "ambig_one_wrong_layout_in_arabic": {
+      "n": 17,
+      "match": 17,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 17,
+      "noop": 0
+    },
+    "tech_generated_mixed": {
+      "n": 410,
+      "match": 380,
+      "fpLayout": 30,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 30,
+      "noop": 380
+    },
+    "tech_alone": {
+      "n": 29,
+      "match": 29,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 29
+    },
+    "tech_in_arabic": {
+      "n": 29,
+      "match": 29,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 29
+    },
+    "tech_protected_or_name": {
+      "n": 23,
+      "match": 23,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 23
+    },
+    "tech_in_english": {
+      "n": 29,
+      "match": 29,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 29
+    },
+    "critical_en_sentence_on_ar": {
+      "n": 1,
+      "match": 1,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 1,
+      "noop": 0
+    },
+    "critical_ar_sentence_on_en": {
+      "n": 1,
+      "match": 1,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 1,
+      "noop": 0
+    },
+    "critical_ar_intentional_en": {
+      "n": 1,
+      "match": 0,
+      "fpLayout": 1,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 1,
+      "noop": 0
+    },
+    "critical_ar_technical_en": {
+      "n": 1,
+      "match": 0,
+      "fpLayout": 1,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 1,
+      "noop": 0
+    },
+    "critical_en_intentional_ar": {
+      "n": 1,
+      "match": 1,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 1
+    },
+    "critical_one_wrong_word": {
+      "n": 1,
+      "match": 0,
+      "fpLayout": 0,
+      "missLayout": 1,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 1
+    },
+    "critical_en_typo_in_ar": {
+      "n": 1,
+      "match": 1,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 1
+    },
+    "critical_unknown_product": {
+      "n": 1,
+      "match": 1,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 1
+    },
+    "critical_punct_layout": {
+      "n": 1,
+      "match": 1,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 1,
+      "noop": 0
+    },
+    "critical_caps": {
+      "n": 1,
+      "match": 1,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 1
+    },
+    "critical_shift_symbol": {
+      "n": 1,
+      "match": 1,
+      "fpLayout": 0,
+      "missLayout": 0,
+      "fpEnglish": 0,
+      "autoWrite": 0,
+      "noop": 1
+    }
+  },
+  "advisorConsultRate": 0.16949752300070772,
+  "deadSequenceLowRiskWhenMissed": 0,
+  "missedLayoutHoldout": 139,
+  "falseLayoutHoldout": 39,
+  "falseEnglishHoldout": 0,
+  "critical": [
+    {
+      "family": "critical_en_sentence_on_ar",
+      "input": "÷ صهمم سثىي فاث قثحخقف فخةخققخص",
+      "expected": "layout_fix",
+      "action": "layout_fix",
+      "replacement": "will send the report tomorrow",
+      "reasons": [
+        "single_winner_layout",
+        "hypothesis_winner"
+      ]
+    },
+    {
+      "family": "critical_ar_sentence_on_en",
+      "input": "hg'rs [ldg i`h hglshx",
+      "expected": "layout_fix",
+      "action": "layout_fix",
+      "replacement": "هذا المساء",
+      "reasons": [
+        "single_winner_layout",
+        "hypothesis_winner"
+      ]
+    },
+    {
+      "family": "critical_ar_intentional_en",
+      "input": "أحتاج مراجعة الـ pull request قبل الدمج",
+      "expected": "noop",
+      "action": "layout_fix",
+      "replacement": "Hpjh[ lvh[um hgJ",
+      "reasons": [
+        "single_winner_layout",
+        "hypothesis_winner"
+      ]
+    },
+    {
+      "family": "critical_ar_technical_en",
+      "input": "رفعنا الـ FastAPI service على localhost:8080",
+      "expected": "noop",
+      "action": "layout_fix",
+      "replacement": "hgJ",
+      "reasons": [
+        "single_winner_layout",
+        "hypothesis_winner"
+      ]
+    },
+    {
+      "family": "critical_en_intentional_ar",
+      "input": "The كلمة العربية is intentional",
+      "expected": "noop",
+      "action": "noop",
+      "replacement": null,
+      "reasons": [
+        "hypothesis_preserve",
+        "no_unambiguous_winner"
+      ]
+    },
+    {
+      "family": "critical_one_wrong_word",
+      "input": "please قثحخقف this",
+      "expected": "layout_fix",
+      "action": "noop",
+      "replacement": null,
+      "reasons": [
+        "hypothesis_preserve",
+        "no_unambiguous_winner"
+      ]
+    },
+    {
+      "family": "critical_en_typo_in_ar",
+      "input": "أرسل teh ملف",
+      "expected": "noop",
+      "action": "noop",
+      "replacement": null,
+      "reasons": [
+        "hypothesis_preserve",
+        "no_unambiguous_winner"
+      ]
+    },
+    {
+      "family": "critical_unknown_product",
+      "input": "we use FlowlaryX nightly",
+      "expected": "noop",
+      "action": "noop",
+      "replacement": null,
+      "reasons": [
+        "hypothesis_preserve",
+        "no_unambiguous_winner"
+      ]
+    },
+    {
+      "family": "critical_punct_layout",
+      "input": "أثممخو صخقمي!",
+      "expected": "layout_fix",
+      "action": "layout_fix",
+      "replacement": "Hello, world",
+      "reasons": [
+        "single_winner_layout",
+        "hypothesis_winner"
+      ]
+    },
+    {
+      "family": "critical_caps",
+      "input": "UI ux",
+      "expected": "noop",
+      "action": "noop",
+      "replacement": null,
+      "reasons": [
+        "hypothesis_preserve",
+        "no_unambiguous_winner"
+      ]
+    },
+    {
+      "family": "critical_shift_symbol",
+      "input": "hello?",
+      "expected": "noop",
+      "action": "noop",
+      "replacement": null,
+      "reasons": [
+        "hypothesis_preserve",
+        "no_unambiguous_winner"
+      ]
+    }
+  ],
+  "sampleMisses": [
+    {
+      "split": "holdout",
+      "family": "layout_en_on_ar_unseen",
+      "input": "سشفعقيشغ",
+      "expected": "layout_fix",
+      "action": "noop",
+      "replacement": null,
+      "reasons": [
+        "hypothesis_preserve",
+        "no_unambiguous_winner"
+      ],
+      "consultAdvisor": false,
+      "layoutScore": 0.2867,
+      "deadSequenceWouldFix": false
+    },
+    {
+      "split": "holdout",
+      "family": "layout_ar_generated_unseen",
+      "input": "k,tlfv `ifd",
+      "expected": "layout_fix",
+      "action": "noop",
+      "replacement": null,
+      "reasons": [
+        "hypothesis_preserve",
+        "no_unambiguous_winner"
+      ],
+      "consultAdvisor": true,
+      "layoutScore": 0.291165,
+      "deadSequenceWouldFix": false
+    },
+    {
+      "split": "holdout",
+      "family": "layout_en_on_ar_unseen",
+      "input": "ةثمخى",
+      "expected": "layout_fix",
+      "action": "noop",
+      "replacement": null,
+      "reasons": [
+        "hypothesis_preserve",
+        "no_unambiguous_winner"
+      ],
+      "consultAdvisor": false,
+      "layoutScore": 0.4172,
+      "deadSequenceWouldFix": false
+    },
+    {
+      "split": "holdout",
+      "family": "layout_ar_generated_unseen",
+      "input": ",ahp ;jhf",
+      "expected": "layout_fix",
+      "action": "noop",
+      "replacement": null,
+      "reasons": [
+        "no_unambiguous_winner"
+      ],
+      "consultAdvisor": true,
+      "layoutScore": null,
+      "deadSequenceWouldFix": false
+    },
+    {
+      "split": "holdout",
+      "family": "layout_ar_generated_unseen",
+      "input": "l/gm fi],x",
+      "expected": "layout_fix",
+      "action": "noop",
+      "replacement": null,
+      "reasons": [
+        "hypothesis_preserve",
+        "no_unambiguous_winner"
+      ],
+      "consultAdvisor": false,
+      "layoutScore": null,
+      "deadSequenceWouldFix": false
+    },
+    {
+      "split": "holdout",
+      "family": "layout_ar_generated_unseen",
+      "input": "`ifd l,.",
+      "expected": "layout_fix",
+      "action": "noop",
+      "replacement": null,
+      "reasons": [
+        "no_unambiguous_winner"
+      ],
+      "consultAdvisor": true,
+      "layoutScore": null,
+      "deadSequenceWouldFix": false
+    },
+    {
+      "split": "holdout",
+      "family": "layout_ar_generated_unseen",
+      "input": "ff'x [hlum",
+      "expected": "layout_fix",
+      "action": "noop",
+      "replacement": null,
+      "reasons": [
+        "no_unambiguous_winner"
+      ],
+      "consultAdvisor": true,
+      "layoutScore": null,
+      "deadSequenceWouldFix": false
+    },
+    {
+      "split": "holdout",
+      "family": "layout_ar_generated_unseen",
+      "input": "lvNf hgolds",
+      "expected": "layout_fix",
+      "action": "noop",
+      "replacement": null,
+      "reasons": [
+        "hypothesis_preserve",
+        "no_unambiguous_winner"
+      ],
+      "consultAdvisor": false,
+      "layoutScore": 0.32364,
+      "deadSequenceWouldFix": false
+    },
+    {
+      "split": "holdout",
+      "family": "layout_ar_generated_unseen",
+      "input": "[,h. lpt/m",
+      "expected": "layout_fix",
+      "action": "noop",
+      "replacement": null,
+      "reasons": [
+        "hypothesis_preserve",
+        "no_unambiguous_winner"
+      ],
+      "consultAdvisor": false,
+      "layoutScore": null,
+      "deadSequenceWouldFix": false
+    },
+    {
+      "split": "holdout",
+      "family": "layout_ar_generated_unseen",
+      "input": "tqd prdfm",
+      "expected": "layout_fix",
+      "action": "noop",
+      "replacement": null,
+      "reasons": [
+        "hypothesis_preserve",
+        "no_unambiguous_winner"
+      ],
+      "consultAdvisor": true,
+      "layoutScore": 0.29259999999999997,
+      "deadSequenceWouldFix": false
+    },
+    {
+      "split": "holdout",
+      "family": "layout_ar_generated_unseen",
+      "input": "gdl,k fw]r",
+      "expected": "layout_fix",
+      "action": "noop",
+      "replacement": null,
+      "reasons": [
+        "hypothesis_preserve",
+        "no_unambiguous_winner"
+      ],
+      "consultAdvisor": true,
+      "layoutScore": 0.36156250000000006,
+      "deadSequenceWouldFix": false
+    },
+    {
+      "split": "holdout",
+      "family": "layout_ar_on_en_unseen",
+      "input": "hgolds",
+      "expected": "layout_fix",
+      "action": "noop",
+      "replacement": null,
+      "reasons": [
+        "hypothesis_preserve",
+        "no_unambiguous_winner"
+      ],
+      "consultAdvisor": false,
+      "layoutScore": 0.32364,
+      "deadSequenceWouldFix": false
+    }
+  ]
+}

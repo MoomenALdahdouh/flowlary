@@ -1,5 +1,7 @@
 # Flowlary Implementation Phases
 
+> **HISTORICAL.** Phase 0–15 narrative. Current architecture: [../architecture/SYSTEM_ARCHITECTURE.md](../architecture/SYSTEM_ARCHITECTURE.md).
+
 | Phase | Name | Status |
 |-------|------|--------|
 | **0** | Forensic audit (`FL0_AUDIT.md`) | ✅ Complete |

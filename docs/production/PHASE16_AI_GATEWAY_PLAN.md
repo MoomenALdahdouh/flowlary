@@ -60,6 +60,7 @@ Flowlary API (@flowlary/backend)
 - [ ] Persistent usage DB (depends on account/billing phase)
 - [ ] Full account JWT auth (install token is interim boundary)
 - [ ] Deploy unified API to production host
+- [x] Production domain migrated to `api.flowlary.com` (Phase 16.1)
 - [ ] Live Groq verification (no `GROQ_API_KEY` in dev environment)
 
 ## Test results (final)

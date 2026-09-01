@@ -1,5 +1,7 @@
 # Flowlary Release Readiness
 
+> **HISTORICAL (2026-08-25, NOT PRODUCTION READY).** Current checklist: [../audits/FINAL_RELEASE_REPORT.md](../audits/FINAL_RELEASE_REPORT.md).
+
 **Last updated:** 2026-08-25  
 **Overall status:** **NOT PRODUCTION READY**
 
@@ -9,7 +11,7 @@ See [PRODUCTION_READINESS_AUDIT.md](../production/PRODUCTION_READINESS_AUDIT.md)
 
 ### Build & tests
 
-- [x] `npm test` passes (470+)
+- [x] `npm test` passes (481)
 - [x] `npm run build` passes
 - [x] `npm run build:release` passes
 - [x] Release manifest has no localhost permissions
@@ -20,14 +22,15 @@ See [PRODUCTION_READINESS_AUDIT.md](../production/PRODUCTION_READINESS_AUDIT.md)
 - [x] Local AI gateway implemented (Phase 16)
 - [x] Separate correction / translation / layout contracts
 - [x] Managed Groq on server; BYOK opt-in
-- [ ] Production API deployed and verified — **NOT VERIFIED**
+- [x] Production domain configured: `https://api.flowlary.com` (Phase 16.1)
+- [ ] Production API deployed and verified — **DNS REQUIRED**
 - [ ] Live Groq end-to-end (all three operations) — **see LIVE_API_VERIFICATION.md**
 
 ### Entitlement & billing
 
-- [x] Central EntitlementService (client)
-- [x] AI paths fail closed when plan unknown / usage exhausted
-- [ ] Server-verified entitlement — **NOT IMPLEMENTED**
+- [x] Client fail-closed AI gating (EntitlementService)
+- [x] Server ignores client billing header; free-tier server boundary only
+- [ ] Server-verified entitlement (account/billing) — **Phase 17**
 - [ ] License activation — **NOT IMPLEMENTED**
 - [ ] Payment / checkout — **NOT IMPLEMENTED**
 

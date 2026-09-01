@@ -18,7 +18,7 @@ One `GROQ_API_KEY` per environment serves all three operations.
 |-------------|----------|------|----------|
 | Development | `http://127.0.0.1:8787` | Relaxed | Local `.env` |
 | Staging | TBD deploy URL | Required | Staging project key |
-| Production | `https://flowlary-api.zaixos.com` | Required | Production project key |
+| Production | `https://api.flowlary.com` | Required | Production project key |
 
 Never commit real keys. Use `backend/.env.example` as template.
 

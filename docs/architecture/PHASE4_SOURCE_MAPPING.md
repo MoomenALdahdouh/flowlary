@@ -14,7 +14,7 @@ Physical-key tables map output sequences left-to-right via greedy longest match.
 
 ## 2. Supported layouts
 
-`en-US-qwerty`, `ar-101`, `ru-standard`, plus world layouts (`de-qwertz`, `fr-azerty`, `tr-q`, `he-standard`, `el-standard`, `es-latam`, `it-standard`, `pt-abnt`, `uk-standard`, `fa-standard`).
+`en-US-qwerty`, `ar-101`, `ru-standard`, plus world layouts (`de-qwertz`, `fr-azerty`, `tr-q`, `el-standard`, `es-latam`, `it-standard`, `pt-abnt`, `uk-standard`, `fa-standard`).
 
 ## 3. mapLayout()
 

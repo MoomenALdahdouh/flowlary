@@ -68,7 +68,7 @@ Highlights:
 - Cross-feature FIX_LAYOUT → TRANSLATE → CORRECT on same field (no auto-chaining)
 - Mutex busy when second operation attempted
 - InputEngine single listener registration
-- All 13 layout IDs manual conversion
+- All 12 layout IDs manual conversion
 - Code editor blocking (Monaco, CodeMirror, Ace)
 - Excluded domain exact/subdomain matching
 - Shortcut detection + 250ms dedupe

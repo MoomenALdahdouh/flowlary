@@ -1,7 +1,7 @@
 # Live API Verification
 
-**Date:** 2026-08-25  
-**Status:** ⚠️ **NOT VERIFIED in automated session** (credential handling policy — set key locally)
+**Date:** 2026-08-28  
+**Status:** **VERIFIED (local staging)** — all `verify-live-api.mjs` checks pass with `GROQ_API_KEY` in `backend/.env`. Production DNS still blocked.
 
 ## How to verify locally
 
@@ -15,35 +15,47 @@ cp backend/.env.example backend/.env
 
 ```
 GROQ_API_KEY=your_key_here
+FLOWLARY_JWT_SECRET=change-me-in-staging-production
 ```
 
-3. Run verification:
+3. Run verification (starts local server on port **8791** with auth enabled via `FLOWLARY_ENV=staging`):
 
 ```bash
 node scripts/verify-live-api.mjs
 ```
 
-The script starts the local gateway, calls correction / translation / layout endpoints, and prints status lines **without logging user text or secrets**.
+Avoid port 8787 if a stale `dev:api` server is running — the script uses 8791 by default.
+
+4. Optional — verify against deployed production (when DNS/TLS ready):
+
+```bash
+FLOWLARY_API_BASE=https://api.flowlary.com node scripts/verify-live-api.mjs
+```
+
+The script registers an install token, creates an account, checks entitlement, calls correction / translation / layout endpoints, and verifies anonymous install denial — **without logging user text or secrets**.
 
 ## Expected output (when key is valid)
 
 ```
 VERIFIED       server — health OK
-VERIFIED       auth — install registered
+VERIFIED       install_auth — install registered
+VERIFIED       account_auth — plan=trial
+VERIFIED       entitlement — plan=trial
 VERIFIED       correction — model=llama-3.1-8b-instant
 VERIFIED       translation — model=openai/gpt-oss-120b
 VERIFIED       layout — kind=VALID|LAYOUT_MISMATCH
+VERIFIED       entitlement_denial — install+anonymous denied
 ```
 
 ## Production host
 
-Production verification against `https://flowlary-api.zaixos.com` requires:
+Production verification against `https://api.flowlary.com` requires:
 
-- Gateway deployed with Phase 16 routes
+- Gateway deployed with Phase 16–17 routes
 - Production `GROQ_API_KEY` on server
-- Valid TLS
+- Valid DNS + TLS
 
-**Status:** ⚠️ NOT VERIFIED (not tested from this environment)
+**Status:** ⚠️ **BLOCKED_EXTERNAL** — `api.flowlary.com` does not resolve (2026-08-25)
 
 ## Security
 

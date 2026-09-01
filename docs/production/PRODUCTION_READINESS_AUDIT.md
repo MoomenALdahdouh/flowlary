@@ -1,5 +1,7 @@
 # Flowlary Production Readiness Audit
 
+> **HISTORICAL (2026-08-25).** Superseded by [../audits/FINAL_RELEASE_REPORT.md](../audits/FINAL_RELEASE_REPORT.md) and [../architecture/ARCHITECTURE_FREEZE.md](../architecture/ARCHITECTURE_FREEZE.md). Account, Paddle, dashboard, and the enforce writing pipeline exist in code now; do not use this file as current product status.
+
 **Date:** 2026-08-25  
 **Repository:** `/Users/moomen/Projects/flowlary`  
 **Branch:** `main` (1 commit ahead of origin — Phase 16 AI gateway)  
@@ -32,7 +34,7 @@ Some external briefs reference **Control Center, Writing Lab, Translation worksp
 | 510 extension tests | **470** total tests in CI script |
 | Payment / checkout | **Not implemented** |
 | License activation | **`ACTIVATE_LICENSE` → `not_implemented`** |
-| Server-verified entitlement | **Client-only** |
+| Server-verified entitlement | ⚠️ Partial | Client fail-closed gating + server ignores client billing header (free tier only); no account/billing verify |
 
 This audit uses **actual code** as source of truth.
 
@@ -49,7 +51,7 @@ This audit uses **actual code** as source of truth.
 - [x] CorrectionCard UI, debounce, merge, English gate
 - [x] Manual + live translation (live default OFF)
 - [x] Layout local-first + AI classifier fallback
-- [x] Speed Box, 13 layouts, personal exceptions
+- [x] Speed Box, 12 layouts, personal exceptions
 - [x] Unified history (50 entries, privacy-gated)
 - [x] Tiered cache with operation isolation
 - [x] Storage migration (Phase 10)
@@ -81,9 +83,9 @@ This audit uses **actual code** as source of truth.
 
 | Blocker | Status | Notes |
 |---------|--------|-------|
-| Production API deployed + verified | ⚠️ NOT VERIFIED | `flowlary-api.zaixos.com` not tested live from this session |
+| Production API deployed + verified | ⚠️ NOT VERIFIED | `api.flowlary.com` DNS/deploy pending |
 | Live Groq through gateway | ⚠️ Pending local verify | Requires `GROQ_API_KEY` in `backend/.env` only |
-| Server-verified entitlement | ❌ Missing | Client storage only; engines largely ungated |
+| Server-verified entitlement | ⚠️ Partial | Server boundary in `entitlement.ts` — no invented PRO; full billing verify still Phase 17 |
 | License activation | ❌ `not_implemented` | `ACTIVATE_LICENSE` stub |
 | Payment / checkout | ❌ Missing | No Paddle/Stripe/ZAIXOS integration in repo |
 | Account authentication | ❌ Missing | Install token only; no user accounts |

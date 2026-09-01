@@ -1,5 +1,7 @@
 # Flowlary AI Production Architecture
 
+> **HISTORICAL snapshot.** Current AI role, providers, and fallbacks: [../architecture/AI_ARCHITECTURE.md](../architecture/AI_ARCHITECTURE.md) and [../backend/PROVIDERS.md](../backend/PROVIDERS.md). Writing Review is a separate contract from Advisor ranking.
+
 ## Overview
 
 Flowlary uses **one managed Groq credential on the server** and **three independent AI contracts** on the client. The backend AI Gateway transports and governs requests; feature prompts and semantics remain separate.
@@ -62,11 +64,19 @@ The extension **never** receives the managed Groq key. `GET_STATUS` exposes `has
 3. Subsequent AI calls send:
    - `Authorization: Bearer <token>`
    - `X-Flowlary-Install-Id: <uuid>`
-   - `X-Flowlary-Entitlement: trial|free|pro|byok|anonymous`
+   - `X-Flowlary-Entitlement: trial|free|pro|byok|anonymous` — **advisory UX claim only**
+
+The server resolves entitlement in `backend/src/middleware/entitlement.ts` and **never** treats the client header as billing truth. Authenticated requests with a non-anonymous client claim receive **free-tier** server limits until account verification exists (Phase 17).
 
 Development: `FLOWLARY_AUTH_DISABLED=1` or `FLOWLARY_ENV=development` disables strict auth.
 
-## Gateway responsibilities
+## Server entitlement boundary
+
+See [FLOWLARY_AI_ARCHITECTURE.md](./FLOWLARY_AI_ARCHITECTURE.md). Summary:
+
+- Client `X-Flowlary-Entitlement` is logged but not authoritative
+- Server grants `free` tier only for authenticated managed AI (no invented PRO)
+- Anonymous client claims are denied at the gateway
 
 - Request validation and size limits
 - Entitlement gate (anonymous denied in production auth mode)
@@ -100,4 +110,4 @@ npm run dev
 
 Extension default API: `http://127.0.0.1:8787` (`extension/src/config/endpoints.ts`).
 
-Production release build: `https://flowlary-api.zaixos.com`.
+Production release build: `https://api.flowlary.com`.
