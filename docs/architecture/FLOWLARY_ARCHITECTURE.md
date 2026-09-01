@@ -1,5 +1,15 @@
 # Flowlary Architecture
 
+> **HISTORICAL (Phase 1–16 narrative).** The live writing path is the enforce pipeline + Write Gate, not independent feature schedulers. Current specification:
+>
+> - [SYSTEM_ARCHITECTURE.md](./SYSTEM_ARCHITECTURE.md)
+> - [WRITING_ENGINE.md](./WRITING_ENGINE.md)
+> - [ARCHITECTURE_FREEZE.md](./ARCHITECTURE_FREEZE.md)
+>
+> Do not implement new auto-writers from this document.
+
+Writing-path decisions were specified in [unified-writing-decision-engine-spec.md](./unified-writing-decision-engine-spec.md) and **are implemented** in `extension/src/core/writeGate/pipeline.ts`.
+
 Flowlary merges three Chrome extensions (EWA, Lingo, Layfix) into **one** product with **one** content engine and **three** independent feature modules.
 
 ## Core Principles

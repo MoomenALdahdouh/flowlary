@@ -15,9 +15,10 @@ Flowlary processes writing locally in the browser extension. Selected operations
 
 | Operation | Destination | When | Data sent |
 |-----------|-------------|------|-----------|
-| CORRECT (BYOK) | `https://api.groq.com` | After safety; user enabled correction with Groq key | English segment + minimal context JSON |
-| TRANSLATE | `https://lingo-api.zaixos.com` | Manual shortcut or live mode (opt-in) | Text, languages, mode |
-| FIX_LAYOUT classifier | `https://flowlary-api.zaixos.com` | When local mapping cannot resolve token | Word + short context |
+| CORRECT (managed) | `https://api.flowlary.com` | After safety; user enabled managed Flowlary AI | English segment + minimal context JSON |
+| CORRECT (BYOK) | `https://api.groq.com` | Opt-in; user Groq key in browser only | English segment + minimal context JSON |
+| TRANSLATE | `https://api.flowlary.com` | Manual shortcut or live mode (opt-in) | Text, languages, mode |
+| FIX_LAYOUT classifier | `https://api.flowlary.com` | When local mapping cannot resolve token | Word + short context |
 
 Development builds (`npm run dev` / `npm run build`) may use localhost APIs and include localhost host permissions in `manifest.json`. **Release builds** (`npm run build:release`) use `manifest.prod.json` with HTTPS production hosts only.
 

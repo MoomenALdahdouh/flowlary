@@ -11,7 +11,7 @@ CONTENT SCRIPT (CommandOrchestrator, features)
   ↓ typed runtime messages + sender check
 SERVICE WORKER (background)
   ↓ HTTPS + bounded payloads + response validation
-EXTERNAL APIs (Groq, translation, layout classifier)
+EXTERNAL APIs (Flowlary AI gateway → internal provider)
 ```
 
 ```
@@ -40,7 +40,7 @@ Every boundary validates message type, payload shape, and bounded string lengths
 | 4 | Cross-origin iframe | all_frames | `shouldProcessFrame()` skips cross-origin | Same-origin iframe inherits page trust |
 | 5 | Malicious extension message | runtime messaging | `isTrustedExtensionSender` + schema validation | Other compromised extensions cannot spoof same-id |
 | 6 | Malformed runtime message | all handlers | `validateExtensionRequest` | Logic bugs in new message types |
-| 7 | Stolen Groq key | local storage | Key only in SW; password UI; never logged | Local disk access exposes key |
+| 7 | Stolen server credentials | backend env | Keys server-side only; never in extension | Compromised server/host |
 | 8 | Sensitive text to AI | correction/translate | Safety before network | Heuristic gaps on novel secret formats |
 | 9 | Sensitive text in cache | L1/L2 cache | `canCacheValue` / `canCacheText` | Heuristic false negatives |
 | 10 | Sensitive text in history | flowlary.history | `canRecordHistory` | Same as cache |
@@ -70,9 +70,10 @@ Every boundary validates message type, payload shape, and bounded string lengths
 
 Host permissions:
 
-- `https://api.groq.com/*` — BYOK correction (production)
-- `https://flowlary-api.zaixos.com/*`, `https://lingo-api.zaixos.com/*` — production translation/classifier
+- `https://api.flowlary.com/*` — Flowlary AI (correction, translation, layout classifier)
 - `http://127.0.0.1:*`, `http://localhost:*` (8003, 8004, 8787) — **development only**; required for local API testing
+
+The extension does **not** call AI providers directly. Legacy BYOK client paths were removed.
 
 Content scripts match `<all_urls>` with `all_frames: true` because embedded same-origin editors (e.g. compose iframes) must be reachable. Cross-origin iframes are skipped at runtime.
 
@@ -97,11 +98,11 @@ Blocks: password/OTP/payment fields, code editors, markdown fences, excluded dom
 - Static Shadow DOM templates use fixed `innerHTML` for chrome only
 - No `dangerouslySetInnerHTML` for model output
 
-## API keys (BYOK Groq)
+## API credentials
 
-- Stored in `flowlary.correction` namespace
-- Passed only in `Authorization: Bearer` header from service worker
-- Never in URLs, logs, metrics, cache, or history
+- Managed provider credentials live on the Flowlary server only (`GROQ_API_KEY` in backend env).
+- The extension never receives or stores user provider keys.
+- Legacy `flowlary.correction.groqKey` from old installs is cleared on upgrade via `retireByokIfNeeded`.
 
 ## Storage
 
