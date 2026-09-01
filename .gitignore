@@ -6,11 +6,15 @@ release/.validate-tmp/
 .env
 .env.*
 !.env.example
+!website/.env.development
 .DS_Store
 *.log
 coverage/
 .vite/
 *.pem
+
+# persisted backend store (accounts, usage)
+backend/data/
 
 # agent scratch / cloud leftovers
 .agent-*
@@ -21,3 +25,19 @@ coverage/
 /agent-tools
 .next/
 next-env.d.ts
+
+# website build output
+website/dist/
+website/dist-ssr/
+
+# Playwright / live probe artifacts
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+tests/e2e/results/
+
+# Local QA screenshots and JSON stores
+.qa-shots/
+extension/data/
+data/*.json
