@@ -1,6 +1,7 @@
 import type { OperationType } from './types.ts'
 
-export const CACHE_SCHEMA_VERSION = 1 as const
+/** Bumped when TRANSLATE/CORRECT keys gained accountId isolation (Phase 2). */
+export const CACHE_SCHEMA_VERSION = 3 as const
 export const MAX_CACHE_ENTRIES = 200
 export const MAX_CACHE_TEXT_LENGTH = 2_000
 
@@ -70,6 +71,10 @@ export type CacheKeyParts = {
   text: string
   sourceLanguage?: string
   targetLanguage?: string
+  /** Isolates Google vs Groq vs Google+refine results. */
+  translationStrategy?: string
+  /** Isolates AI cache entries across accounts (Phase 2). */
+  accountId?: string | null
   layoutSource?: string
   layoutCandidates?: string[]
   layoutContext?: string
@@ -106,17 +111,20 @@ export function buildCacheKey(parts: CacheKeyParts): string {
     text,
     sourceLanguage,
     targetLanguage,
+    translationStrategy,
     layoutSource,
     layoutCandidates,
     layoutContext,
     contextHash,
+    accountId,
   } = parts
   const normalized = normalizeCacheText(operation, text)
+  const accountPart = accountId && accountId.trim() ? accountId.trim() : 'anon'
   switch (operation) {
     case 'CORRECT':
-      return `CORRECT:${hashString(normalized)}:${contextHash ?? '0'}`
+      return `CORRECT:${accountPart}:${hashString(normalized)}:${contextHash ?? '0'}`
     case 'TRANSLATE':
-      return `TRANSLATE:${hashString(normalized)}:${sourceLanguage ?? ''}:${targetLanguage ?? ''}`
+      return `TRANSLATE:${accountPart}:${hashString(normalized)}:${sourceLanguage ?? ''}:${targetLanguage ?? ''}:${translationStrategy ?? 'google'}`
     case 'FIX_LAYOUT': {
       const layouts = (layoutCandidates ?? []).slice().sort().join(',')
       const ctx = layoutContext ? hashString(layoutContext) : ''

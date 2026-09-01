@@ -7,13 +7,14 @@ export const CORRECTION_DEFAULTS = {
   DIRECT_SENTENCE_BOUNDARY_DEBOUNCE_MS: 20,
   MIN_CHARS: 8,
   MIN_WORDS: 3,
+  /** @deprecated Field-length gate removed — use extractWritingContext() bounds instead. */
   MAX_ASSIST_CHARS: 250,
   MAX_CORRECTION_CHARS: 2000,
   CACHE_LIMIT: 50,
-  GROQ_MODEL_DEFAULT: 'llama-3.1-8b-instant',
+  GROQ_MODEL_DEFAULT: 'openai/gpt-oss-20b',
 } as const
 
-export type ChangeType = 'spelling' | 'grammar' | 'wording'
+export type ChangeType = 'spelling' | 'grammar' | 'wording' | 'layout'
 
 export type CorrectionChange = {
   type: ChangeType
@@ -27,6 +28,8 @@ export type CorrectionResponse = {
   originalText: string
   correctedText: string
   changes: CorrectionChange[]
+  /** Optional educational metadata — same order as `changes` (WL-4C-D+). */
+  explanations?: import('../explanation/index.ts').RuleExplanation[]
 }
 
 export type CorrectRequestContext = {

@@ -29,6 +29,9 @@ export type Command = {
   generation?: number
   /** Monotonic request id for stale detection. */
   requestId?: number
+  /** Shared-analysis span for explicit shortcuts. */
+  rangeStart?: number
+  rangeEnd?: number
 }
 
 /** Result returned by feature handlers and CommandRouter. */
@@ -56,13 +59,34 @@ export const STORAGE_KEYS = {
   layout: 'flowlary.layout',
   layoutProfile: 'flowlary.layout.profile',
   history: 'flowlary.history',
+  learningProfile: 'flowlary.learning.profile',
+  learningInstall: 'flowlary.learning.install',
+  learningEvents: 'flowlary.learning.events',
+  learningSessions: 'flowlary.learning.sessions',
   entitlement: 'flowlary.entitlement',
   entitlementLicenseKey: 'flowlary.entitlement.licenseKey',
   migrations: 'flowlary.migrations.v1',
   cache: 'flowlary.cache',
   authInstallId: 'flowlary.auth.installId',
   authInstallToken: 'flowlary.auth.installToken',
+  authAccessToken: 'flowlary.auth.accessToken',
+  authRefreshToken: 'flowlary.auth.refreshToken',
+  authSessionId: 'flowlary.auth.sessionId',
+  /** Server-authenticated account id — ownership key for local account-scoped data. */
+  authAccountId: 'flowlary.auth.accountId',
+  authAccountEmail: 'flowlary.auth.accountEmail',
+  authAccountPlan: 'flowlary.auth.accountPlan',
+  authServerEntitlement: 'flowlary.auth.serverEntitlement',
+  authEntitlementSyncedAt: 'flowlary.auth.entitlementSyncedAt',
+  authTokenExpiresAt: 'flowlary.auth.tokenExpiresAt',
+  /** Legacy claim / quarantine marker for pre-isolation unscoped keys. */
+  accountIsolationMeta: 'flowlary.account.isolation.meta',
+  uiLocale: 'flowlary.ui.locale',
+  /** Install-scoped first-session / retention flags (not account-scoped). */
+  uiFirstWin: 'flowlary.ui.firstWin',
 } as const
+
+export type EntitlementStatus = 'trial' | 'free' | 'pro' | 'unknown'
 
 /** Unified product identifier for entitlement and licensing. */
 export const FLOWLARY_PRODUCT_ID = 'FLOWLARY' as const
@@ -73,11 +97,13 @@ export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS]
 export const BRAND = {
   name: 'Flowlary',
   tagline: 'Your AI Writing Companion',
-  version: '1.0.0',
+  version: '1.1.0',
   pageMarker: 'flowlary',
 } as const
 
 export const COMMANDS = {
   translate: 'TRANSLATE',
   fixLayout: 'FIX_LAYOUT',
+  correct: 'CORRECT',
+  speedBox: 'SPEED_BOX',
 } as const

@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./tokens.css": "./src/tokens.css",
+    "./theme": "./src/theme.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

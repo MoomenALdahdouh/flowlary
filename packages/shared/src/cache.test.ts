@@ -52,4 +52,50 @@ describe('CacheCoordinator', () => {
     expect(cache.has(cache.buildKey({ operation: 'CORRECT', text: 'a' }))).toBe(false)
     expect(cache.has(cache.buildKey({ operation: 'TRANSLATE', text: 'b', sourceLanguage: 'ar', targetLanguage: 'en' }))).toBe(true)
   })
+  it('isolates TRANSLATE/CORRECT keys by accountId', () => {
+    const a = buildCacheKey({
+      operation: 'TRANSLATE',
+      text: 'hello',
+      sourceLanguage: 'en',
+      targetLanguage: 'ar',
+      translationStrategy: 'google',
+      accountId: 'acct_a',
+    })
+    const b = buildCacheKey({
+      operation: 'TRANSLATE',
+      text: 'hello',
+      sourceLanguage: 'en',
+      targetLanguage: 'ar',
+      translationStrategy: 'google',
+      accountId: 'acct_b',
+    })
+    expect(a).not.toBe(b)
+    expect(a).toContain('acct_a')
+    expect(b).toContain('acct_b')
+
+    const ca = buildCacheKey({ operation: 'CORRECT', text: 'hello', accountId: 'acct_a' })
+    const cb = buildCacheKey({ operation: 'CORRECT', text: 'hello', accountId: 'acct_b' })
+    expect(ca).not.toBe(cb)
+  })
+
+  it('isolates Free Google strategy from Pro refined strategy', () => {
+    const free = buildCacheKey({
+      operation: 'TRANSLATE',
+      text: 'hello',
+      sourceLanguage: 'en',
+      targetLanguage: 'ar',
+      translationStrategy: 'google',
+      accountId: 'acct_a',
+    })
+    const pro = buildCacheKey({
+      operation: 'TRANSLATE',
+      text: 'hello',
+      sourceLanguage: 'en',
+      targetLanguage: 'ar',
+      translationStrategy: 'google_then_groq',
+      accountId: 'acct_a',
+    })
+    expect(free).not.toBe(pro)
+  })
+
 })

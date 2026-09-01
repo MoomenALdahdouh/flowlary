@@ -1,0 +1,297 @@
+:root {
+  /* Snow brand — frost glass palette (dark) */
+  --fl-snow: rgba(248, 251, 255, 0.04);
+  --fl-snow-soft: rgba(236, 242, 255, 0.06);
+  --fl-snow-glass: rgba(18, 24, 36, 0.62);
+  --fl-snow-glass-strong: rgba(14, 19, 30, 0.78);
+  --fl-snow-border: rgba(255, 255, 255, 0.12);
+  --fl-snow-highlight: rgba(255, 255, 255, 0.08);
+  --fl-snow-rail: rgba(255, 255, 255, 0.05);
+
+  --fl-bg: #05070b;
+  --fl-bg-soft: #080b11;
+  --fl-bg-raised: #0c1018;
+  --fl-surface: #10151f;
+  --fl-surface-2: #151b27;
+  --fl-surface-3: #1b2332;
+  --fl-ink: #061018;
+
+  --fl-border: rgba(236, 242, 255, 0.08);
+  --fl-border-strong: rgba(236, 242, 255, 0.14);
+  --fl-border-accent: rgba(91, 140, 255, 0.42);
+
+  --fl-text: #f3f6fb;
+  --fl-muted: #9aa6bb;
+  --fl-faint: #8b97ac;
+  --fl-text-disabled: #6b7689;
+
+  --fl-accent: #5b8cff;
+  --fl-accent-hover: #7aa4ff;
+  --fl-accent-pressed: #4a7af0;
+  --fl-accent-soft: rgba(91, 140, 255, 0.14);
+  --fl-accent-glow: rgba(91, 140, 255, 0.08);
+  --fl-on-accent: #061018;
+
+  --fl-success: #3dba86;
+  --fl-success-soft: rgba(61, 186, 134, 0.14);
+  --fl-warn: #e6b04a;
+  --fl-warn-soft: rgba(230, 176, 74, 0.14);
+  --fl-danger: #e06b73;
+  --fl-danger-soft: rgba(224, 107, 115, 0.14);
+  --fl-info: #38bdf8;
+  --fl-info-soft: rgba(56, 189, 248, 0.14);
+
+  --fl-state-translate: #8b7cf6;
+  --fl-state-translate-soft: rgba(139, 124, 246, 0.14);
+  --fl-state-layout: #e6b04a;
+  --fl-state-layout-soft: rgba(230, 176, 74, 0.14);
+  --fl-state-live: #38bdf8;
+  --fl-state-live-soft: rgba(56, 189, 248, 0.14);
+
+  --fl-ai-ready: var(--fl-success);
+  --fl-ai-working: var(--fl-accent);
+  --fl-ai-success: var(--fl-success);
+  --fl-ai-unavailable: var(--fl-warn);
+  --fl-ai-exhausted: var(--fl-warn);
+
+  --fl-learn-discovered: var(--fl-info);
+  --fl-learn-practicing: var(--fl-accent);
+  --fl-learn-improving: var(--fl-success);
+  --fl-learn-completed: var(--fl-success);
+
+  /* Teaching colors — spelling / grammar / wording (legacy EWA lineage, dark-readable) */
+  --fl-teach-spelling: #fb7185;
+  --fl-teach-spelling-soft: rgba(244, 63, 94, 0.18);
+  --fl-teach-grammar: #fbbf24;
+  --fl-teach-grammar-soft: rgba(202, 138, 4, 0.2);
+  --fl-teach-wording: #a5b4fc;
+  --fl-teach-wording-soft: rgba(99, 102, 241, 0.2);
+  --fl-teach-layout: #e6b04a;
+  --fl-teach-layout-soft: rgba(230, 176, 74, 0.18);
+
+  --fl-glass-1: rgba(16, 21, 31, 0.58);
+  --fl-glass-2: rgba(16, 21, 31, 0.74);
+  --fl-glass-3: rgba(20, 26, 38, 0.88);
+  --fl-glass-blur: blur(12px) saturate(140%);
+  --fl-glass-blur-sm: blur(10px) saturate(130%);
+  --fl-glass-border: 1px solid var(--fl-snow-border);
+  --fl-glass-border-subtle: 1px solid rgba(236, 242, 255, 0.07);
+  --fl-glass-highlight: inset 0 1px 0 var(--fl-snow-highlight);
+  --fl-glass-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.22),
+    0 6px 16px rgba(0, 0, 0, 0.12);
+  --fl-glass-shadow-lg:
+    0 24px 56px rgba(0, 0, 0, 0.28),
+    0 8px 24px rgba(0, 0, 0, 0.16);
+  --fl-glass-shadow-focus:
+    0 0 0 1px rgba(91, 140, 255, 0.35),
+    0 16px 40px rgba(18, 36, 80, 0.24);
+
+  --fl-atmosphere-1: rgba(91, 140, 255, 0.05);
+  --fl-atmosphere-2: rgba(91, 140, 255, 0.03);
+  --fl-atmosphere-cool: rgba(140, 165, 200, 0.05);
+
+  --fl-header-bg: var(--fl-snow-glass);
+  --fl-header-bg-strong: var(--fl-snow-glass-strong);
+  --fl-overlay: rgba(5, 7, 11, 0.94);
+  --fl-hover-fill: rgba(255, 255, 255, 0.04);
+  --fl-hero-glow: rgba(91, 140, 255, 0.05);
+  --fl-band: #080b12;
+  --fl-band-translate: #070a10;
+  --fl-footer-bg: #06080d;
+  --fl-input-bg: #0a0e15;
+  --fl-control-bg: rgba(16, 21, 31, 0.7);
+  --fl-problem-wash: rgba(16, 21, 31, 0.55);
+  --fl-product-bg: #10151f;
+  --fl-product-surface: #151b27;
+  --fl-header-shadow: 0 10px 40px rgba(0, 0, 0, 0.28);
+  --fl-stage: linear-gradient(180deg, rgba(18, 24, 38, 0.92) 0%, rgba(11, 16, 24, 0.88) 100%);
+  --fl-chrome: rgba(255, 255, 255, 0.03);
+  --fl-url-bg: rgba(5, 7, 11, 0.55);
+  --fl-dot: #2a3344;
+  --fl-dot-strong: #3a4458;
+  --fl-toggle-off: #334155;
+  --fl-thumb: #ffffff;
+  --fl-pane: rgba(16, 21, 31, 0.86);
+
+  --fl-radius-xs: 6px;
+  --fl-radius-sm: 8px;
+  --fl-radius: 12px;
+  --fl-radius-lg: 18px;
+  --fl-radius-xl: 26px;
+  --fl-radius-pill: 999px;
+
+  --fl-shadow-xs: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --fl-shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.22);
+  --fl-shadow: 0 16px 48px rgba(0, 0, 0, 0.32);
+  --fl-shadow-glow: 0 0 0 1px var(--fl-border-accent);
+
+  --fl-font-display: 'Segoe UI Variable Display', 'SF Pro Display', 'Segoe UI', 'Helvetica Neue',
+    ui-sans-serif, system-ui, sans-serif;
+  --fl-font: 'Segoe UI Variable Text', 'SF Pro Text', 'Segoe UI', 'Helvetica Neue', ui-sans-serif,
+    system-ui, sans-serif;
+  --fl-font-arabic: 'Segoe UI', 'SF Arabic', 'Geeza Pro', 'Tahoma', 'Arial', sans-serif;
+  --fl-mono: ui-monospace, 'SFMono-Regular', 'Menlo', 'Consolas', monospace;
+
+  --fl-text-display: clamp(2.25rem, 5vw, 3.25rem);
+  --fl-text-h1: clamp(1.85rem, 3.2vw, 2.5rem);
+  --fl-text-h2: clamp(1.4rem, 2.2vw, 1.85rem);
+  --fl-text-h3: 1.125rem;
+  --fl-text-h4: 1rem;
+  --fl-text-body: 1.0625rem;
+  --fl-text-small: 0.92rem;
+  --fl-text-label: 0.75rem;
+  --fl-text-meta: 0.8rem;
+  --fl-line-body: 1.65;
+  --fl-line-body-ar: 1.75;
+
+  --fl-space-1: 0.25rem;
+  --fl-space-2: 0.5rem;
+  --fl-space-3: 0.75rem;
+  --fl-space-4: 1rem;
+  --fl-space-5: 1.25rem;
+  --fl-space-6: 1.75rem;
+  --fl-space-7: 2.5rem;
+  --fl-space-8: 3.75rem;
+  --fl-space-9: 6rem;
+  --fl-space-10: 8rem;
+
+  --fl-max: 76rem;
+  --fl-max-narrow: 42rem;
+  --fl-header: 4.35rem;
+  --fl-header-pad: 0.72rem;
+  --fl-focus: 2px solid var(--fl-accent);
+  --fl-control-height: 2.75rem;
+  --fl-control-height-compact: 2.5rem;
+
+  --fl-bp-sm: 640px;
+  --fl-bp-md: 768px;
+  --fl-bp-lg: 1024px;
+  --fl-bp-xl: 1200px;
+
+  --fl-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --fl-duration: 180ms;
+}
+
+html[data-theme='light'] {
+  /* Snow brand — frost glass palette (light) */
+  --fl-snow: #f8fbff;
+  --fl-snow-soft: #eef4fc;
+  --fl-snow-glass: rgba(255, 255, 255, 0.82);
+  --fl-snow-glass-strong: rgba(255, 255, 255, 0.92);
+  --fl-snow-border: rgba(255, 255, 255, 0.88);
+  --fl-snow-highlight: rgba(255, 255, 255, 0.95);
+  --fl-snow-rail: rgba(255, 255, 255, 0.52);
+
+  --fl-bg: #f4f8fd;
+  --fl-bg-soft: #eef4fc;
+  --fl-bg-raised: #ffffff;
+  --fl-surface: #ffffff;
+  --fl-surface-2: #f8fafc;
+  --fl-surface-3: #eef4fc;
+  --fl-ink: #0a1628;
+
+  --fl-border: rgba(10, 22, 40, 0.08);
+  --fl-border-strong: rgba(10, 22, 40, 0.12);
+  --fl-border-accent: rgba(49, 95, 214, 0.38);
+
+  --fl-text: #0a1628;
+  --fl-muted: #4a5a72;
+  --fl-faint: #5b6b82;
+  --fl-text-disabled: #94a3b8;
+
+  --fl-accent: #315fd6;
+  --fl-accent-hover: #274ec0;
+  --fl-accent-pressed: #2144ab;
+  --fl-accent-soft: rgba(49, 95, 214, 0.1);
+  --fl-accent-glow: rgba(49, 95, 214, 0.08);
+  --fl-on-accent: #ffffff;
+
+  --fl-success: #1d8f62;
+  --fl-success-soft: rgba(29, 143, 98, 0.12);
+  --fl-warn: #9a7209;
+  --fl-warn-soft: rgba(184, 134, 11, 0.12);
+  --fl-danger: #c13d4a;
+  --fl-danger-soft: rgba(193, 61, 74, 0.12);
+  --fl-info: #0369a1;
+  --fl-info-soft: rgba(8, 145, 178, 0.12);
+
+  --fl-state-translate: #6366f1;
+  --fl-state-translate-soft: rgba(99, 102, 241, 0.12);
+  --fl-state-layout: #b8860b;
+  --fl-state-layout-soft: rgba(184, 134, 11, 0.12);
+  --fl-state-live: #0891b2;
+  --fl-state-live-soft: rgba(8, 145, 178, 0.12);
+
+  --fl-ai-ready: var(--fl-success);
+  --fl-ai-working: var(--fl-accent);
+  --fl-ai-success: var(--fl-success);
+  --fl-ai-unavailable: var(--fl-warn);
+  --fl-ai-exhausted: var(--fl-warn);
+
+  --fl-learn-discovered: var(--fl-info);
+  --fl-learn-practicing: var(--fl-accent);
+  --fl-learn-improving: var(--fl-success);
+  --fl-learn-completed: var(--fl-success);
+
+  --fl-teach-spelling: #be123c;
+  --fl-teach-spelling-soft: rgba(244, 63, 94, 0.12);
+  --fl-teach-grammar: #a16207;
+  --fl-teach-grammar-soft: rgba(202, 138, 4, 0.16);
+  --fl-teach-wording: #3730a3;
+  --fl-teach-wording-soft: rgba(99, 102, 241, 0.12);
+  --fl-teach-layout: #b8860b;
+  --fl-teach-layout-soft: rgba(184, 134, 11, 0.12);
+
+  --fl-glass-1: rgba(255, 255, 255, 0.72);
+  --fl-glass-2: rgba(255, 255, 255, 0.86);
+  --fl-glass-3: rgba(255, 255, 255, 0.94);
+  --fl-glass-blur: blur(12px) saturate(140%);
+  --fl-glass-blur-sm: blur(10px) saturate(130%);
+  --fl-glass-border: 1px solid var(--fl-snow-border);
+  --fl-glass-border-subtle: 1px solid rgba(255, 255, 255, 0.55);
+  --fl-glass-highlight: inset 0 1px 0 var(--fl-snow-highlight);
+  --fl-glass-shadow:
+    0 12px 32px rgba(15, 35, 70, 0.06),
+    0 4px 12px rgba(15, 35, 70, 0.03);
+  --fl-glass-shadow-lg:
+    0 20px 48px rgba(15, 35, 70, 0.08),
+    0 8px 20px rgba(15, 35, 70, 0.04);
+  --fl-glass-shadow-focus:
+    0 0 0 1px rgba(49, 95, 214, 0.32),
+    0 16px 40px rgba(49, 95, 214, 0.1);
+
+  --fl-atmosphere-1: rgba(49, 95, 214, 0.04);
+  --fl-atmosphere-2: rgba(180, 200, 230, 0.08);
+  --fl-atmosphere-cool: rgba(140, 165, 200, 0.07);
+
+  --fl-header-bg: var(--fl-snow-glass);
+  --fl-header-bg-strong: var(--fl-snow-glass-strong);
+  --fl-overlay: rgba(244, 247, 251, 0.96);
+  --fl-hover-fill: rgba(10, 22, 40, 0.04);
+  --fl-hero-glow: rgba(49, 95, 214, 0.06);
+  --fl-band: rgba(238, 243, 249, 0.65);
+  --fl-band-translate: rgba(235, 241, 250, 0.7);
+  --fl-footer-bg: rgba(238, 243, 249, 0.85);
+  --fl-input-bg: #ffffff;
+  --fl-control-bg: #ffffff;
+  --fl-problem-wash: rgba(238, 243, 249, 0.5);
+  --fl-product-bg: #ffffff;
+  --fl-product-surface: #f8fafc;
+  --fl-header-shadow:
+    0 8px 24px rgba(15, 35, 70, 0.05),
+    0 2px 8px rgba(15, 35, 70, 0.03);
+  --fl-stage: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(248, 250, 252, 0.88) 100%);
+  --fl-chrome: rgba(255, 255, 255, 0.45);
+  --fl-url-bg: rgba(255, 255, 255, 0.55);
+  --fl-dot: #c8d4e4;
+  --fl-dot-strong: #94a3b8;
+  --fl-toggle-off: #c5cdd8;
+  --fl-thumb: #ffffff;
+  --fl-pane: #ffffff;
+
+  --fl-shadow-xs: var(--fl-glass-highlight);
+  --fl-shadow-sm: 0 8px 24px rgba(15, 35, 70, 0.06);
+  --fl-shadow: 0 16px 40px rgba(15, 35, 70, 0.08);
+  --fl-shadow-glow: 0 0 0 1px var(--fl-border-accent);
+}
