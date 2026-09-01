@@ -19,6 +19,7 @@ import {
 } from '../../extension/src/storage/migration/runner.ts'
 import { hydrateStateFromStorage } from '../../extension/src/storage/hydrate.ts'
 import { createMockChromeStorage } from '../helpers/mockChromeStorage.ts'
+import { activateTestAccount, clearTestAccountContext } from '../helpers/accountIsolation.ts'
 
 describe('Phase 10 — storage schemas', () => {
   it('isolates namespaces', () => {
@@ -31,14 +32,20 @@ describe('Phase 10 — storage schemas', () => {
 describe('Phase 10 — migration scenarios', () => {
   let mockStore: ReturnType<typeof createMockChromeStorage>
 
-  beforeEach(() => {
+  beforeEach(async () => {
     mockStore = createMockChromeStorage()
     mockStore.install()
     resetMigrationRunnerForTests()
+    await clearTestAccountContext()
     Object.assign(stateManager.settings, { enabled: true, pausedUntil: null, excludedDomains: [], version: 1 })
     Object.assign(stateManager.correction, DEFAULT_CORRECTION)
     Object.assign(stateManager.translation, DEFAULT_TRANSLATION)
   })
+
+  /** Migration still writes unscoped keys; claim into an account to read via product APIs. */
+  async function claimMigratedData() {
+    await activateTestAccount()
+  }
 
   afterEach(() => {
     resetMigrationRunnerForTests()
@@ -87,11 +94,13 @@ describe('Phase 10 — migration scenarios', () => {
     mockStore.local[LEGACY_EWA.groqApiKey] = 'gsk_secret_key_never_log'
 
     await runStorageMigration()
+    await claimMigratedData()
     const correction = await getCorrectionSettings(flowlaryStorage)
     expect(correction.enabled).toBe(false)
     expect(correction.mode).toBe('box')
     expect(correction.consentAccepted).toBe(true)
-    expect(correction.groqApiKey).toBe('gsk_secret_key_never_log')
+    expect(correction).not.toHaveProperty('groqApiKey')
+    expect(correction).not.toHaveProperty('aiProvider')
 
     const report = (await getMigrationDiagnostics()).report
     expect(report).not.toContain('gsk_secret_key_never_log')
@@ -110,6 +119,7 @@ describe('Phase 10 — migration scenarios', () => {
     }
 
     await runStorageMigration()
+    await claimMigratedData()
     const translation = await getTranslationSettings(flowlaryStorage)
     expect(translation.sourceLanguage).toBe('fr')
     expect(translation.targetLanguage).toBe('en')
@@ -132,6 +142,7 @@ describe('Phase 10 — migration scenarios', () => {
     }
 
     await runStorageMigration()
+    await claimMigratedData()
     const profile = await getLayoutProfile(flowlaryStorage)
     expect(profile.personalExceptions).toEqual(['GitHub', 'OAuth'])
     expect(profile.layoutProfile.sourceLayout).toBe('en-US-qwerty')
@@ -148,10 +159,12 @@ describe('Phase 10 — migration scenarios', () => {
     }
 
     await runStorageMigration()
+    await claimMigratedData()
     const correction = await getCorrectionSettings(flowlaryStorage)
     const translation = await getTranslationSettings(flowlaryStorage)
     const profile = await getLayoutProfile(flowlaryStorage)
-    expect(correction.groqApiKey).toBe('gsk_combo')
+    expect(correction).not.toHaveProperty('groqApiKey')
+    expect(correction).not.toHaveProperty('aiProvider')
     expect(translation.sourceLanguage).toBe('de')
     expect(profile.personalExceptions).toContain('npm')
   })
@@ -173,6 +186,7 @@ describe('Phase 10 — migration scenarios', () => {
     mockStore.local[LEGACY_LINGO.profile] = { sourceLanguage: 'es', targetLanguage: 'en' }
 
     await runStorageMigration()
+    await claimMigratedData()
     const translation = await getTranslationSettings(flowlaryStorage)
     expect(translation.sourceLanguage).toBe('es')
     const state = await getMigrationState(flowlaryStorage)
@@ -191,6 +205,7 @@ describe('Phase 10 — migration scenarios', () => {
     mockStore.local[LEGACY_LINGO.profile] = { sourceLanguage: 'fr', targetLanguage: 'en' }
 
     await runStorageMigration()
+    await claimMigratedData()
     const translation = await getTranslationSettings(flowlaryStorage)
     expect(translation.sourceLanguage).toBe('ja')
   })
@@ -258,8 +273,10 @@ describe('Phase 10 — migration scenarios', () => {
     mockStore.local[LEGACY_EWA.groqApiKey] = 'gsk_hydrate'
     mockStore.sync[LEGACY_EWA.settings] = { enabled: true, correctionMode: 'direct', consentAccepted: true }
     await runStorageMigration()
+    await claimMigratedData()
     await hydrateStateFromStorage(flowlaryStorage)
-    expect(stateManager.correction.groqApiKey).toBe('gsk_hydrate')
+    expect(stateManager.correction).not.toHaveProperty('groqApiKey')
+    expect(stateManager.correction).not.toHaveProperty('aiProvider')
     expect(stateManager.correction.mode).toBe('direct')
   })
 

@@ -25,8 +25,6 @@ describe('direct mode commit', () => {
     stateManager.correction.mode = 'direct'
     stateManager.correction.enabled = true
     stateManager.correction.consentAccepted = true
-    stateManager.correction.groqApiKey = 'key'
-
     const ta = document.createElement('textarea')
     ta.value = 'I dont know what to write today'
     document.body.append(ta)

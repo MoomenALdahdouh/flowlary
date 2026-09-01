@@ -1,7 +1,8 @@
 /** Adapted from Lingo/Layfix src/dom/replace.test.ts */
-import { describe, expect, it, beforeEach } from 'vitest'
+import { describe, expect, it, beforeEach, vi } from 'vitest'
 import { adjustCaret } from '../../extension/src/core/dom/caret.ts'
 import {
+  readCaret,
   readText,
   writeReplacement,
 } from '../../extension/src/core/dom/editor.ts'
@@ -27,6 +28,35 @@ function areaField(value: string): HTMLTextAreaElement {
 describe('characterization: value replacement (Lingo/Layfix)', () => {
   beforeEach(() => {
     document.body.innerHTML = ''
+  })
+
+  it('restores a space that setRangeText dropped next to Arabic', () => {
+    const area = areaField('مرحبا اثممخ حمثشسث')
+    const start = 'مرحبا '.length
+    vi.spyOn(area, 'setRangeText').mockImplementation(() => {
+      setNativeValue(area, 'مرحبا helloحمثشسث')
+    })
+    const result = writeReplacement(area, start, start + 'اثممخ'.length, 'hello', { origin: 'FIX_LAYOUT' })
+    expect(result.verdict).toBe('written')
+    expect(area.value).toBe('مرحبا hello حمثشسث')
+  })
+
+  it('places the caret after the space that finished the remapped word', () => {
+    const area = areaField('اثممخ ')
+    area.setSelectionRange(5, 5)
+    const result = writeReplacement(area, 0, 5, 'hello', { origin: 'FIX_LAYOUT' })
+    expect(result.verdict).toBe('written')
+    expect(area.value).toBe('hello ')
+    expect(area.selectionStart).toBe(6)
+  })
+
+  it('prefers setRangeText so the browser can undo the write', () => {
+    const input = valueField('اثممخ ')
+    const rangeSpy = vi.spyOn(input, 'setRangeText')
+    const result = writeReplacement(input, 0, 5, 'hello', { origin: 'FIX_LAYOUT' })
+    expect(result.verdict).toBe('written')
+    expect(rangeSpy).toHaveBeenCalled()
+    expect(input.value).toBe('hello ')
   })
 
   it('uses insertReplacementText and preserves caret', () => {
@@ -76,14 +106,26 @@ describe('characterization: contenteditable replacement', () => {
     document.body.innerHTML = ''
   })
 
-  it('replaces a text range without rewriting the page', () => {
+  it('places the caret after the completing space on contenteditable', () => {
     const edit = document.createElement('div')
     edit.contentEditable = 'true'
-    edit.textContent = 'مرحبا'
+    edit.textContent = 'اثممخ '
     document.body.append(edit)
-    const result = writeReplacement(edit, 0, 5, 'Hello', { origin: 'TRANSLATE' })
+    const result = writeReplacement(edit, 0, 5, 'hello', { origin: 'FIX_LAYOUT' })
     expect(result.verdict).toBe('written')
-    expect(readText(edit)).toBe('Hello')
+    expect(readText(edit)).toBe('hello ')
+    expect(readCaret(edit)).toBe(6)
+  })
+
+  it('second mapped word does not glue onto the first', () => {
+    const edit = document.createElement('div')
+    edit.contentEditable = 'true'
+    edit.textContent = 'hello حمثشسث '
+    document.body.append(edit)
+    const start = 'hello '.length
+    const result = writeReplacement(edit, start, start + 'حمثشسث'.length, 'please', { origin: 'FIX_LAYOUT' })
+    expect(result.verdict).toBe('written')
+    expect(readText(edit)).toBe('hello please ')
   })
 })
 

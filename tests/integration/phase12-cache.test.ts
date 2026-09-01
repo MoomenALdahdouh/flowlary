@@ -20,7 +20,7 @@ import {
 import { canCacheText } from '../../extension/src/storage/cache/privacy.ts'
 import { normalizePersistentCacheStore } from '../../extension/src/storage/cache/persistentStore.ts'
 import { createMockChromeStorage } from '../helpers/mockChromeStorage.ts'
-import { seedFlowlaryInstallAuth } from '../helpers/mockFlowlaryAuth.ts'
+import { seedFlowlaryAccountAuth } from '../helpers/mockFlowlaryAuth.ts'
 import { handleTranslateText, resetTranslateHandlerForTests } from '../../extension/src/background/translate.ts'
 import { handleCorrectText, resetCorrectHandlerForTests } from '../../extension/src/background/correct.ts'
 import { stateManager } from '../../extension/src/core/state/StateManager.ts'
@@ -168,6 +168,7 @@ describe('Phase 12 — request coalescing', () => {
     resetFlowlaryCacheForTests()
     resetTranslateHandlerForTests()
     resetCorrectHandlerForTests()
+    stateManager.correction.consentAccepted = true
   })
 
   afterEach(() => {
@@ -176,7 +177,7 @@ describe('Phase 12 — request coalescing', () => {
 
   it('coalesces identical translation requests', async () => {
     const mockStore = createMockChromeStorage()
-    seedFlowlaryInstallAuth(mockStore)
+    seedFlowlaryAccountAuth(mockStore)
     mockStore.install()
     let resolveFetch!: (value: Response) => void
     const fetchPromise = new Promise<Response>((resolve) => {
@@ -224,34 +225,28 @@ describe('Phase 12 — correction handler cache', () => {
     resetFlowlaryCacheForTests()
     resetCorrectHandlerForTests()
     const mockStore = createMockChromeStorage()
-    seedFlowlaryInstallAuth(mockStore)
+    seedFlowlaryAccountAuth(mockStore)
     mockStore.install()
-    stateManager.correction.aiProvider = 'byok'
     stateManager.correction.consentAccepted = true
-    stateManager.correction.groqApiKey = 'gsk_test_key_1234567890'
   })
 
   afterEach(() => {
     vi.unstubAllGlobals()
   })
 
-  it('returns cached correction without second Groq call', async () => {
+  it('returns cached correction without second Flowlary AI call', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
-          choices: [
-            {
-              message: {
-                content: JSON.stringify({
-                  originalText: 'hello world test phrase',
-                  correctedText: 'Hello world test phrase',
-                  changes: [],
-                }),
-              },
-            },
-          ],
+          ok: true,
+          data: {
+            originalText: 'hello world test phrase',
+            correctedText: 'Hello world test phrase',
+            changes: [],
+          },
+          model: 'flowlary-ai',
         }),
       } as Response),
     )
@@ -260,7 +255,6 @@ describe('Phase 12 — correction handler cache', () => {
       type: 'CORRECT_TEXT' as const,
       requestId: '1',
       text: 'hello world test phrase',
-      groqApiKey: 'gsk_test_key_1234567890',
     }
     const first = await handleCorrectText(message)
     const second = await handleCorrectText({ ...message, requestId: '2' })

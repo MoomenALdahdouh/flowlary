@@ -12,22 +12,7 @@ describe('EntitlementService', () => {
     resetEntitlementServiceForTests()
   })
 
-  it('denies translation when plan is unknown', async () => {
-    const mock = createMockChromeStorage()
-    mock.install()
-    const storage = new FlowlaryStorage()
-    const entitlement = createDefaultEntitlement()
-    entitlement.usage.usageBalanceMs = 0
-    entitlement.usage.firstActivatedAt = Date.now() - 30 * 24 * 60 * 60 * 1000
-    entitlement.usage.trialEndsAt = entitlement.usage.firstActivatedAt + 7 * 24 * 60 * 60 * 1000
-    await storage.set(storage.keys.entitlement, entitlement, 'local')
-
-    const service = new EntitlementService(storage)
-    const access = await service.canUseFeature('translation')
-    expect(access.allowed).toBe(false)
-  })
-
-  it('allows translation during trial', async () => {
+  it('requires account for AI features even during local trial', async () => {
     const mock = createMockChromeStorage()
     mock.install()
     const storage = new FlowlaryStorage()
@@ -35,6 +20,33 @@ describe('EntitlementService', () => {
 
     const service = new EntitlementService(storage)
     const access = await service.canUseFeature('translation')
+    expect(access.allowed).toBe(false)
+    if (!access.allowed) expect(access.reason).toBe('account_required')
+  })
+
+  it('denies translation when unsigned and local trial expired', async () => {
+    const mock = createMockChromeStorage()
+    mock.install()
+    const storage = new FlowlaryStorage()
+    const entitlement = createDefaultEntitlement()
+    entitlement.usage.usageBalanceMs = 0
+    entitlement.usage.firstActivatedAt = Date.now() - 40 * 24 * 60 * 60 * 1000
+    entitlement.usage.trialEndsAt = entitlement.usage.firstActivatedAt + 30 * 24 * 60 * 60 * 1000
+    await storage.set(storage.keys.entitlement, entitlement, 'local')
+
+    const service = new EntitlementService(storage)
+    const access = await service.canUseFeature('translation')
+    expect(access.allowed).toBe(false)
+  })
+
+  it('allows local layout without account', async () => {
+    const mock = createMockChromeStorage()
+    mock.install()
+    const storage = new FlowlaryStorage()
+    await storage.set(storage.keys.entitlement, createDefaultEntitlement(), 'local')
+
+    const service = new EntitlementService(storage)
+    const access = await service.canUseFeature('layout_auto')
     expect(access.allowed).toBe(true)
   })
 })

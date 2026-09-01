@@ -1,0 +1,322 @@
+{
+  "auditId": "local-ai-architecture-audit",
+  "date": "2026-09-01",
+  "repository": "/Users/moomen/Projects/flowlary",
+  "scope": "read_only",
+  "productionCodeModified": false,
+  "modelImplemented": false,
+  "evidenceClasses": {
+    "factsFromCode": "Current source as executed",
+    "measuredResults": "Repository JSON or live inspect in this audit",
+    "externalResearch": "Public model cards / surveys, not Flowlary measurements",
+    "engineeringInference": "Reasoning from facts + measurements",
+    "recommendations": "Next actions"
+  },
+  "executiveVerdict": {
+    "stopAddingBilingualRules": true,
+    "keepDeterministicControlPlane": true,
+    "localLmAsPrimaryUnderstanding": true,
+    "deleteLocalEngine": false,
+    "shipModelNow": false,
+    "goNoGo": "CONDITIONAL_GO_BENCHMARK_ONLY",
+    "criticalQuestionAnswer": "Change architecture: small local LM as primary understanding layer; keep deterministic safety, mapLayout, decide, Write Gate. Do not add more bilingual heuristics."
+  },
+  "currentArchitecture": {
+    "authoritativeAutoWrite": "local_decideWriting",
+    "path": [
+      "InputEngine",
+      "enforceCoordinator",
+      "runFieldCycle",
+      "analyzeFieldText",
+      "collectHypotheses",
+      "candidatesFromHypotheses",
+      "decideWriting",
+      "fulfillWritingDecision",
+      "commitWriteTransaction",
+      "DOM"
+    ],
+    "llmOnCriticalPathForFirstWrite": false,
+    "advisorRole": "rank_existing_hypothesis_ids_async",
+    "advisorCanInventReplacement": false,
+    "advisorApplyAutoWritesLayoutOrEnglish": false,
+    "writingReviewRole": "async_span_edits_english_island",
+    "files": {
+      "InputEngine": "extension/src/core/input/InputEngine.ts",
+      "enforceCoordinator": "extension/src/core/writeGate/enforceCoordinator.ts",
+      "pipeline": "extension/src/core/writeGate/pipeline.ts",
+      "analyzeFieldText": "extension/src/core/engine/chunks.ts",
+      "collectHypotheses": "extension/src/core/engine/hypotheses.ts",
+      "decideWriting": "extension/src/core/engine/decide.ts",
+      "writeGate": "extension/src/core/writeGate/writeGate.ts",
+      "advisor": "extension/src/core/engine/advisor.ts",
+      "advisorManager": "backend/src/providers/advisorProviderManager.ts"
+    }
+  },
+  "capabilityMatrix": {
+    "deterministic": ["tokenize", "mapLayout", "tokenKind regex", "Write Gate", "generation/mutex/cooldown", "policy booleans"],
+    "heuristics": ["layout span score", "n-grams", "arabizi digits", "intentional latin", "mixed-intent", "decide thresholds"],
+    "scoresUncalibrated": true,
+    "dictionaries": {
+      "englishLexicon": "extension/src/features/layout/layouts/lexicons/en-words.ts",
+      "arabicLexicon": "extension/src/features/layout/layouts/lexicons/ar-words.ts",
+      "qademInArabicLexicon": false,
+      "comingInEnglishLexicon": true,
+      "commonTypos": "extension/src/features/correction/instantSpell.ts"
+    },
+    "languageDetection": "script+lexicon+ngram_not_classifier",
+    "keyboardLayout": "inferLayoutSpans + en-US-qwerty/ar-101 map",
+    "spellingLocal": "english_only_typo_map_plus_edit_distance_1",
+    "spellingArabicLocal": false,
+    "grammarLocal": false,
+    "punctuationCorrectionLocal": false,
+    "mixedArEn": "hasAmbiguousMixed + mixedLayoutSafety + unknown_latin_near_arabic_intentional",
+    "intentionalForeign": "exceptions vocabHashes titleCase technicalShapes unknownLatin+arabicNeighbor",
+    "technical": "structural regex",
+    "protected": "skipReasonForToken",
+    "userIntent": "WritingIntent enum from rules not NLU",
+    "sessionHistoryInDecide": false,
+    "userHistoryInDecide": "exceptions/vocab hashes only if populated",
+    "usesLlm": ["hypothesis advisor rank", "writing review", "translation"],
+    "doesNotUseLlm": ["analyze", "layout remap", "local spelling", "decide", "Write Gate"]
+  },
+  "workedExample": {
+    "input": "مرحبا hello are you comming or not نعم انا فادم الان",
+    "intended": "مرحبا hello are you coming or not نعم انا قادم الان",
+    "evidenceClass": "MEASURED_RESULTS",
+    "method": "analyzeFieldText + collectHypotheses + decideWriting; temporary test deleted",
+    "dominantOrigin": "original_mixed",
+    "hasAmbiguousMixed": true,
+    "hasLayoutSuspicion": false,
+    "layoutSpans": [],
+    "commingRole": "intentional_foreign_token",
+    "fademRole": "arabic_prose",
+    "decisionAction": "noop",
+    "decisionReasons": ["hypothesis_preserve", "no_unambiguous_winner"],
+    "shouldConsultAdvisor": false,
+    "suggestSpellingCommingGivenYou": {
+      "replacement": "coming",
+      "source": "contextual_spell",
+      "distance": 1,
+      "usedByHypotheses": false
+    },
+    "suggestSpellingFadem": null,
+    "reviewIslandSnippet": "hello are you comming or not ",
+    "arabicTypoInReviewIsland": false,
+    "failureClass": "unknown_in_script_errors_inside_bilingual_text_classified_as_intentional_so_uncorrectable_locally_and_advisor_not_consulted"
+  },
+  "failureClasses": [
+    {
+      "id": "mixed_en_spelling",
+      "rootCause": "unknown Latin + Arabic neighbor → intentional_foreign_token; spellingHypothesis skipped",
+      "module": "extension/src/core/engine/chunks.ts + hypotheses.ts",
+      "aiCanHelp": true,
+      "mustRemainDeterministic": ["protection", "open token", "Write Gate"]
+    },
+    {
+      "id": "arabic_in_script_typo",
+      "rootCause": "all Arabic → arabic_prose; no Arabic spell path",
+      "module": "chunks.ts + contextualSpell.ts",
+      "aiCanHelp": true,
+      "mustRemainDeterministic": ["mapLayout must not consume real Arabic prose"]
+    },
+    {
+      "id": "keyboard_layout",
+      "rootCause": "heuristic sequence; isolated/unseen/mixed leftovers",
+      "module": "layoutSequence.ts",
+      "aiCanHelp": "detection_only",
+      "mustRemainDeterministic": ["mapLayout", "coverage", "DOM"]
+    },
+    {
+      "id": "advisor_cannot_rescue_missing_hyps",
+      "rootCause": "rank-only contract; shouldConsultAdvisor false without rival write hyps",
+      "module": "advisor.ts",
+      "aiCanHelp": "must_generate_not_only_rank",
+      "mustRemainDeterministic": ["no replacement from ranker"]
+    }
+  ],
+  "responsibilityMatrix": {
+    "deterministic": [
+      "field safety",
+      "urls emails jwt api keys code identifiers",
+      "token boundaries caret selection",
+      "mapLayout",
+      "layout remap candidate generation",
+      "Write Gate undo neighborGuard stale cooldown mutex generation",
+      "user override"
+    ],
+    "localAi": [
+      "contextual understanding",
+      "error detection",
+      "intent preserve vs correct",
+      "spelling en+ar",
+      "grammar punctuation",
+      "mixed-language interpretation",
+      "hypothesis generation for language issues",
+      "semantic coherence"
+    ]
+  },
+  "architectures": {
+    "A": { "name": "Safety→Deterministic→Decision", "verdict": "status_quo_insufficient_as_brain" },
+    "B": { "name": "Safety→signals+LocalAI rank→Decision", "verdict": "insufficient_ranker_cannot_create_missing_hyps" },
+    "C": { "name": "Safety→Context→LocalAI understand→Hyps→Decision→WriteGate", "verdict": "strong_fit" },
+    "D": { "name": "Safety→deterministic candidates→LocalAI eval→Decision→WriteGate", "verdict": "required_for_layout_incomplete_for_spelling" },
+    "E": { "name": "Safety→LocalAI candidates→deterministic validation→Decision→WriteGate", "verdict": "right_for_spelling_dangerous_for_unvalidated_layout" },
+    "F": {
+      "name": "hybrid_C_plus_D_plus_E",
+      "recommended": true,
+      "pattern": "safety + layout map candidates + protected masks → local LM understanding/extra hyps → merge/validate → decideWriting → Write Gate; cloud on uncertainty only"
+    }
+  },
+  "canSmallModelReplaceHeuristicBrain": {
+    "understandingLayer": true,
+    "controlPlane": false,
+    "partsToReplace": ["mixed interpretation", "en/ar spelling", "grammar", "punctuation", "preserve vs correct for names/slang"],
+    "partsToKeep": ["safety", "mapLayout", "tokenize", "Write Gate", "session", "override"],
+    "rankerOnlySufficient": false,
+    "latencyKeystrokeOk": false,
+    "latencyPauseOk": true,
+    "accuracyDeltaClaimed": null,
+    "accuracyNote": "No Flowlary 1B–4B measurement in this audit. Gemini layout ranking accuracyDelta=0."
+  },
+  "modelRequirements": {
+    "maxSizeParams": "4B preferred; 1B is a negative-control/candidate only",
+    "latencyP95MsBudget": 400,
+    "ramGb": "3-6 for 4B Q4 plus KV",
+    "vramAssumed": false,
+    "contextTokens": "2k-8k island",
+    "jsonConstrained": true,
+    "runtimePreferred": ["llama.cpp", "Ollama sidecar"],
+    "runtimeAvoidInApiProcess": ["transformers-in-node", "vllm-without-gpu"]
+  },
+  "modelShortlist": {
+    "evidenceClass": "EXTERNAL_RESEARCH",
+    "notWinners": true,
+    "candidates": [
+      "Qwen3-4B",
+      "Qwen3-1.7B",
+      "Gemma 3 4B",
+      "Gemma 3 1B",
+      "Gemma 3n E2B",
+      "Phi-4-mini",
+      "ibm-research/granite-4.0-h-3b-ar",
+      "MBZUAI-Paris/Nile-Chat-4B",
+      "SmolLM-family as negative control"
+    ]
+  },
+  "outputContract": {
+    "recommended": "C_classification_span_proposed_correction",
+    "neverMutateDom": true,
+    "rejected": ["A_classification_only", "whole_field_rewrite", "advisor_rank_only_as_primary"],
+    "layoutProposedMustEqualMapLayout": true,
+    "existingSketch": "tests/audit/evaluation/local-ai-model-selection/contracts.ts DETECTOR_SYSTEM"
+  },
+  "existingDatasets": {
+    "sufficientToEvaluateLocalAi": false,
+    "measured": {
+      "archHoldout": {
+        "file": "tests/audit/evaluation/local-baseline-results.json",
+        "n": 1105,
+        "actionAccuracy": 0.8479638009049774,
+        "layoutFn": 137,
+        "layoutFp": 31,
+        "mixLayoutFp": 31,
+        "protectedLayout": 0,
+        "meanMs": 0.40833352941176787,
+        "spellingLayoutOk": "78/184"
+      },
+      "gptOssGeminiHoldout": {
+        "seed": 20261107,
+        "holdout": 1326,
+        "hypExistence": 1185,
+        "baselineAccuracy": 1154,
+        "layoutFn": 172,
+        "layoutFp": 0
+      },
+      "geminiLiveRanks": {
+        "file": "tests/audit/evaluation/gemini-3.5-flash-lite-full-live-results.json",
+        "ranked": 200,
+        "family": "layout_only",
+        "advisedAccuracy": 0.92,
+        "localOnRanked": 0.92,
+        "accuracyDelta": 0,
+        "help": 0,
+        "harm": 0,
+        "successP50": 940,
+        "successP95": 1173
+      },
+      "gptOssFullLive": {
+        "file": "tests/audit/evaluation/gpt-oss-full-live-results.json",
+        "status": "INCONCLUSIVE",
+        "validLlmRanks": 0
+      },
+      "localAiModelSelectionResultsJson": null
+    },
+    "missingLabels": [
+      "span+proposed gold",
+      "arabic in-script typos",
+      "mixed-field English typos that must correct",
+      "grammar/punctuation gold at scale",
+      "incremental open-token sequences",
+      "human-reviewed real chats"
+    ]
+  },
+  "benchmarkDesign": {
+    "sameHoldout": true,
+    "systems": ["BASELINE_local_engine", "CANDIDATE_safety_plus_local_ai_understanding", "OPTIONAL_plus_cloud_on_uncertain"],
+    "forbidSingleGoldenSentence": true
+  },
+  "cloudRelationship": {
+    "recommended": "local_ai_first_cloud_on_uncertainty",
+    "voting": "not_unless_holdout_requires",
+    "currentDefaults": {
+      "groqAdvisor": true,
+      "geminiAdvisor": false,
+      "openRouterAdvisor": false,
+      "fallback": false,
+      "source": "backend/.env.example"
+    }
+  },
+  "trigger": {
+    "recommended": "hybrid_word_boundary_or_pause_350_to_900ms_cancel_on_generation",
+    "notEveryKeystrokeForAi": true,
+    "keepDeterministicLayoutOnInput": true,
+    "expectedRequestsPerActiveHourPerUser": "20-80"
+  },
+  "serverFeasibility": {
+    "dockerGpu": false,
+    "composeHasOllama": false,
+    "runtime": "node:22-bookworm-slim",
+    "productionHostCpuRamGpu": "UNVERIFIED",
+    "inProcessNodeModel": false,
+    "sidecarCpuPossibleIfRam": true,
+    "currentComposeReady": false
+  },
+  "latency": {
+    "localDecideMeanMsMeasured": 0.41,
+    "writeCooldownMs": 450,
+    "reviewPauseMs": 900,
+    "advisorClientTimeoutMs": 1800,
+    "backendAdvisorDeadlineDefaultMs": 1500,
+    "local4bCpuP95Ms": null,
+    "local4bCpuP95MsBudget": 400
+  },
+  "longSession": {
+    "multiHourBrowser": "UNVERIFIED",
+    "requirements": ["queue_depth_1", "cancel_stale", "island_not_full_buffer", "fallback_to_baseline", "no_request_buildup"]
+  },
+  "integration": {
+    "reusable": ["analyzeFieldText signals", "inferLayoutSpans", "mixedLayoutSafety", "ingestReviewEdits validation", "Write Gate", "InputEngine"],
+    "modifyLater": ["hypotheses.ts", "pipeline.ts", "decide.ts", "shouldConsultAdvisor", "reviewIsland language", "deploy compose"],
+    "untouchedBehavior": ["writeGate", "mapLayout", "tokenKind", "tokenize", "FieldSession mutex/generation"],
+    "retireAsBrain": ["unknown latin near arabic = intentional as linguistic truth", "lexicon growth as product strategy"]
+  },
+  "risks": [
+    "cpu_latency_backlog",
+    "secret_rewrite",
+    "hallucinated_layout",
+    "overcorrection_names_slang_dialect",
+    "json_failure",
+    "preserve_heavy_eval_gold",
+    "unmeasured_host_ram"
+  ]
+}

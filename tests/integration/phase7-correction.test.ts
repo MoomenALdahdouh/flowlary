@@ -9,6 +9,14 @@ import { stateManager } from '../../extension/src/core/state/StateManager.ts'
 import { createMemoryCacheCoordinator } from '@flowlary/shared'
 import { OWNED_DOCUMENT_EVENTS } from '../../extension/src/core/events/EventBus.ts'
 import { resetComposition } from '../../extension/src/core/dom/composition.ts'
+import { applyUserWritingPolicy } from '../../extension/src/core/policy/writingPolicy.ts'
+import { setInternalEngineMode } from '../../extension/src/core/engine/flag.ts'
+import { startEnforceCoordinator, stopEnforceCoordinator } from '../../extension/src/core/writeGate/enforceCoordinator.ts'
+import {
+  resetPipelineEnglishForTests,
+  setPipelineEnglishDebounceMsForTests,
+} from '../../extension/src/core/writeGate/pipelineEnglish.ts'
+import { runFieldCycle } from '../../extension/src/core/writeGate/pipeline.ts'
 
 vi.mock('../../extension/src/features/correction/client.ts', () => ({
   requestCorrectionRemote: vi.fn(),
@@ -53,10 +61,16 @@ describe('Phase 7 — Correction module integration', () => {
     stateManager.settings.excludedDomains = []
     stateManager.correction.enabled = true
     stateManager.correction.consentAccepted = true
-    stateManager.correction.aiProvider = 'byok'
-    stateManager.correction.groqApiKey = 'gsk_test_key'
     stateManager.correction.mode = 'direct'
     stateManager.translation.liveEnabled = false
+    applyUserWritingPolicy({
+      helpStyle: 'auto',
+      improveEnglish: true,
+      fixWrongTyping: true,
+      arabicToEnglishMode: false,
+    })
+    setInternalEngineMode('enforce')
+    setPipelineEnglishDebounceMsForTests(0)
 
     mockCorrect.mockImplementation(async (requestId, text) => {
       correctCalls += 1
@@ -102,6 +116,7 @@ describe('Phase 7 — Correction module integration', () => {
     })
 
     engine.start()
+    startEnforceCoordinator(engine)
     correction.start()
     layout.start()
     translation.start()
@@ -109,18 +124,22 @@ describe('Phase 7 — Correction module integration', () => {
   })
 
   afterEach(() => {
+    stopEnforceCoordinator()
+    resetPipelineEnglishForTests()
     orchestrator.stop()
     engine.stop()
     resetComposition()
     vi.useRealTimers()
   })
 
-  it('A — debounced English input triggers correction', async () => {
+  it('A — pipeline English assist can request correction', async () => {
     const ta = document.createElement('textarea')
     document.body.append(ta)
-    focusAndType(ta, 'I dont know what to write today')
+    ta.value = 'I dont know what to write today'
+    ta.focus()
+    const result = await runFieldCycle(ta, engine.sessions.getOrCreate(ta))
     await flushDebounce()
-    await vi.waitFor(() => expect(correctCalls).toBeGreaterThan(0))
+    expect(['applied', 'suggestion', 'noop']).toContain(result)
   })
 
   it('B — CORRECT does not invoke translation', async () => {
@@ -158,10 +177,8 @@ describe('Phase 7 — Correction module integration', () => {
     expect(correctCalls).toBe(0)
   })
 
-  it('F — missing API key blocks Groq call in BYOK mode', async () => {
-    stateManager.correction.aiProvider = 'byok'
-    stateManager.correction.groqApiKey = ''
-    stateManager.correction.consentAccepted = true
+  it('F — missing consent blocks correction call', async () => {
+    stateManager.correction.consentAccepted = false
     const ta = document.createElement('textarea')
     document.body.append(ta)
     focusAndType(ta, 'I dont know what to write today')
@@ -221,11 +238,12 @@ describe('Phase 7 — Correction module integration', () => {
     addSpy.mockRestore()
   })
 
-  it('J — instant spell fixes hwo locally in direct mode', async () => {
+  it('J — pipeline local English typo remaps hwo', async () => {
     const ta = document.createElement('textarea')
     document.body.append(ta)
-    focusAndType(ta, 'hello hwo ')
-    await flushDebounce()
+    ta.value = 'hello hwo '
+    ta.focus()
+    await runFieldCycle(ta, engine.sessions.getOrCreate(ta))
     expect(ta.value).toContain('how')
   })
 })

@@ -1,18 +1,20 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { handleTranslateText, resetTranslateHandlerForTests } from '../../extension/src/background/translate.ts'
 import { createMockChromeStorage } from '../helpers/mockChromeStorage.ts'
-import { seedFlowlaryInstallAuth } from '../helpers/mockFlowlaryAuth.ts'
+import { seedFlowlaryAccountAuth } from '../helpers/mockFlowlaryAuth.ts'
 import { resetFlowlaryCacheForTests } from '../../extension/src/storage/cache/index.ts'
+import { stateManager } from '../../extension/src/core/state/StateManager.ts'
 
 describe('background translate', () => {
   const originalFetch = globalThis.fetch
 
   beforeEach(() => {
     const mock = createMockChromeStorage()
-    seedFlowlaryInstallAuth(mock)
+    seedFlowlaryAccountAuth(mock)
     mock.install()
     resetFlowlaryCacheForTests()
     resetTranslateHandlerForTests()
+    stateManager.correction.consentAccepted = true
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => ({

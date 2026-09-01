@@ -1,6 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CorrectionCard, HOST_ATTR } from '../../../extension/src/features/correction/ui/CorrectionCard.ts'
 import type { CorrectionSuggestionBinding } from '../../../extension/src/features/correction/ui/types.ts'
+import type { RuleExplanation } from '@flowlary/shared'
+
+vi.mock('../../../extension/src/popup/openDashboard.ts', () => ({
+  openDashboard: vi.fn(),
+}))
+
+vi.mock('../../../extension/src/popup/i18n/localeStorage.ts', () => ({
+  readUiLocale: vi.fn(async () => 'en'),
+}))
+
+vi.mock('../../../extension/src/features/correction/explainLocalizeClient.ts', () => ({
+  presentExplanationForLocale: vi.fn((explanation: RuleExplanation) => explanation),
+  needsAiExplanationLocalization: () => false,
+  requestExplanationLocalization: vi.fn(async () => null),
+  mergeLocalizedFields: vi.fn((explanation: RuleExplanation) => explanation),
+}))
+
+async function flushPanel(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0))
+}
 
 class ResizeObserverStub {
   observe(): void {}
@@ -236,5 +256,78 @@ describe('CorrectionCard', () => {
     const root = host.shadowRoot!.querySelector('.row') as HTMLElement
     root.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
     expect(onApply).toHaveBeenCalledWith(binding)
+  })
+
+  it('opens explanation panel without applying correction', async () => {
+    const onApply = vi.fn()
+    const card = new CorrectionCard({ highlights: true, onApply, onDismiss: () => undefined })
+    const ta = document.getElementById('t') as HTMLTextAreaElement
+    card.mount(ta)
+    const binding = sampleBinding()
+    card.setReady({
+      ...binding,
+      response: {
+        ...binding.response,
+        explanations: [
+          {
+            confidence: 'high',
+            source: 'trusted_rule',
+            category: 'spelling',
+            ruleId: 'english.spelling.receive_ie_ei',
+            ruleTitle: 'Receive spelling',
+            summary: 'Summary text',
+            incorrectExample: 'recieve',
+            correctExample: 'receive',
+          },
+        ],
+      },
+    })
+    const host = document.querySelector(`[${HOST_ATTR}]`) as HTMLElement
+    host.shadowRoot!.querySelector('.explain')!.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await flushPanel()
+    expect(onApply).not.toHaveBeenCalled()
+    expect(document.querySelector('[data-flowlary-explanation-panel]')).toBeTruthy()
+  })
+
+  it('clears explanation panel when correction is hidden', async () => {
+    const card = new CorrectionCard({ highlights: true, onApply: () => undefined, onDismiss: () => undefined })
+    const ta = document.getElementById('t') as HTMLTextAreaElement
+    card.mount(ta)
+    card.setReady({
+      ...sampleBinding(),
+      response: {
+        ...sampleBinding().response,
+        explanations: [
+          {
+            confidence: 'medium',
+            source: 'pair',
+            category: 'spelling',
+            summary: 'Summary',
+            incorrectExample: 'recieve',
+            correctExample: 'receive',
+          },
+        ],
+      },
+    })
+    const host = document.querySelector(`[${HOST_ATTR}]`) as HTMLElement
+    host.shadowRoot!.querySelector('.explain')!.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await flushPanel()
+    expect(document.querySelector('[data-flowlary-explanation-panel]')).toBeTruthy()
+    card.hide()
+    expect(document.querySelector('[data-flowlary-explanation-panel]')).toBeNull()
+  })
+
+  it('still works when explanations are missing', async () => {
+    const onApply = vi.fn()
+    const card = new CorrectionCard({ highlights: true, onApply, onDismiss: () => undefined })
+    const ta = document.getElementById('t') as HTMLTextAreaElement
+    card.mount(ta)
+    card.setReady(sampleBinding())
+    const host = document.querySelector(`[${HOST_ATTR}]`) as HTMLElement
+    host.shadowRoot!.querySelector('.explain')!.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await flushPanel()
+    expect(document.querySelector('[data-flowlary-explanation-panel]')).toBeTruthy()
+    host.shadowRoot!.querySelector('.apply')!.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(onApply).toHaveBeenCalled()
   })
 })

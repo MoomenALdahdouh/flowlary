@@ -11,6 +11,7 @@ import { FieldSession } from '../../extension/src/core/session/FieldSession.ts'
 import { applyLayoutFix } from '../../extension/src/features/layout/fixCurrentText.ts'
 import { STORAGE_KEYS } from '@flowlary/shared'
 import { createMockChromeStorage } from '../helpers/mockChromeStorage.ts'
+import { activateTestAccount, clearTestAccountContext } from '../helpers/accountIsolation.ts'
 
 describe('Phase 11 — background history messaging', () => {
   let mockStore: ReturnType<typeof createMockChromeStorage>
@@ -20,6 +21,8 @@ describe('Phase 11 — background history messaging', () => {
     mockStore.install()
     resetHistoryServiceForTests()
     resetBackgroundStartupForTests()
+    await clearTestAccountContext()
+    await activateTestAccount()
     stateManager.settings.enabled = true
     stateManager.settings.excludedDomains = []
     const el = document.createElement('textarea')
@@ -222,7 +225,12 @@ describe('Phase 11 — popup history UI', () => {
     const mockStore = createMockChromeStorage()
     mockStore.install()
     resetHistoryServiceForTests()
-    mockStore.local[STORAGE_KEYS.history] = {
+    resetBackgroundStartupForTests()
+    await clearTestAccountContext()
+    await activateTestAccount()
+    const { buildAccountScopedKey } = await import('../../extension/src/storage/accountScopedStorage.ts')
+    const { TEST_ACCOUNT_A } = await import('../helpers/accountIsolation.ts')
+    mockStore.local[buildAccountScopedKey(TEST_ACCOUNT_A, 'history')] = {
       version: 1,
       entries: [
         {
@@ -235,6 +243,7 @@ describe('Phase 11 — popup history UI', () => {
         },
       ],
       legacyImported: true,
+      _v: 1,
     }
     const response = await handleMessage({ type: 'GET_HISTORY' })
     expect(response.entries).toHaveLength(1)

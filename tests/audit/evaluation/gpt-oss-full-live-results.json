@@ -1,0 +1,50 @@
+{
+  "status": "INCONCLUSIVE",
+  "reason": "CASE_E_PROVIDER_RATE_LIMIT",
+  "seed": 20261107,
+  "corpus": 5500,
+  "holdout": 1326,
+  "evalMaxTokens": 1024,
+  "productionMaxTokens": 180,
+  "model": "openai/gpt-oss-20b",
+  "targetValidRanks": 200,
+  "validLlmRanks": 0,
+  "persistedProgressFile": false,
+  "attempts": {
+    "run1_fast_pace": {
+      "note": "Sequential harness, 3s ok / 6s after 429. Killed after ~11 minutes because 429 dominated.",
+      "logged429": 53,
+      "logged400": 23,
+      "validRanksPersisted": 0
+    },
+    "run2_conservative_pace": {
+      "note": "Sequential harness, 3.5s ok / 20–60s exponential after 429, 20s initial cooldown. Killed after ~36 minutes. No progress file (ranked < 10).",
+      "logged429": 39,
+      "logged400": 2,
+      "validRanksPersisted": 0
+    },
+    "connectivity_probe_after_cooldown": {
+      "httpStatus": 429,
+      "groqErrorCode": "rate_limit_exceeded",
+      "class": "RATE_LIMIT",
+      "latencyMs": 174
+    }
+  },
+  "loggedHttpErrors": {
+    "429": 92,
+    "400": 25,
+    "plusConnectivity429": 1
+  },
+  "jsonSuccessRate": null,
+  "rankingMetrics": {
+    "top1": null,
+    "top2": null,
+    "advisedAccuracy": null,
+    "accuracyDelta": null,
+    "stability": null,
+    "successP50": null,
+    "successP95": null,
+    "successMax": null
+  },
+  "baselineFile": "gpt-oss-full-live-baseline.json"
+}

@@ -10,6 +10,19 @@ import { resetComposition } from '../../extension/src/core/dom/composition.ts'
 import { HOST_ATTR } from '../../extension/src/features/correction/ui/CorrectionCard.ts'
 import { withWriteOrigin } from '../../extension/src/core/dom/writeOrigin.ts'
 import { writeReplacement } from '../../extension/src/core/dom/editor.ts'
+import { applyUserWritingPolicy } from '../../extension/src/core/policy/writingPolicy.ts'
+import { setInternalEngineMode } from '../../extension/src/core/engine/flag.ts'
+import { runFieldCycle } from '../../extension/src/core/writeGate/pipeline.ts'
+import {
+  resetPipelineEnglishForTests,
+  setPipelineEnglishDebounceMsForTests,
+} from '../../extension/src/core/writeGate/pipelineEnglish.ts'
+import {
+  getActivePipelineSuggestion,
+  resetPipelineSuggestionsForTests,
+} from '../../extension/src/core/writeGate/pipelineSuggest.ts'
+
+const SUGGEST_HOST = 'data-flowlary-suggestion-host'
 
 vi.mock('../../extension/src/features/correction/client.ts', () => ({
   requestCorrectionRemote: vi.fn(),
@@ -58,10 +71,17 @@ describe('Phase 8 — CorrectionCard + direct-edit integration', () => {
     stateManager.settings.excludedDomains = []
     stateManager.correction.enabled = true
     stateManager.correction.consentAccepted = true
-    stateManager.correction.groqApiKey = 'gsk_test_key'
     stateManager.correction.highlights = true
     stateManager.correction.mode = 'box'
     stateManager.translation.liveEnabled = false
+    applyUserWritingPolicy({
+      helpStyle: 'suggestions',
+      improveEnglish: true,
+      fixWrongTyping: true,
+      arabicToEnglishMode: false,
+    })
+    setInternalEngineMode('enforce')
+    setPipelineEnglishDebounceMsForTests(0)
 
     mockCorrect.mockImplementation(async (requestId, text) => {
       correctCalls += 1
@@ -105,6 +125,8 @@ describe('Phase 8 — CorrectionCard + direct-edit integration', () => {
   })
 
   afterEach(() => {
+    resetPipelineEnglishForTests()
+    resetPipelineSuggestionsForTests()
     orchestrator.stop()
     correction.stop()
     engine.stop()
@@ -112,60 +134,64 @@ describe('Phase 8 — CorrectionCard + direct-edit integration', () => {
     vi.useRealTimers()
   })
 
-  it('A — correction result shows card in box mode', async () => {
+  it('A — pipeline suggestion card appears for remote English', async () => {
     const ta = document.createElement('textarea')
     document.body.append(ta)
-    focusAndType(ta, 'I dont know what to write today')
+    ta.value = 'I dont know what to write today'
+    ta.focus()
+    await runFieldCycle(ta, engine.sessions.getOrCreate(ta))
     await flushDebounce()
-    await vi.waitFor(() => expect(document.querySelector(`[${HOST_ATTR}]`)).toBeTruthy())
-    expect(correctCalls).toBeGreaterThan(0)
-    expect(correction.metrics.correction_card_shown).toBeGreaterThan(0)
+    await vi.waitFor(() => expect(document.querySelector(`[${SUGGEST_HOST}]`)).toBeTruthy())
   })
 
   it('B — accept writes corrected text', async () => {
     const ta = document.createElement('textarea')
     document.body.append(ta)
-    focusAndType(ta, 'I dont know what to write today')
+    ta.value = 'I dont know what to write today'
+    ta.focus()
+    await runFieldCycle(ta, engine.sessions.getOrCreate(ta))
     await flushDebounce()
-    await vi.waitFor(() => document.querySelector(`[${HOST_ATTR}]`))
+    await vi.waitFor(() => document.querySelector(`[${SUGGEST_HOST}]`))
 
-    const host = document.querySelector(`[${HOST_ATTR}]`) as HTMLElement
-    const apply = host.shadowRoot!.querySelector('.apply') as HTMLButtonElement
+    const host = document.querySelector(`[${SUGGEST_HOST}]`) as HTMLElement
+    const apply = host.shadowRoot!.querySelector('[data-action="apply"]') as HTMLButtonElement
     apply.click()
     await Promise.resolve()
 
     expect(ta.value).toContain("don't")
-    expect(correction.metrics.correction_card_accepted).toBe(1)
-    expect(document.querySelector(`[${HOST_ATTR}]`)).toBeNull()
+    expect(document.querySelector(`[${SUGGEST_HOST}]`)).toBeNull()
   })
 
   it('C — dismiss leaves text unchanged', async () => {
     const ta = document.createElement('textarea')
     document.body.append(ta)
     const original = 'I dont know what to write today'
-    focusAndType(ta, original)
+    ta.value = original
+    ta.focus()
+    await runFieldCycle(ta, engine.sessions.getOrCreate(ta))
     await flushDebounce()
-    await vi.waitFor(() => document.querySelector(`[${HOST_ATTR}]`))
+    await vi.waitFor(() => document.querySelector(`[${SUGGEST_HOST}]`))
 
-    const host = document.querySelector(`[${HOST_ATTR}]`) as HTMLElement
-    host.shadowRoot!.querySelector('.dismiss')!.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    const host = document.querySelector(`[${SUGGEST_HOST}]`) as HTMLElement
+    host.shadowRoot!.querySelector('[data-action="dismiss"]')!.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     expect(ta.value).toBe(original)
-    expect(correction.metrics.correction_card_dismissed).toBe(1)
   })
 
   it('D — user edit invalidates card', async () => {
     const ta = document.createElement('textarea')
     document.body.append(ta)
-    focusAndType(ta, 'I dont know what')
+    ta.value = 'I dont know what'
+    ta.focus()
+    const session = engine.sessions.getOrCreate(ta)
+    await runFieldCycle(ta, session)
     await flushDebounce()
-    await vi.waitFor(() => document.querySelector(`[${HOST_ATTR}]`))
+    await vi.waitFor(() => document.querySelector(`[${SUGGEST_HOST}]`))
 
     ta.value = 'I dont know what happened next'
-    ta.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText' }))
-    await Promise.resolve()
+    await runFieldCycle(ta, session)
 
-    expect(document.querySelector(`[${HOST_ATTR}]`)).toBeNull()
-    expect(correction.metrics.correction_card_stale).toBeGreaterThan(0)
+    const active = getActivePipelineSuggestion(session.field.id)
+    expect(active?.sourceText === 'I dont know what').toBe(false)
   })
 
   it('E — stale accept does not write', async () => {
@@ -243,17 +269,17 @@ describe('Phase 8 — CorrectionCard + direct-edit integration', () => {
     expect(document.querySelector(`[${HOST_ATTR}]`)).toBeNull()
   })
 
-  it('I — correction write does not trigger another correction', async () => {
-    stateManager.correction.mode = 'direct'
+  it('I — pipeline English assist does not loop after a suggestion', async () => {
     const ta = document.createElement('textarea')
     document.body.append(ta)
-    focusAndType(ta, 'I dont know what to write today')
+    ta.value = 'I dont know what to write today'
+    ta.focus()
+    const session = engine.sessions.getOrCreate(ta)
+    await runFieldCycle(ta, session)
     await flushDebounce()
-    await vi.waitFor(() => expect(correctCalls).toBe(1))
-    expect(ta.value).toContain("don't")
-
     const callsAfterWrite = correctCalls
-    await vi.advanceTimersByTimeAsync(500)
+    await runFieldCycle(ta, session)
+    await flushDebounce()
     expect(correctCalls).toBe(callsAfterWrite)
   })
 
@@ -293,16 +319,18 @@ describe('Phase 8 — CorrectionCard + direct-edit integration', () => {
     const ta2 = document.createElement('textarea')
     document.body.append(ta1, ta2)
 
-    focusAndType(ta1, 'I dont know what to write today')
+    ta1.value = 'I dont know what to write today'
+    ta1.focus()
+    await runFieldCycle(ta1, engine.sessions.getOrCreate(ta1))
     await flushDebounce()
-    await vi.waitFor(() => document.querySelector(`[${HOST_ATTR}]`))
-    const host1 = document.querySelector(`[${HOST_ATTR}]`) as HTMLElement
-    expect(host1.previousElementSibling).toBe(ta1)
+    await vi.waitFor(() => document.querySelector(`[${SUGGEST_HOST}]`))
 
-    focusAndType(ta2, 'I dont know either way today')
+    ta2.value = 'I dont know either way today'
+    ta2.focus()
+    await runFieldCycle(ta2, engine.sessions.getOrCreate(ta2))
     await flushDebounce()
-    await vi.waitFor(() => expect(correctCalls).toBe(2))
-    const hosts = document.querySelectorAll(`[${HOST_ATTR}]`)
+    const hosts = document.querySelectorAll(`[${SUGGEST_HOST}]`)
+    expect(hosts.length).toBeGreaterThan(0)
     expect(hosts.length).toBeLessThanOrEqual(2)
   })
 

@@ -10,4 +10,10 @@ describe('instantSpell', () => {
     expect(applyInstantSpelling('hello typ')).toBe('hello typ')
     expect(applyInstantSpelling('hello hwo')).toBe('hello how')
   })
+
+  it('does not auto-replace short ambiguous tokens fo/ot/im', () => {
+    expect(applyInstantSpelling('fo ')).toBe('fo ')
+    expect(applyInstantSpelling('ot ')).toBe('ot ')
+    expect(applyInstantSpelling('im ')).toBe('im ')
+  })
 })

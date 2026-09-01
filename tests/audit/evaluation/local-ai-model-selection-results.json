@@ -1,0 +1,802 @@
+{
+  "generatedAt": "2026-09-01T00:08:45.337Z",
+  "evidenceClasses": {
+    "localEngine": "REAL_MEASURED",
+    "ollamaModels": "REAL_MEASURED",
+    "geminiAdvisor": "REAL_MEASURED_PRIOR",
+    "gemma4_qwen35_4b": "NOT_RUN_DISK"
+  },
+  "hardware": {
+    "cpu": "Apple M3 8-core",
+    "ramBytes": 17179869184,
+    "gpu": "Apple M3 10-core, unified memory",
+    "os": "darwin 25.5.0 arm64",
+    "diskAvailAtStudy": "519Mi after qwen3:0.6b pull",
+    "ollama": "0.32.5",
+    "docker": "available in deploy/, not used for this eval",
+    "productionServer": "single Node 22 process, no GPU in deploy compose"
+  },
+  "dataset": {
+    "version": "1",
+    "total": 1269,
+    "modelSample": 90,
+    "intervene": 574,
+    "mustPreserve": 691,
+    "coverage": {
+      "G_keyboard_layout": {
+        "n": 485,
+        "intervene": 483,
+        "preserve": 2
+      },
+      "A_en_spelling": {
+        "n": 87,
+        "intervene": 85,
+        "preserve": 2
+      },
+      "H_spell_after_layout": {
+        "n": 107,
+        "intervene": 107,
+        "preserve": 0
+      },
+      "E_ar_en_mixed": {
+        "n": 217,
+        "intervene": 1,
+        "preserve": 216
+      },
+      "F_intentional_bilingual": {
+        "n": 216,
+        "intervene": 0,
+        "preserve": 216
+      },
+      "M_code": {
+        "n": 72,
+        "intervene": 0,
+        "preserve": 71
+      },
+      "K_emails": {
+        "n": 43,
+        "intervene": 0,
+        "preserve": 43
+      },
+      "Y_protected": {
+        "n": 109,
+        "intervene": 0,
+        "preserve": 109
+      },
+      "L_secrets": {
+        "n": 28,
+        "intervene": 0,
+        "preserve": 28
+      },
+      "J_urls": {
+        "n": 31,
+        "intervene": 0,
+        "preserve": 31
+      },
+      "I_technical": {
+        "n": 153,
+        "intervene": 0,
+        "preserve": 153
+      },
+      "Q_short_fragments": {
+        "n": 125,
+        "intervene": 0,
+        "preserve": 125
+      },
+      "C_en_punctuation": {
+        "n": 121,
+        "intervene": 90,
+        "preserve": 31
+      },
+      "D_arabic": {
+        "n": 102,
+        "intervene": 0,
+        "preserve": 102
+      },
+      "Z_ambiguous_preserve": {
+        "n": 102,
+        "intervene": 0,
+        "preserve": 99
+      },
+      "R_long_sentences": {
+        "n": 31,
+        "intervene": 29,
+        "preserve": 2
+      },
+      "T_intentional_unusual": {
+        "n": 17,
+        "intervene": 0,
+        "preserve": 17
+      },
+      "P_arabizi": {
+        "n": 8,
+        "intervene": 0,
+        "preserve": 8
+      },
+      "N_names": {
+        "n": 4,
+        "intervene": 0,
+        "preserve": 4
+      },
+      "B_en_grammar": {
+        "n": 5,
+        "intervene": 4,
+        "preserve": 1
+      },
+      "S_multiple_errors": {
+        "n": 2,
+        "intervene": 2,
+        "preserve": 0
+      },
+      "U_user_vocab": {
+        "n": 2,
+        "intervene": 1,
+        "preserve": 1
+      },
+      "O_slang": {
+        "n": 3,
+        "intervene": 0,
+        "preserve": 3
+      },
+      "V_rapid_incomplete": {
+        "n": 3,
+        "intervene": 0,
+        "preserve": 3
+      },
+      "W_open_tokens": {
+        "n": 3,
+        "intervene": 0,
+        "preserve": 3
+      },
+      "X_pasted": {
+        "n": 1,
+        "intervene": 0,
+        "preserve": 1
+      }
+    },
+    "modelSampleCoverage": {
+      "A_en_spelling": {
+        "n": 9,
+        "intervene": 7,
+        "preserve": 2
+      },
+      "B_en_grammar": {
+        "n": 5,
+        "intervene": 4,
+        "preserve": 1
+      },
+      "C_en_punctuation": {
+        "n": 9,
+        "intervene": 5,
+        "preserve": 4
+      },
+      "Z_ambiguous_preserve": {
+        "n": 9,
+        "intervene": 0,
+        "preserve": 9
+      },
+      "D_arabic": {
+        "n": 7,
+        "intervene": 0,
+        "preserve": 7
+      },
+      "E_ar_en_mixed": {
+        "n": 17,
+        "intervene": 1,
+        "preserve": 16
+      },
+      "F_intentional_bilingual": {
+        "n": 16,
+        "intervene": 0,
+        "preserve": 16
+      },
+      "M_code": {
+        "n": 6,
+        "intervene": 0,
+        "preserve": 6
+      },
+      "G_keyboard_layout": {
+        "n": 17,
+        "intervene": 15,
+        "preserve": 2
+      },
+      "H_spell_after_layout": {
+        "n": 4,
+        "intervene": 4,
+        "preserve": 0
+      },
+      "S_multiple_errors": {
+        "n": 2,
+        "intervene": 2,
+        "preserve": 0
+      },
+      "I_technical": {
+        "n": 7,
+        "intervene": 0,
+        "preserve": 7
+      },
+      "Y_protected": {
+        "n": 18,
+        "intervene": 0,
+        "preserve": 18
+      },
+      "J_urls": {
+        "n": 7,
+        "intervene": 0,
+        "preserve": 7
+      },
+      "K_emails": {
+        "n": 7,
+        "intervene": 0,
+        "preserve": 7
+      },
+      "L_secrets": {
+        "n": 7,
+        "intervene": 0,
+        "preserve": 7
+      },
+      "N_names": {
+        "n": 2,
+        "intervene": 0,
+        "preserve": 2
+      },
+      "U_user_vocab": {
+        "n": 2,
+        "intervene": 1,
+        "preserve": 1
+      },
+      "O_slang": {
+        "n": 3,
+        "intervene": 0,
+        "preserve": 3
+      },
+      "T_intentional_unusual": {
+        "n": 4,
+        "intervene": 0,
+        "preserve": 4
+      },
+      "P_arabizi": {
+        "n": 2,
+        "intervene": 0,
+        "preserve": 2
+      },
+      "Q_short_fragments": {
+        "n": 5,
+        "intervene": 0,
+        "preserve": 5
+      },
+      "R_long_sentences": {
+        "n": 4,
+        "intervene": 2,
+        "preserve": 2
+      },
+      "V_rapid_incomplete": {
+        "n": 3,
+        "intervene": 0,
+        "preserve": 3
+      },
+      "W_open_tokens": {
+        "n": 3,
+        "intervene": 0,
+        "preserve": 3
+      },
+      "X_pasted": {
+        "n": 1,
+        "intervene": 0,
+        "preserve": 1
+      }
+    }
+  },
+  "localEngine": {
+    "all": {
+      "n": 1269,
+      "detectionPrecision": 0.8375634517766497,
+      "detectionRecall": 0.2874564459930314,
+      "f1": 0.42801556420233466,
+      "falsePositiveRate": 0.0460431654676259,
+      "falseNegativeRate": 0.7125435540069687,
+      "useful": 165,
+      "harmful": 32,
+      "unnecessary": 5,
+      "protectedViolationRate": 0.07142857142857142,
+      "consultRate": 0.018124507486209612,
+      "meanMs": 0.4421468707643772,
+      "latencyP50": 0.419208000000026,
+      "latencyP95": 0.9138330000000678,
+      "preservePrecision": 0.9536903039073806,
+      "harmfulInterventionRate": 0.0252167060677699,
+      "byStratum": {
+        "G_keyboard_layout": {
+          "n": 485,
+          "useful": 155,
+          "harmful": 0,
+          "intervene": 155
+        },
+        "A_en_spelling": {
+          "n": 87,
+          "useful": 9,
+          "harmful": 0,
+          "intervene": 7
+        },
+        "H_spell_after_layout": {
+          "n": 107,
+          "useful": 107,
+          "harmful": 0,
+          "intervene": 107
+        },
+        "E_ar_en_mixed": {
+          "n": 217,
+          "useful": 0,
+          "harmful": 0,
+          "intervene": 0
+        },
+        "F_intentional_bilingual": {
+          "n": 216,
+          "useful": 0,
+          "harmful": 0,
+          "intervene": 0
+        },
+        "M_code": {
+          "n": 72,
+          "useful": 0,
+          "harmful": 2,
+          "intervene": 2
+        },
+        "K_emails": {
+          "n": 43,
+          "useful": 0,
+          "harmful": 4,
+          "intervene": 4
+        },
+        "Y_protected": {
+          "n": 109,
+          "useful": 0,
+          "harmful": 7,
+          "intervene": 7
+        },
+        "L_secrets": {
+          "n": 28,
+          "useful": 0,
+          "harmful": 1,
+          "intervene": 1
+        },
+        "J_urls": {
+          "n": 31,
+          "useful": 0,
+          "harmful": 2,
+          "intervene": 2
+        },
+        "I_technical": {
+          "n": 153,
+          "useful": 0,
+          "harmful": 0,
+          "intervene": 0
+        },
+        "Q_short_fragments": {
+          "n": 125,
+          "useful": 0,
+          "harmful": 0,
+          "intervene": 0
+        },
+        "C_en_punctuation": {
+          "n": 121,
+          "useful": 44,
+          "harmful": 0,
+          "intervene": 44
+        },
+        "D_arabic": {
+          "n": 102,
+          "useful": 0,
+          "harmful": 32,
+          "intervene": 32
+        },
+        "Z_ambiguous_preserve": {
+          "n": 102,
+          "useful": 0,
+          "harmful": 31,
+          "intervene": 31
+        },
+        "R_long_sentences": {
+          "n": 31,
+          "useful": 0,
+          "harmful": 1,
+          "intervene": 1
+        },
+        "T_intentional_unusual": {
+          "n": 17,
+          "useful": 0,
+          "harmful": 0,
+          "intervene": 0
+        },
+        "P_arabizi": {
+          "n": 8,
+          "useful": 0,
+          "harmful": 0,
+          "intervene": 0
+        },
+        "N_names": {
+          "n": 4,
+          "useful": 0,
+          "harmful": 0,
+          "intervene": 0
+        },
+        "B_en_grammar": {
+          "n": 5,
+          "useful": 1,
+          "harmful": 0,
+          "intervene": 1
+        },
+        "S_multiple_errors": {
+          "n": 2,
+          "useful": 2,
+          "harmful": 0,
+          "intervene": 2
+        },
+        "U_user_vocab": {
+          "n": 2,
+          "useful": 0,
+          "harmful": 0,
+          "intervene": 0
+        },
+        "O_slang": {
+          "n": 3,
+          "useful": 0,
+          "harmful": 0,
+          "intervene": 0
+        },
+        "V_rapid_incomplete": {
+          "n": 3,
+          "useful": 0,
+          "harmful": 0,
+          "intervene": 0
+        },
+        "W_open_tokens": {
+          "n": 3,
+          "useful": 0,
+          "harmful": 0,
+          "intervene": 0
+        },
+        "X_pasted": {
+          "n": 1,
+          "useful": 0,
+          "harmful": 0,
+          "intervene": 0
+        }
+      },
+      "confusion": {
+        "tp": 165,
+        "fp": 32,
+        "fn": 409,
+        "tn": 663
+      }
+    },
+    "modelSample": {
+      "n": 90,
+      "detectionPrecision": 0.8333333333333334,
+      "detectionRecall": 0.35714285714285715,
+      "f1": 0.5,
+      "falsePositiveRate": 0.03225806451612903,
+      "falseNegativeRate": 0.6428571428571429,
+      "useful": 10,
+      "harmful": 2,
+      "unnecessary": 3,
+      "protectedViolationRate": 0,
+      "consultRate": 0.14444444444444443,
+      "meanMs": 0.5297027333333365,
+      "latencyP50": 0.4700830000001588,
+      "latencyP95": 1.2192919999999958,
+      "preservePrecision": 0.967741935483871,
+      "harmfulInterventionRate": 0.022222222222222223,
+      "byStratum": {
+        "A_en_spelling": {
+          "n": 9,
+          "useful": 4,
+          "harmful": 0,
+          "intervene": 4
+        },
+        "B_en_grammar": {
+          "n": 5,
+          "useful": 1,
+          "harmful": 0,
+          "intervene": 1
+        },
+        "C_en_punctuation": {
+          "n": 9,
+          "useful": 2,
+          "harmful": 0,
+          "intervene": 2
+        },
+        "Z_ambiguous_preserve": {
+          "n": 9,
+          "useful": 0,
+          "harmful": 1,
+          "intervene": 1
+        },
+        "D_arabic": {
+          "n": 7,
+          "useful": 0,
+          "harmful": 2,
+          "intervene": 2
+        },
+        "E_ar_en_mixed": {
+          "n": 17,
+          "useful": 0,
+          "harmful": 0,
+          "intervene": 0
+        },
+        "F_intentional_bilingual": {
+          "n": 16,
+          "useful": 0,
+          "harmful": 0,
+          "intervene": 0
+        },
+        "M_code": {
+          "n": 6,
+          "useful": 0,
+          "harmful": 0,
+          "intervene": 0
+        },
+        "G_keyboard_layout": {
+          "n": 17,
+          "useful": 5,
+          "harmful": 0,
+          "intervene": 5
+        },
+        "H_spell_after_layout": {
+          "n": 4,
+          "useful": 4,
+          "harmful": 0,
+          "intervene": 4
+        },
+        "S_multiple_errors": {
+          "n": 2,
+          "useful": 2,
+          "harmful": 0,
+          "intervene": 2
+        },
+        "I_technical": {
+          "n": 7,
+          "useful": 0,
+          "harmful": 0,
+          "intervene": 0
+        },
+        "Y_protected": {
+          "n": 18,
+          "useful": 0,
+          "harmful": 0,
+          "intervene": 0
+        },
+        "J_urls": {
+          "n": 7,
+          "useful": 0,
+          "harmful": 0,
+          "intervene": 0
+        },
+        "K_emails": {
+          "n": 7,
+          "useful": 0,
+          "harmful": 0,
+          "intervene": 0
+        },
+        "L_secrets": {
+          "n": 7,
+          "useful": 0,
+          "harmful": 0,
+          "intervene": 0
+        },
+        "N_names": {
+          "n": 2,
+          "useful": 0,
+          "harmful": 0,
+          "intervene": 0
+        },
+        "U_user_vocab": {
+          "n": 2,
+          "useful": 0,
+          "harmful": 0,
+          "intervene": 0
+        },
+        "O_slang": {
+          "n": 3,
+          "useful": 0,
+          "harmful": 0,
+          "intervene": 0
+        },
+        "T_intentional_unusual": {
+          "n": 4,
+          "useful": 0,
+          "harmful": 0,
+          "intervene": 0
+        },
+        "P_arabizi": {
+          "n": 2,
+          "useful": 0,
+          "harmful": 0,
+          "intervene": 0
+        },
+        "Q_short_fragments": {
+          "n": 5,
+          "useful": 0,
+          "harmful": 0,
+          "intervene": 0
+        },
+        "R_long_sentences": {
+          "n": 4,
+          "useful": 0,
+          "harmful": 1,
+          "intervene": 1
+        },
+        "V_rapid_incomplete": {
+          "n": 3,
+          "useful": 0,
+          "harmful": 0,
+          "intervene": 0
+        },
+        "W_open_tokens": {
+          "n": 3,
+          "useful": 0,
+          "harmful": 0,
+          "intervene": 0
+        },
+        "X_pasted": {
+          "n": 1,
+          "useful": 0,
+          "harmful": 0,
+          "intervene": 0
+        }
+      },
+      "confusion": {
+        "tp": 10,
+        "fp": 2,
+        "fn": 18,
+        "tn": 60
+      }
+    },
+    "productValueAll": 64,
+    "productValueSample": 1
+  },
+  "models": {
+    "qwen3:0.6b": {
+      "ranker": {
+        "n": 87,
+        "jsonValidity": 0.9655172413793104,
+        "forbiddenRate": 0,
+        "spanOkRate": 0,
+        "useful": 8,
+        "harmful": 2,
+        "improve": 0,
+        "worsen": 2,
+        "mixedPreserveViolations": 0,
+        "protectedViolations": 0,
+        "latencyP50": 655.3319589999955,
+        "latencyP95": 1023.043875000003
+      },
+      "detector": {
+        "n": 90,
+        "jsonValidity": 0.9888888888888889,
+        "forbiddenRate": 0,
+        "spanOkRate": 0.1111111111111111,
+        "useful": 10,
+        "harmful": 2,
+        "improve": 0,
+        "worsen": 0,
+        "mixedPreserveViolations": 0,
+        "protectedViolations": 0,
+        "latencyP50": 536.6790000000001,
+        "latencyP95": 742.3507079999999
+      },
+      "review": {
+        "n": 18,
+        "jsonValidity": 0.9444444444444444,
+        "forbiddenRate": 0,
+        "spanOkRate": 0,
+        "useful": 4,
+        "harmful": 0,
+        "improve": 0,
+        "worsen": 0,
+        "mixedPreserveViolations": 0,
+        "protectedViolations": 0,
+        "latencyP50": 419.6845420000027,
+        "latencyP95": 900.2481250000001
+      },
+      "tokensPrompt": 59611,
+      "tokensOut": 9939,
+      "meanTokensPerRequest": 356.6666666666667,
+      "latencyP50": 573.0920000000042,
+      "latencyP95": 960.3189169999969,
+      "productValueDetector": -9.847014159999999,
+      "productValueRanker": -17.46087750000006
+    },
+    "llama3.2:latest": {
+      "ranker": {
+        "n": 87,
+        "jsonValidity": 0.8850574712643678,
+        "forbiddenRate": 0,
+        "spanOkRate": 0,
+        "useful": 7,
+        "harmful": 1,
+        "improve": 1,
+        "worsen": 3,
+        "mixedPreserveViolations": 0,
+        "protectedViolations": 0,
+        "latencyP50": 2187.135249999992,
+        "latencyP95": 4018.716832999955
+      },
+      "detector": {
+        "n": 90,
+        "jsonValidity": 0.5,
+        "forbiddenRate": 0,
+        "spanOkRate": 0.03333333333333333,
+        "useful": 10,
+        "harmful": 2,
+        "improve": 0,
+        "worsen": 0,
+        "mixedPreserveViolations": 0,
+        "protectedViolations": 0,
+        "latencyP50": 2061.794165999978,
+        "latencyP95": 3228.5747919999994
+      },
+      "review": {
+        "n": 18,
+        "jsonValidity": 0,
+        "forbiddenRate": 0,
+        "spanOkRate": 0,
+        "useful": 4,
+        "harmful": 0,
+        "improve": 0,
+        "worsen": 0,
+        "mixedPreserveViolations": 0,
+        "protectedViolations": 0,
+        "latencyP50": 1877.4077920000127,
+        "latencyP95": 7351.070542000001
+      },
+      "tokensPrompt": 58569,
+      "tokensOut": 9327,
+      "meanTokensPerRequest": 348.18461538461537,
+      "latencyP50": 2161.9482089999947,
+      "latencyP95": 3878.695834000013,
+      "productValueDetector": -16,
+      "productValueRanker": -16
+    }
+  },
+  "cloudPrior": {
+    "evidenceClass": "REAL_MEASURED_PRIOR",
+    "source": "tests/audit/evaluation/gemini-3.5-flash-lite-full-live-results.json",
+    "model": "gemini-3.5-flash-lite",
+    "note": "Hypothesis-advisor ranking on 200 layout-family holdout cases. Local already correct; ranking did not help or harm.",
+    "selectedGold": 0.91,
+    "advisedAccuracy": 0.92,
+    "localOnRanked": 0.92,
+    "accuracyDelta": 0,
+    "help": 0,
+    "harm": 0,
+    "successP50Ms": 940,
+    "successP95Ms": 1173,
+    "groqGptOss20b": {
+      "source": "tests/audit/evaluation/gpt-oss-full-live-results.json",
+      "status": "INCONCLUSIVE",
+      "reason": "CASE_E_PROVIDER_RATE_LIMIT"
+    }
+  },
+  "longSession": {
+    "localCycles": 400,
+    "localLatencyP50": 0.4244579999999587,
+    "localLatencyP95": 0.9511669999999413,
+    "rssStart": 184156160,
+    "rssAfterLocal": 184778752,
+    "rssDelta": 622592,
+    "cpuUserUs": 234918,
+    "cpuSystemUs": 2409,
+    "modelSessionPoints": 24,
+    "modelRssStart": 91734016,
+    "modelRssEnd": 86065152
+  },
+  "availableOllama": [
+    "qwen3:0.6b",
+    "llama3.2:latest"
+  ],
+  "evaluatedOllama": [
+    "qwen3:0.6b",
+    "llama3.2:latest"
+  ]
+}

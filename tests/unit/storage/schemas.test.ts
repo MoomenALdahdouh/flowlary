@@ -36,6 +36,7 @@ describe('storage schemas', () => {
   it('keeps live translation off unless explicitly enabled', () => {
     expect(normalizeTranslation({ liveEnabled: 'true' }).liveEnabled).toBe(false)
     expect(normalizeTranslation({ liveEnabled: true }).liveEnabled).toBe(true)
+    expect(normalizeTranslation({ mode: 'box', liveEnabled: true }).liveEnabled).toBe(false)
   })
 })
 
@@ -52,7 +53,18 @@ describe('entitlement model', () => {
     )
     const merged = mergeUsageStates(a, b)
     expect(merged.firstActivatedAt).toBeLessThanOrEqual(a.firstActivatedAt)
-    expect(merged.usageBalanceMs).toBe(Math.min(a.usageBalanceMs, b.usageBalanceMs))
+    // Phase 27: legacy latency balances are discarded (never become credits).
+    expect(merged.usageBalanceMs).toBe(0)
+  })
+
+  it('normalizeUsageState zeros legacy usageBalanceMs', () => {
+    const now = Date.now()
+    const normalized = normalizeUsageState(
+      { firstActivatedAt: now - 1000, usageBalanceMs: 7_200_000, trialEndsAt: now + 10000 },
+      now,
+    )
+    expect(normalized.usageBalanceMs).toBe(0)
+    expect(normalized.version).toBe(2)
   })
 
   it('resolveEntitlementStatus fails closed without evidence', () => {

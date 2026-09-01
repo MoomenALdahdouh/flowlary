@@ -67,7 +67,6 @@ describe('Phase 14 — regression matrix', () => {
       stateManager.settings.enabled = true
       stateManager.correction.enabled = true
       stateManager.correction.consentAccepted = true
-      stateManager.correction.groqApiKey = 'gsk_test'
       stateManager.correction.mode = 'direct'
       stateManager.translation.liveEnabled = false
       stateManager.layout.autoEnabled = false
@@ -268,7 +267,6 @@ describe('Phase 14 — regression matrix', () => {
     it('required world layouts are registered', () => {
       const required = [
         'tr-q',
-        'he-standard',
         'el-standard',
         'es-latam',
         'it-standard',

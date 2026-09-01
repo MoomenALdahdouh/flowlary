@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Flowlary writing lab</title>
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; }
+      label { display: block; margin: 1rem 0 0.25rem; font-weight: 600; }
+      input, textarea, [contenteditable] {
+        width: 100%; box-sizing: border-box; padding: 0.6rem; font-size: 16px;
+      }
+      [contenteditable] { min-height: 80px; border: 1px solid #ccc; }
+    </style>
+  </head>
+  <body>
+    <h1>Flowlary writing lab</h1>
+    <p>Local fixture for real Chrome extension verification.</p>
+
+    <label for="plain-input">Input</label>
+    <input id="plain-input" type="text" />
+
+    <label for="plain-textarea">Textarea</label>
+    <textarea id="plain-textarea" rows="4"></textarea>
+
+    <label for="longform">Long-form textarea</label>
+    <textarea id="longform" rows="6"></textarea>
+
+    <label for="mixed">Mixed Arabic / English</label>
+    <textarea id="mixed" rows="4" dir="auto"></textarea>
+
+    <label for="ce">Contenteditable</label>
+    <div id="ce" contenteditable="true"></div>
+
+    <label for="ce-rich">Nested composer (suggestion/shortcut only)</label>
+    <div id="ce-rich" contenteditable="true"><div><span><br></span></div></div>
+  </body>
+</html>

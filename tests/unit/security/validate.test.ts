@@ -67,23 +67,47 @@ describe('runtime message validation', () => {
     expect(result.ok).toBe(false)
   })
 
-  it('rejects CORRECT_TEXT without bounded request id and key', () => {
+  it('rejects CORRECT_TEXT without bounded request id', () => {
     expect(
       validateExtensionRequest({
         type: 'CORRECT_TEXT',
         requestId: '',
         text: 'hello',
-        groqApiKey: 'gsk_test',
       }).ok,
     ).toBe(false)
     expect(
       validateExtensionRequest({
         type: 'CORRECT_TEXT',
         requestId: 'req-1',
-        text: 'hello',
-        groqApiKey: 'x'.repeat(SECURITY_LIMITS.MAX_GROQ_KEY_LENGTH + 1),
+        text: '',
       }).ok,
     ).toBe(false)
+  })
+
+  it('preserves practice mode on CORRECT_TEXT', () => {
+    const result = validateExtensionRequest({
+      type: 'CORRECT_TEXT',
+      requestId: 'req-practice-1',
+      text: 'I has a cat',
+      mode: 'practice',
+    })
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.value).toMatchObject({ type: 'CORRECT_TEXT', mode: 'practice' })
+    }
+  })
+
+  it('ignores unknown CORRECT_TEXT modes', () => {
+    const result = validateExtensionRequest({
+      type: 'CORRECT_TEXT',
+      requestId: 'req-1',
+      text: 'hello',
+      mode: 'evil',
+    })
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect((result.value as { mode?: string }).mode).toBeUndefined()
+    }
   })
 
   it('validateContentCommandType rejects malformed content messages', () => {

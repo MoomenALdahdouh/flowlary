@@ -15,10 +15,7 @@ describe('Production manifest (release packaging)', () => {
   })
 
   it('has production HTTPS host permissions only', () => {
-    expect(prodManifest.host_permissions).toEqual([
-      'https://api.groq.com/*',
-      'https://flowlary-api.zaixos.com/*',
-    ])
+    expect(prodManifest.host_permissions).toEqual(['https://api.flowlary.com/*'])
     for (const host of prodManifest.host_permissions) {
       expect(host.startsWith('https://')).toBe(true)
     }
@@ -29,7 +26,7 @@ describe('Production manifest (release packaging)', () => {
     expect(joined).not.toMatch(/localhost|127\.0\.0\.1/)
   })
 
-  it('matches package version 1.0.0', () => {
-    expect(prodManifest.version).toBe('1.0.0')
+  it('matches package version 1.1.0', () => {
+    expect(prodManifest.version).toBe('1.1.0')
   })
 })

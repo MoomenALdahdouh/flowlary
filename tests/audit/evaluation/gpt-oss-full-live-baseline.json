@@ -1,0 +1,51 @@
+{
+  "seed": 20261107,
+  "corpus": 5500,
+  "holdout": 1326,
+  "hypothesisExistence": 0.8936651583710408,
+  "hypothesisExistenceCounts": "1185/1326",
+  "baselineAccuracy": 0.8702865761689291,
+  "baselineAccuracyCounts": "1154/1326",
+  "invocationRate": 0.012066365007541479,
+  "layoutRecall": 0.7580872011251758,
+  "layoutTp": 539,
+  "layoutFp": 0,
+  "layoutFn": 172,
+  "layoutGold": 711,
+  "mixFp": 0,
+  "protectedFp": 0,
+  "abstention": 1,
+  "abstentionCounts": "495/495",
+  "families": {
+    "layout": {
+      "n": 495,
+      "ok": 446,
+      "exist": 495
+    },
+    "mixed": {
+      "n": 252,
+      "ok": 252,
+      "exist": 252
+    },
+    "spelling": {
+      "n": 238,
+      "ok": 120,
+      "exist": 123
+    },
+    "technical": {
+      "n": 105,
+      "ok": 105,
+      "exist": 105
+    },
+    "punctuation": {
+      "n": 124,
+      "ok": 119,
+      "exist": 98
+    },
+    "short": {
+      "n": 112,
+      "ok": 112,
+      "exist": 112
+    }
+  }
+}

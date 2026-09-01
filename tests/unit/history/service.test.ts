@@ -14,6 +14,8 @@ import {
 } from '../../../extension/src/storage/history/index.ts'
 import { stateManager } from '../../../extension/src/core/state/StateManager.ts'
 import { createMockChromeStorage } from '../../helpers/mockChromeStorage.ts'
+import { activateTestAccount, clearTestAccountContext, TEST_ACCOUNT_A } from '../../helpers/accountIsolation.ts'
+import { buildAccountScopedKey } from '../../../extension/src/storage/accountScopedStorage.ts'
 
 function textarea(): HTMLTextAreaElement {
   const el = document.createElement('textarea')
@@ -25,13 +27,15 @@ describe('HistoryService', () => {
   let mockStore: ReturnType<typeof createMockChromeStorage>
   let storage: FlowlaryStorage
 
-  beforeEach(() => {
+  beforeEach(async () => {
     document.body.innerHTML = ''
     mockStore = createMockChromeStorage()
     mockStore.install()
     resetHistoryServiceForTests()
     storage = new FlowlaryStorage()
     stateManager.settings.excludedDomains = []
+    await clearTestAccountContext()
+    await activateTestAccount()
   })
 
   afterEach(() => {
@@ -128,14 +132,14 @@ describe('HistoryService', () => {
   })
 
   it('preserves legacy arrays after unified import', async () => {
-    mockStore.local[STORAGE_KEYS.history] = {
+    mockStore.local[buildAccountScopedKey(TEST_ACCOUNT_A, 'history')] = {
       _v: 1,
       ewa: [{ id: '1', timestamp: 1, original: 'a', corrected: 'b' }],
       layfix: [{ token: 'x', replacement: 'y', ts: 2 }],
     }
     const service = getHistoryService(storage)
     await service.initialize()
-    const raw = mockStore.local[STORAGE_KEYS.history] as {
+    const raw = mockStore.local[buildAccountScopedKey(TEST_ACCOUNT_A, 'history')] as {
       ewa?: unknown[]
       layfix?: unknown[]
       entries?: unknown[]
@@ -146,7 +150,7 @@ describe('HistoryService', () => {
   })
 
   it('migration is idempotent', async () => {
-    mockStore.local[STORAGE_KEYS.history] = {
+    mockStore.local[buildAccountScopedKey(TEST_ACCOUNT_A, 'history')] = {
       _v: 1,
       ewa: [{ id: '1', timestamp: 1, original: 'a', corrected: 'b' }],
     }
@@ -189,12 +193,13 @@ describe('HistoryService', () => {
     const service = getHistoryService(storage)
     await service.initialize()
     vi.mocked(chrome.storage.local.set).mockRejectedValueOnce(new Error('disk full'))
-    const ok = await service.record({
-      operation: 'CORRECT',
-      element: textarea(),
-      sourceText: 'x',
-      resultText: 'X',
-    })
-    expect(ok).toBe(false)
+    await expect(
+      service.record({
+        operation: 'CORRECT',
+        element: textarea(),
+        sourceText: 'x',
+        resultText: 'X',
+      }),
+    ).resolves.toBe(false)
   })
 })

@@ -1,0 +1,110 @@
+{
+  "total": 4500,
+  "counts": {
+    "layout": 1000,
+    "spelling_layout": 750,
+    "mixed": 750,
+    "technical": 500,
+    "short": 500,
+    "punctuation": 500,
+    "contextual": 500
+  },
+  "all": {
+    "n": 4500,
+    "actionAccuracy": 0.8557777777777777,
+    "hypExistence": 0.8986666666666666,
+    "consultRate": 0.008,
+    "layoutRecall": 0.7259565667011375,
+    "layoutFp": 119,
+    "layoutFn": 530,
+    "mixLayoutFp": 119,
+    "protectedLayout": 0,
+    "meanMs": 0.435154882666664,
+    "byFamily": {
+      "layout": {
+        "n": 1000,
+        "ok": 897,
+        "consult": 24
+      },
+      "spelling_layout": {
+        "n": 750,
+        "ok": 354,
+        "consult": 12
+      },
+      "mixed": {
+        "n": 750,
+        "ok": 750,
+        "consult": 0
+      },
+      "technical": {
+        "n": 500,
+        "ok": 500,
+        "consult": 0
+      },
+      "short": {
+        "n": 500,
+        "ok": 500,
+        "consult": 0
+      },
+      "punctuation": {
+        "n": 500,
+        "ok": 469,
+        "consult": 0
+      },
+      "contextual": {
+        "n": 500,
+        "ok": 381,
+        "consult": 0
+      }
+    }
+  },
+  "holdout": {
+    "n": 1105,
+    "actionAccuracy": 0.8479638009049774,
+    "hypExistence": 0.9040723981900453,
+    "consultRate": 0.007239819004524887,
+    "layoutRecall": 0.7127882599580713,
+    "layoutFp": 31,
+    "layoutFn": 137,
+    "mixLayoutFp": 31,
+    "protectedLayout": 0,
+    "meanMs": 0.40833352941176787,
+    "byFamily": {
+      "layout": {
+        "n": 254,
+        "ok": 227,
+        "consult": 6
+      },
+      "spelling_layout": {
+        "n": 184,
+        "ok": 78,
+        "consult": 2
+      },
+      "mixed": {
+        "n": 193,
+        "ok": 193,
+        "consult": 0
+      },
+      "technical": {
+        "n": 120,
+        "ok": 120,
+        "consult": 0
+      },
+      "short": {
+        "n": 123,
+        "ok": 123,
+        "consult": 0
+      },
+      "punctuation": {
+        "n": 118,
+        "ok": 114,
+        "consult": 0
+      },
+      "contextual": {
+        "n": 113,
+        "ok": 82,
+        "consult": 0
+      }
+    }
+  }
+}

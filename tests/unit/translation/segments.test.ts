@@ -35,8 +35,8 @@ describe('live translation segments (ported from Lingo)', () => {
     expect(complete?.text).toBe(`${text}؟`)
   })
 
-  it('translates a paused greeting without requiring punctuation', () => {
-    expect(liveSegmentOnPause('مرحبا', 5)?.text).toBe('مرحبا')
+  it('does not translate a paused greeting without a sentence boundary', () => {
+    expect(liveSegmentOnPause('مرحبا', 5)).toBeNull()
     expect(lastCompletedSegment('مرحبا', 5, { requireBoundary: true })).toBeNull()
   })
 })

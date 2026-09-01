@@ -1,0 +1,10 @@
+{
+  "httpStatus": 429,
+  "groqErrorCode": "rate_limit_exceeded",
+  "model": null,
+  "class": "RATE_LIMIT",
+  "schemaValid": false,
+  "latencyMs": 174,
+  "extraWriteFields": false,
+  "unknownIds": false
+}

@@ -19,9 +19,9 @@ function walk(dir: string): string[] {
 
 describe('Phase 14 — release readiness', () => {
   it('production build completes', () => {
-    execSync('npm run build', { cwd: root, stdio: 'pipe' })
+    execSync('npm run build -w @flowlary/extension', { cwd: root, stdio: 'pipe', timeout: 120_000 })
     expect(statSync(dist).isDirectory()).toBe(true)
-  })
+  }, 130_000)
 
   it('dist contains required extension entry points', () => {
     const manifest = JSON.parse(readFileSync(join(dist, 'manifest.json'), 'utf8')) as {
@@ -31,7 +31,7 @@ describe('Phase 14 — release readiness', () => {
     }
     expect(manifest.background.service_worker).toBeTruthy()
     expect(readFileSync(join(dist, manifest.background.service_worker), 'utf8').length).toBeGreaterThan(0)
-    expect(manifest.content_scripts).toHaveLength(1)
+    expect(manifest.content_scripts.length).toBeGreaterThanOrEqual(1)
     for (const js of manifest.content_scripts[0].js) {
       expect(readFileSync(join(dist, js), 'utf8').length).toBeGreaterThan(0)
     }

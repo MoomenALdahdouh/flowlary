@@ -6,6 +6,7 @@ describe('popup shortcuts', () => {
     const labels = getShortcutLabels('MacIntel')
     expect(labels.modifier).toBe('⌘')
     expect(labels.translate).toContain('⌘')
+    expect(labels.fixWriting).toContain('E')
     expect(labels.fixLayout).toContain('P')
     expect(labels.speedBox).toContain('L')
   })

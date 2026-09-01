@@ -6,25 +6,20 @@ import {
 } from '../../../extension/src/features/correction/readiness.ts'
 
 describe('correction AI readiness', () => {
-  it('managed mode requires consent only', () => {
+  it('requires consent only for Flowlary AI', () => {
     const settings = {
       ...DEFAULT_CORRECTION,
-      aiProvider: 'managed' as const,
       consentAccepted: true,
-      groqApiKey: '',
     }
     expect(usesManagedCorrection(settings)).toBe(true)
     expect(isCorrectionAiReady(settings)).toBe(true)
   })
 
-  it('BYOK mode requires groq key and consent', () => {
+  it('is not ready without consent', () => {
     const settings = {
       ...DEFAULT_CORRECTION,
-      aiProvider: 'byok' as const,
-      consentAccepted: true,
-      groqApiKey: '',
+      consentAccepted: false,
     }
-    expect(usesManagedCorrection(settings)).toBe(false)
     expect(isCorrectionAiReady(settings)).toBe(false)
   })
 })

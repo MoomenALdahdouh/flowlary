@@ -2,6 +2,7 @@
 /**
  * Live API verification — run with GROQ_API_KEY in backend/.env
  * Usage: node scripts/verify-live-api.mjs
+ * Optional: FLOWLARY_API_BASE=https://api.flowlary.com node scripts/verify-live-api.mjs
  * Never logs secrets or user text.
  */
 import { spawn } from 'node:child_process'
@@ -26,8 +27,10 @@ function loadEnvFile(path) {
 }
 
 const envFile = loadEnvFile(envPath)
-const base = process.env.FLOWLARY_API_BASE ?? 'http://127.0.0.1:8787'
+const verifyPort = process.env.FLOWLARY_VERIFY_PORT ?? '8791'
+const base = process.env.FLOWLARY_API_BASE ?? `http://127.0.0.1:${verifyPort}`
 const groqKey = process.env.GROQ_API_KEY ?? envFile.GROQ_API_KEY
+const useLocalServer = !process.env.FLOWLARY_API_BASE
 
 const results = []
 
@@ -49,6 +52,23 @@ async function waitForHealth(maxMs = 8000) {
   return false
 }
 
+async function waitForReady(maxMs = 8000) {
+  const start = Date.now()
+  while (Date.now() - start < maxMs) {
+    try {
+      const res = await fetch(`${base}/ready`)
+      if (res.ok) {
+        const body = await res.json()
+        if (body.ready === true) return true
+      }
+    } catch {
+      /* retry */
+    }
+    await new Promise((r) => setTimeout(r, 200))
+  }
+  return false
+}
+
 async function registerInstall() {
   const installId = crypto.randomUUID()
   const res = await fetch(`${base}/api/auth/register`, {
@@ -61,6 +81,31 @@ async function registerInstall() {
   return { installId, token: body.token }
 }
 
+async function registerAccount(installId) {
+  const email = `verify-${Date.now()}@flowlary.test`
+  const res = await fetch(`${base}/api/auth/register`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Flowlary-Install-Id': installId,
+    },
+    body: JSON.stringify({
+      email,
+      password: 'verify-password-123',
+      install_id: installId,
+    }),
+  })
+  if (!res.ok) throw new Error(`account_register_http_${res.status}`)
+  const body = await res.json()
+  return {
+    installId,
+    token: body.access_token,
+    refreshToken: body.refresh_token,
+    sessionId: body.session_id,
+    plan: body.account?.plan,
+  }
+}
+
 async function postAi(path, auth, payload) {
   const res = await fetch(`${base}${path}`, {
     method: 'POST',
@@ -68,7 +113,7 @@ async function postAi(path, auth, payload) {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${auth.token}`,
       'X-Flowlary-Install-Id': auth.installId,
-      'X-Flowlary-Entitlement': 'free',
+      'X-Flowlary-Entitlement': auth.entitlement ?? 'free',
     },
     body: JSON.stringify(payload),
   })
@@ -77,24 +122,28 @@ async function postAi(path, auth, payload) {
 }
 
 async function main() {
-  if (!groqKey) {
+  if (!groqKey && useLocalServer) {
     record('credentials', 'NOT VERIFIED', 'GROQ_API_KEY missing in backend/.env')
     printReport()
     process.exit(0)
   }
 
-  const server = spawn('node', ['--import', 'tsx', 'src/index.ts'], {
-    cwd: resolve(root, 'backend'),
-    env: {
-      ...process.env,
-      ...envFile,
-      GROQ_API_KEY: groqKey,
-      FLOWLARY_ENV: 'development',
-      FLOWLARY_AUTH_DISABLED: '1',
-      PORT: '8787',
-    },
-    stdio: 'ignore',
-  })
+  let server = null
+  if (useLocalServer) {
+    server = spawn('node', ['--import', 'tsx', 'src/index.ts'], {
+      cwd: resolve(root, 'backend'),
+      env: {
+        ...process.env,
+        ...envFile,
+        GROQ_API_KEY: groqKey,
+        FLOWLARY_ENV: 'staging',
+        FLOWLARY_AUTH_DISABLED: '0',
+        FLOWLARY_JWT_SECRET: envFile.FLOWLARY_JWT_SECRET ?? 'dev-verify-jwt-secret',
+        PORT: verifyPort,
+      },
+      stdio: 'ignore',
+    })
+  }
 
   try {
     const healthy = await waitForHealth()
@@ -105,8 +154,30 @@ async function main() {
     }
     record('server', 'VERIFIED', 'health OK')
 
-    const auth = await registerInstall()
-    record('auth', 'VERIFIED', 'install registered')
+    const ready = await waitForReady()
+    if (!ready) {
+      record('readiness', 'NOT VERIFIED', 'ready check timeout or dependencies missing')
+    } else {
+      record('readiness', 'VERIFIED', 'ready OK')
+    }
+
+    const installAuth = await registerInstall()
+    record('install_auth', 'VERIFIED', 'install registered')
+
+    const accountAuth = await registerAccount(installAuth.installId)
+    record('account_auth', 'VERIFIED', `plan=${accountAuth.plan ?? 'unknown'}`)
+
+    const entitlementRes = await fetch(`${base}/api/account/entitlement`, {
+      headers: { Authorization: `Bearer ${accountAuth.token}` },
+    })
+    if (entitlementRes.ok) {
+      const body = await entitlementRes.json()
+      record('entitlement', 'VERIFIED', `plan=${body.entitlement?.plan ?? 'unknown'}`)
+    } else {
+      record('entitlement', 'NOT VERIFIED', `http_${entitlementRes.status}`)
+    }
+
+    const auth = { ...accountAuth, entitlement: 'trial' }
 
     const correction = await postAi('/api/ai/correction', auth, {
       text: 'I dont know what to write today.',
@@ -138,10 +209,21 @@ async function main() {
     } else {
       record('layout', 'NOT VERIFIED', `http_${layout.status}`)
     }
+
+    const denied = await postAi('/api/ai/translation', { ...installAuth, entitlement: 'anonymous' }, {
+      text: 'Hello',
+      source_language: 'en',
+      target_language: 'ar',
+    })
+    if (denied.status === 403) {
+      record('entitlement_denial', 'VERIFIED', 'install+anonymous denied')
+    } else {
+      record('entitlement_denial', 'NOT VERIFIED', `http_${denied.status}`)
+    }
   } catch (err) {
     record('runtime', 'BLOCKED', err instanceof Error ? err.message : 'unknown')
   } finally {
-    server.kill('SIGTERM')
+    server?.kill('SIGTERM')
   }
 
   printReport()
