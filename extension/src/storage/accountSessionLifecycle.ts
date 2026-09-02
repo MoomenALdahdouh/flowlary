@@ -12,7 +12,23 @@ import {
 import { getFlowlaryCache, resetAiRequestCoalescers } from './cache/index.ts'
 import { activeAccountContext, isValidAccountId } from './activeAccountContext.ts'
 import { maybeClaimLegacyAccountData } from './accountIsolationMigration.ts'
+import { applyUserPolicyToMemory, resolveWritingPolicy } from '../core/policy/writingPolicy.ts'
 import { hydrateStateFromStorage } from './hydrate.ts'
+import {
+  setCorrectionSettings,
+  setLayoutSettings,
+  setSettings,
+  setTranslationSettings,
+} from './facade.ts'
+import {
+  buildAccountScopedKey,
+  type AccountOwnedKind,
+} from './accountScopedStorage.ts'
+import type {
+  CorrectionSettings,
+  LayoutSettings,
+  TranslationSettings,
+} from '../core/state/StateManager.ts'
 import { resetHistoryServiceForTests } from './history/index.ts'
 import type { FlowlaryStorage } from './index.ts'
 import { resetLearningEventServiceForTests } from './learning/events/index.ts'
@@ -41,6 +57,66 @@ async function clearAiCacheBestEffort(storage: FlowlaryStorage): Promise<void> {
   }
 }
 
+type PreAuthAccountState = {
+  correction: CorrectionSettings
+  translation: TranslationSettings
+  layout: LayoutSettings
+}
+
+function hasMeaningfulAccountPayload(raw: unknown): boolean {
+  if (raw == null) return false
+  if (typeof raw !== 'object') return true
+  const keys = Object.keys(raw as object).filter((key) => key !== '_v')
+  return keys.length > 0
+}
+
+async function accountOwnedKeyPresent(
+  storage: FlowlaryStorage,
+  accountId: string,
+  kind: AccountOwnedKind,
+): Promise<boolean> {
+  const raw = await storage.get(buildAccountScopedKey(accountId, kind), 'local')
+  return hasMeaningfulAccountPayload(raw)
+}
+
+async function persistProjectedAccountWritingState(storage: FlowlaryStorage): Promise<void> {
+  await setSettings(storage, stateManager.settings)
+  await setCorrectionSettings(storage, stateManager.correction)
+  await setTranslationSettings(storage, stateManager.translation)
+  await setLayoutSettings(storage, stateManager.layout)
+}
+
+function mergePreAuthAccountState(
+  preAuth: PreAuthAccountState,
+  hadCorrection: boolean,
+  hadTranslation: boolean,
+  hadLayout: boolean,
+): void {
+  if (!hadCorrection) {
+    Object.assign(stateManager.correction, preAuth.correction)
+  } else if (preAuth.correction.consentAccepted) {
+    stateManager.correction.consentAccepted = true
+  }
+
+  if (!hadTranslation) {
+    Object.assign(stateManager.translation, preAuth.translation)
+  } else if (preAuth.translation.liveEnabled) {
+    stateManager.translation = {
+      ...stateManager.translation,
+      liveEnabled: true,
+      mode: preAuth.translation.mode,
+      sourceLanguage: preAuth.translation.sourceLanguage,
+      targetLanguage: preAuth.translation.targetLanguage,
+    }
+  }
+
+  if (!hadLayout) {
+    Object.assign(stateManager.layout, preAuth.layout)
+  }
+
+  applyUserPolicyToMemory(resolveWritingPolicy())
+}
+
 /**
  * Attach authenticated account as the active local owner.
  * Claims legacy unscoped data at most once. Hydrates StateManager from account namespace.
@@ -57,11 +133,33 @@ export async function attachActiveAccount(
   } else {
     resetAiRequestCoalescers()
   }
+
+  // Anonymous SET_CORRECTION / SET_TRANSLATION update SW memory only; capture before hydrate.
+  const preAuth: PreAuthAccountState | null = !previousId
+    ? {
+        correction: { ...stateManager.correction },
+        translation: { ...stateManager.translation },
+        layout: { ...stateManager.layout },
+      }
+    : null
+
   activeAccountContext.activate(accountId)
-  await storage.setPrimitive(STORAGE_KEYS.authAccountId, accountId, 'local')
+  const [hadCorrection, hadTranslation, hadLayout] = await Promise.all([
+    accountOwnedKeyPresent(storage, accountId, 'correction'),
+    accountOwnedKeyPresent(storage, accountId, 'translation'),
+    accountOwnedKeyPresent(storage, accountId, 'layout'),
+  ])
   await maybeClaimLegacyAccountData(storage, accountId)
   resetAccountBoundServices()
   await hydrateStateFromStorage(storage)
+
+  if (preAuth) {
+    mergePreAuthAccountState(preAuth, hadCorrection, hadTranslation, hadLayout)
+  }
+
+  await persistProjectedAccountWritingState(storage)
+  // Publish auth last so content scripts hydrate once account-owned keys exist.
+  await storage.setPrimitive(STORAGE_KEYS.authAccountId, accountId, 'local')
 }
 
 /**

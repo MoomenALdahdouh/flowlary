@@ -4,6 +4,7 @@
 
 import { STORAGE_KEYS } from '@flowlary/shared'
 import { activeAccountContext } from '../storage/activeAccountContext.ts'
+import { stateManager } from '../core/state/StateManager.ts'
 import { parseAccountIdFromStorageKey } from '../storage/accountScopedStorage.ts'
 import type { CorrectionModule } from '../features/correction/CorrectionFeature.ts'
 import type { LayoutModule } from '../features/layout/LayoutFeature.ts'
@@ -15,10 +16,12 @@ import {
   detachActiveAccount,
   flowlaryStorage,
   getLayoutProfile,
+  getSettings,
   hydrateStateFromStorage,
   restoreActiveAccountFromSession,
   runStorageMigration,
 } from '../storage/index.ts'
+import { applyUserPolicyToMemory, resolveWritingPolicy } from '../core/policy/writingPolicy.ts'
 import { ensureHistoryInitialized } from '../storage/history/record.ts'
 import { initializeFlowlaryCache } from '../storage/cache/index.ts'
 import { readStoredString } from '../storage/schemas.ts'
@@ -52,6 +55,23 @@ function hasPolicyKeyChange(changes: Record<string, chrome.storage.StorageChange
       key.endsWith('.layout.profile')
     )
   })
+}
+
+async function hydratePolicyFromStorageChange(
+  changes: Record<string, chrome.storage.StorageChange>,
+): Promise<void> {
+  const accountId = activeAccountContext.getAccountId()
+  if (accountId) {
+    await hydrateStateFromStorage(flowlaryStorage)
+    return
+  }
+
+  // Unsigned: global settings may change from the service worker while account-bound
+  // keys are memory-only. Do not clobber pre-auth correction/translation/layout.
+  if (STORAGE_KEYS.settings in changes) {
+    Object.assign(stateManager.settings, await getSettings(flowlaryStorage))
+    applyUserPolicyToMemory(resolveWritingPolicy())
+  }
 }
 
 export async function hydrateLayoutFeatureFromStorage(
@@ -95,6 +115,11 @@ async function handleAuthAccountIdStorageChange(
         ).trim()
 
   if (!nextId) {
+    if (!activeAccountContext.getAccountId()) {
+      resetLayoutFeatureProfile(options.layout)
+      options.correction?.clearFieldStates()
+      return
+    }
     await detachActiveAccount(flowlaryStorage)
     resetLayoutFeatureProfile(options.layout)
     options.correction?.clearFieldStates()
@@ -119,7 +144,7 @@ export function installContentScriptAccountListener(
     }
     if (hasPolicyKeyChange(changes)) {
       void (async () => {
-        await hydrateStateFromStorage(flowlaryStorage)
+        await hydratePolicyFromStorageChange(changes)
         await hydrateLayoutFeatureFromStorage(options.layout)
       })()
     }
