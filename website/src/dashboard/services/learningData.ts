@@ -26,6 +26,7 @@ import { normalizePracticeSessionStore } from '../learning/practice/sessions.ts'
 import { buildLearningCoachContext } from '../learning/coach/buildLearningCoachContext.ts'
 import { buildDeterministicCoachResponse } from '../learning/coach/buildDeterministicCoach.ts'
 import { fetchLearningEvents } from '../../account/learningEventsClient.ts'
+import { readWebLearningStore } from '../../lab/webLearningStore.ts'
 import {
   fetchRemoteLearningProfile,
   fetchRemotePracticeSessions,
@@ -53,13 +54,28 @@ export type WebLearningBundle = {
   practiceStore: PracticeSessionStoreV1
 }
 
-export async function loadWebLearningBundle(accountId: string): Promise<WebLearningBundle | null> {
-  const [eventsResult, remoteProfile, remotePractice] = await Promise.all([
+export type LoadWebLearningBundleResult =
+  | { ok: true; bundle: WebLearningBundle; degraded: boolean }
+  | { ok: false; code: 'auth' }
+
+export async function loadWebLearningBundle(accountId: string): Promise<LoadWebLearningBundleResult> {
+  const [eventsResult, profileResult, practiceResult] = await Promise.all([
     fetchLearningEvents(),
     fetchRemoteLearningProfile(),
     fetchRemotePracticeSessions(),
   ])
-  if (!eventsResult.ok) return null
+
+  if (
+    (!eventsResult.ok && eventsResult.code === 'auth')
+    || (!profileResult.ok && profileResult.code === 'auth')
+    || (!practiceResult.ok && practiceResult.code === 'auth')
+  ) {
+    return { ok: false, code: 'auth' }
+  }
+
+  const store = eventsResult.ok ? eventsResult.store : readWebLearningStore(accountId)
+  const remoteProfile = profileResult.ok ? profileResult.value : null
+  const remotePractice = practiceResult.ok ? practiceResult.value : null
 
   const localProfile = readLearningProfile(accountId)
   const localPractice = readPracticeSessionStore(accountId)
@@ -69,23 +85,27 @@ export async function loadWebLearningBundle(accountId: string): Promise<WebLearn
   writeLearningProfile(accountId, profile)
   writePracticeSessionStore(accountId, practiceStore)
 
-  if (remoteProfile && profile.updatedAt > remoteProfile.updatedAt) {
+  if (profileResult.ok && remoteProfile && profile.updatedAt > remoteProfile.updatedAt) {
     void pushRemoteLearningProfile(profile)
   }
-  if (remotePractice) {
+  if (practiceResult.ok && remotePractice) {
     const localIds = new Set(localPractice.sessions.map((session) => session.id))
     const hasLocalOnly = practiceStore.sessions.some((session) => !localIds.has(session.id))
     if (hasLocalOnly || localPractice.sessions.length > remotePractice.sessions.length) {
       void pushRemotePracticeSessions(practiceStore)
     }
-  } else if (localPractice.sessions.length > 0) {
+  } else if (practiceResult.ok && localPractice.sessions.length > 0) {
     void pushRemotePracticeSessions(practiceStore)
   }
 
   return {
-    store: eventsResult.store,
-    profile,
-    practiceStore,
+    ok: true,
+    degraded: !eventsResult.ok || !profileResult.ok || !practiceResult.ok,
+    bundle: {
+      store,
+      profile,
+      practiceStore,
+    },
   }
 }
 

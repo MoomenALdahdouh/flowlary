@@ -2,26 +2,43 @@ import type { LearningProfile, PracticeSessionStoreV1 } from '@flowlary/shared'
 import { resolvePublicApiUrl } from '../config.ts'
 import { ensureFreshWebSession } from './client.ts'
 
-function authHeaders(token: string): Record<string, string> {
+export type RemoteLearningError = 'auth' | 'network'
+
+export type RemoteFetchResult<T> =
+  | { ok: true; value: T }
+  | { ok: false; code: RemoteLearningError }
+
+function bearerHeaders(token: string): Record<string, string> {
+  return { Authorization: `Bearer ${token}` }
+}
+
+function writeHeaders(token: string): Record<string, string> {
   return {
     Authorization: `Bearer ${token}`,
-    'X-Flowlary-Client': 'website',
     'Content-Type': 'application/json',
+    'X-Flowlary-Client': 'website',
+    'X-Flowlary-Surface': 'website',
   }
 }
 
-export async function fetchRemoteLearningProfile(): Promise<LearningProfile | null> {
+function mapHttpFailure(status: number): RemoteLearningError {
+  return status === 401 ? 'auth' : 'network'
+}
+
+export async function fetchRemoteLearningProfile(): Promise<RemoteFetchResult<LearningProfile | null>> {
   const session = await ensureFreshWebSession()
-  if (!session) return null
+  if (!session) return { ok: false, code: 'auth' }
   try {
     const response = await fetch(`${resolvePublicApiUrl()}/api/learning/profile`, {
-      headers: authHeaders(session.accessToken),
+      headers: bearerHeaders(session.accessToken),
+      signal: AbortSignal.timeout(12_000),
     })
-    if (!response.ok) return null
+    if (!response.ok) return { ok: false, code: mapHttpFailure(response.status) }
     const body = (await response.json()) as { ok?: boolean; profile?: LearningProfile | null }
-    return body.ok ? (body.profile ?? null) : null
+    if (!body.ok) return { ok: false, code: 'network' }
+    return { ok: true, value: body.profile ?? null }
   } catch {
-    return null
+    return { ok: false, code: 'network' }
   }
 }
 
@@ -31,7 +48,7 @@ export async function pushRemoteLearningProfile(profile: LearningProfile): Promi
   try {
     const response = await fetch(`${resolvePublicApiUrl()}/api/learning/profile`, {
       method: 'PUT',
-      headers: authHeaders(session.accessToken),
+      headers: writeHeaders(session.accessToken),
       body: JSON.stringify({ profile }),
     })
     return response.ok
@@ -40,18 +57,20 @@ export async function pushRemoteLearningProfile(profile: LearningProfile): Promi
   }
 }
 
-export async function fetchRemotePracticeSessions(): Promise<PracticeSessionStoreV1 | null> {
+export async function fetchRemotePracticeSessions(): Promise<RemoteFetchResult<PracticeSessionStoreV1 | null>> {
   const session = await ensureFreshWebSession()
-  if (!session) return null
+  if (!session) return { ok: false, code: 'auth' }
   try {
     const response = await fetch(`${resolvePublicApiUrl()}/api/learning/practice-sessions`, {
-      headers: authHeaders(session.accessToken),
+      headers: bearerHeaders(session.accessToken),
+      signal: AbortSignal.timeout(12_000),
     })
-    if (!response.ok) return null
-    const body = (await response.json()) as { ok?: boolean; store?: PracticeSessionStoreV1 }
-    return body.ok && body.store ? body.store : null
+    if (!response.ok) return { ok: false, code: mapHttpFailure(response.status) }
+    const body = (await response.json()) as { ok?: boolean; store?: PracticeSessionStoreV1 | null }
+    if (!body.ok) return { ok: false, code: 'network' }
+    return { ok: true, value: body.store ?? null }
   } catch {
-    return null
+    return { ok: false, code: 'network' }
   }
 }
 
@@ -61,7 +80,7 @@ export async function pushRemotePracticeSessions(store: PracticeSessionStoreV1):
   try {
     const response = await fetch(`${resolvePublicApiUrl()}/api/learning/practice-sessions`, {
       method: 'PUT',
-      headers: authHeaders(session.accessToken),
+      headers: writeHeaders(session.accessToken),
       body: JSON.stringify({ store }),
     })
     return response.ok

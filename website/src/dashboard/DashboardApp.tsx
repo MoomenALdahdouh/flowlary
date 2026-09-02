@@ -12,6 +12,7 @@ import {
   type DashboardCopy,
   type DashboardSection,
 } from './types.ts'
+import { Button } from '../components/Ui.tsx'
 import { DashboardShell } from './panels/AccountDashboardPanel.tsx'
 import { OverviewPanel } from './panels/OverviewPanel.tsx'
 import { PracticePanel } from './panels/PracticePanel.tsx'
@@ -144,23 +145,81 @@ export function DashboardApp({
   )
 
   const advancedProgress = isPro || inTrial
+  const accountPanel = (
+    <AccountDashboardPanel
+      account={account}
+      entitlement={entitlement}
+      copy={copy}
+      accountCopy={messages.account}
+      planState={planState}
+      planLabel={planLabel}
+      isPro={isPro}
+      studentProActive={studentProActive}
+      inTrial={inTrial}
+      trialDays={trialDays}
+      subscription={subscription}
+      checkoutReady={checkoutReady}
+      portalReady={portalReady}
+      activating={activating}
+      billingBusy={billingBusy}
+      billingMessage={billingMessage}
+      proPriceLabel={proPriceLabel}
+      creditsRemaining={creditsRemaining}
+      creditsUsed={creditsUsed}
+      dailyLimit={dailyLimit}
+      usagePercent={usagePercent}
+      usageDescription={usageView.description}
+      resetIn={resetIn}
+      extensionConnected={extensionConnected}
+      onLogout={onLogout}
+      onUpgrade={onUpgrade}
+      onManageBilling={onManageBilling}
+      onRefreshAccount={onRefreshAccount}
+    />
+  )
 
-  let panel = null
-  if (loading || !bundle) {
-    panel = (
-      <div className="wd-panel-stack" aria-busy="true" aria-label={copy.common.loading}>
-        <div className="wd-skeleton wd-skeleton-title" />
-        <div className="wd-skeleton wd-skeleton-line" />
-        <article className="wd-card">
-          <div className="wd-skeleton wd-skeleton-line" />
-          <div className="wd-skeleton wd-skeleton-line wd-skeleton-short" />
-        </article>
+  let panel = accountPanel
+  if (section === 'settings') {
+    panel = <SettingsPanel accountId={accountId} copy={copy} onRefresh={refresh} />
+  } else if (section !== 'account') {
+    const retryBanner = error ? (
+      <div className="wd-actions" style={{ marginBottom: '1rem' }}>
+        <p className="wd-error" role="alert">
+          {copy.common.error}
+        </p>
+        <Button type="button" variant="secondary" onClick={() => void refresh()}>
+          {copy.common.retry}
+        </Button>
       </div>
-    )
-  } else {
-    switch (section) {
-      case 'overview':
-        panel = (
+    ) : null
+    if (loading && !bundle) {
+      panel = (
+        <div className="wd-panel-stack" aria-busy="true" aria-label={copy.common.loading}>
+          <div className="wd-skeleton wd-skeleton-title" />
+          <div className="wd-skeleton wd-skeleton-line" />
+          <article className="wd-card">
+            <div className="wd-skeleton wd-skeleton-line" />
+            <div className="wd-skeleton wd-skeleton-line wd-skeleton-short" />
+          </article>
+        </div>
+      )
+    } else if (!bundle) {
+      panel = (
+        <div className="wd-panel-stack">
+          <p className="wd-error" role="alert">
+            {copy.common.error}
+          </p>
+          <div className="wd-actions">
+            <Button type="button" variant="secondary" onClick={() => void refresh()}>
+              {copy.common.retry}
+            </Button>
+          </div>
+        </div>
+      )
+    } else if (section === 'overview') {
+      panel = (
+        <div className="wd-panel-stack">
+          {retryBanner}
           <OverviewPanel
             bundle={bundle}
             accountId={accountId}
@@ -170,10 +229,12 @@ export function DashboardApp({
             extensionConnected={extensionConnected}
             onNavigate={navigate}
           />
-        )
-        break
-      case 'practice':
-        panel = (
+        </div>
+      )
+    } else if (section === 'practice') {
+      panel = (
+        <div className="wd-panel-stack">
+          {retryBanner}
           <PracticePanel
             bundle={bundle}
             accountId={accountId}
@@ -181,10 +242,12 @@ export function DashboardApp({
             initialTargetPatternId={practiceTarget}
             onRefresh={refresh}
           />
-        )
-        break
-      case 'progress':
-        panel = (
+        </div>
+      )
+    } else if (section === 'progress') {
+      panel = (
+        <div className="wd-panel-stack">
+          {retryBanner}
           <ProgressPanel
             bundle={bundle}
             copy={copy}
@@ -192,10 +255,12 @@ export function DashboardApp({
             onRefresh={refresh}
             onOpenPractice={() => navigate('practice')}
           />
-        )
-        break
-      case 'report':
-        panel = (
+        </div>
+      )
+    } else if (section === 'report') {
+      panel = (
+        <div className="wd-panel-stack">
+          {retryBanner}
           <ReportPanel
             bundle={bundle}
             accountId={accountId}
@@ -203,46 +268,8 @@ export function DashboardApp({
             isProOrTrial={isPro || inTrial}
             onOpenPractice={(target) => navigate('practice', target)}
           />
-        )
-        break
-      case 'settings':
-        panel = <SettingsPanel accountId={accountId} copy={copy} onRefresh={refresh} />
-        break
-      case 'account':
-      default:
-        panel = (
-          <AccountDashboardPanel
-            account={account}
-            entitlement={entitlement}
-            copy={copy}
-            accountCopy={messages.account}
-            planState={planState}
-            planLabel={planLabel}
-            isPro={isPro}
-            studentProActive={studentProActive}
-            inTrial={inTrial}
-            trialDays={trialDays}
-            subscription={subscription}
-            checkoutReady={checkoutReady}
-            portalReady={portalReady}
-            activating={activating}
-            billingBusy={billingBusy}
-            billingMessage={billingMessage}
-            proPriceLabel={proPriceLabel}
-            creditsRemaining={creditsRemaining}
-            creditsUsed={creditsUsed}
-            dailyLimit={dailyLimit}
-            usagePercent={usagePercent}
-            usageDescription={usageView.description}
-            resetIn={resetIn}
-            extensionConnected={extensionConnected}
-            onLogout={onLogout}
-            onUpgrade={onUpgrade}
-            onManageBilling={onManageBilling}
-            onRefreshAccount={onRefreshAccount}
-          />
-        )
-        break
+        </div>
+      )
     }
   }
 

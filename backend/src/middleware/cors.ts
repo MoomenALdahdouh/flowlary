@@ -55,10 +55,10 @@ export function applyCors(
   if (origin && allowed.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin)
     res.setHeader('Vary', 'Origin')
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
     res.setHeader(
       'Access-Control-Allow-Headers',
-      'Authorization, Content-Type, X-Flowlary-Install-Id, X-Flowlary-Entitlement',
+      'Authorization, Content-Type, X-Flowlary-Install-Id, X-Flowlary-Entitlement, X-Flowlary-Client, X-Flowlary-Surface',
     )
     res.setHeader('Access-Control-Max-Age', '86400')
   }

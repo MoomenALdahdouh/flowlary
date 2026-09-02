@@ -13,18 +13,26 @@ export function useWebLearningBundle(accountId: string | null) {
     if (!accountId) {
       setBundle(null)
       setLoading(false)
+      setError(false)
       return
     }
     setLoading(true)
     setError(false)
-    const next = await loadWebLearningBundle(accountId)
-    if (!next) {
+    try {
+      const next = await loadWebLearningBundle(accountId)
+      if (!next.ok) {
+        setError(true)
+        setBundle(null)
+      } else {
+        setBundle(next.bundle)
+        setError(next.degraded)
+      }
+    } catch {
       setError(true)
       setBundle(null)
-    } else {
-      setBundle(next)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }, [accountId])
 
   useEffect(() => {

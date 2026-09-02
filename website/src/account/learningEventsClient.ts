@@ -12,10 +12,15 @@ export type FetchLearningEventsResult =
   | { ok: true; store: LearningEventStoreV1 }
   | { ok: false; code: LearningEventsClientError }
 
-function authHeaders(token: string): Record<string, string> {
+function authHeaders(token: string, client = false): Record<string, string> {
   return {
     Authorization: `Bearer ${token}`,
-    'X-Flowlary-Client': 'website',
+    ...(client
+      ? {
+          'X-Flowlary-Client': 'website',
+          'X-Flowlary-Surface': 'website',
+        }
+      : {}),
   }
 }
 
@@ -35,7 +40,7 @@ export async function ingestLearningEvents(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...authHeaders(session.accessToken),
+        ...authHeaders(session.accessToken, true),
       },
       body: JSON.stringify({ events }),
     })
@@ -74,6 +79,7 @@ export async function fetchLearningEvents(): Promise<FetchLearningEventsResult> 
   try {
     const response = await fetch(`${resolvePublicApiUrl()}/api/learning/events`, {
       headers: authHeaders(session.accessToken),
+      signal: AbortSignal.timeout(12_000),
     })
 
     let body: { ok?: boolean; store?: LearningEventStoreV1 } = {}
