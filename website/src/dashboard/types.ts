@@ -17,7 +17,7 @@ export const DASHBOARD_SECTIONS: { id: DashboardSection; labelKey: keyof Dashboa
 
 export const DASHBOARD_NAV_GROUPS: {
   labelKey: keyof DashboardCopy['nav']
-  items: { id: DashboardSection; labelKey: keyof DashboardCopy['nav'] }[]
+  items: { id: DashboardSection | 'support'; labelKey: keyof DashboardCopy['nav']; route?: string }[]
 }[] = [
   {
     labelKey: 'groupWrite',
@@ -36,6 +36,7 @@ export const DASHBOARD_NAV_GROUPS: {
     items: [
       { id: 'settings', labelKey: 'settings' },
       { id: 'account', labelKey: 'account' },
+      { id: 'support', labelKey: 'support', route: '/dashboard/support' },
     ],
   },
 ]
@@ -51,6 +52,22 @@ export type DashboardCopy = {
     report: string
     settings: string
     account: string
+    support: string
+  }
+  shell: {
+    navAria: string
+    signOut: string
+    writingLab: string
+  }
+  connection: {
+    checking: string
+    connected: string
+    disconnected: string
+    notInstalled: string
+  }
+  learningLoop: {
+    aria: string
+    steps: { title: string; body: string }[]
   }
   overview: {
     title: string
@@ -65,6 +82,11 @@ export type DashboardCopy = {
     extension: string
     extensionConnected: string
     extensionNotDetected: string
+    historyTitle: string
+    historyBody: string
+    historyAction: string
+    planUsage: string
+    creditsRemaining: string
   }
   practice: {
     title: string
@@ -123,6 +145,9 @@ export type DashboardCopy = {
     practiceThis: string
     limitReached: string
     proAi: string
+    aiInterpretation: string
+    observedData: string
+    failed: string
   }
   settings: {
     title: string
@@ -150,6 +175,7 @@ export type DashboardCopy = {
     presetFocus: string
     presetProgress: string
     presetReport: string
+    aiInterpretation: string
   }
   brief: {
     loading: string

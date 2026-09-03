@@ -154,8 +154,8 @@ describe('Phase 8 — CorrectionCard + direct-edit integration', () => {
     await vi.waitFor(() => document.querySelector(`[${SUGGEST_HOST}]`))
 
     const host = document.querySelector(`[${SUGGEST_HOST}]`) as HTMLElement
-    const apply = host.shadowRoot!.querySelector('[data-action="apply"]') as HTMLButtonElement
-    apply.click()
+    const card = host.shadowRoot!.querySelector('.card') as HTMLElement
+    card.click()
     await Promise.resolve()
 
     expect(ta.value).toContain("don't")
@@ -173,7 +173,8 @@ describe('Phase 8 — CorrectionCard + direct-edit integration', () => {
     await vi.waitFor(() => document.querySelector(`[${SUGGEST_HOST}]`))
 
     const host = document.querySelector(`[${SUGGEST_HOST}]`) as HTMLElement
-    host.shadowRoot!.querySelector('[data-action="dismiss"]')!.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    const card = host.shadowRoot!.querySelector('.card') as HTMLElement
+    card.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     expect(ta.value).toBe(original)
   })
 

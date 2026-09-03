@@ -1,4 +1,4 @@
-import { Button, GetFlowlaryButton } from '../Ui.tsx'
+import { Button, InstallFlowlaryButton } from '../Ui.tsx'
 import { PopupPreview } from '../demos/PopupPreview.tsx'
 import { useMessages } from '../../i18n/index.tsx'
 
@@ -17,7 +17,7 @@ export function HeroSection() {
             </h1>
             <p className="mh-hero-lead">{copy.lead}</p>
             <div className="mh-cta-row">
-              <GetFlowlaryButton className="btn-hero" />
+              <InstallFlowlaryButton className="btn-hero" />
               <Button variant="secondary" to="/#how" className="btn-hero">
                 {t.cta.secondary}
               </Button>

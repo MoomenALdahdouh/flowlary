@@ -126,7 +126,7 @@ describe('DashboardApp learning loading', () => {
     hookState.loading = false
     hookState.bundle = emptyBundle
     const html = renderDashboard('#overview')
-    expect(html).toContain('Your Flowlary workspace')
+    expect(html).toContain('Overview')
     expect(html).not.toContain('wd-skeleton')
   })
 
@@ -136,6 +136,6 @@ describe('DashboardApp learning loading', () => {
     hookState.bundle = emptyBundle
     const html = renderDashboard('#overview')
     expect(html).toContain('Something went wrong. Try again.')
-    expect(html).toContain('Your Flowlary workspace')
+    expect(html).toContain('Overview')
   })
 })

@@ -27,5 +27,5 @@ export const localeNames: Messages['locale'] = {
   pt: 'Português',
   uk: 'Українська',
   fa: 'فارسی',
-  allSupported: 'Flowlary supports the same languages as its keyboard layouts.',
+  allSupported: 'Flowlary is built for Arabic and English.',
 }

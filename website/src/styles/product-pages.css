@@ -99,7 +99,7 @@
   min-height: 2.5rem;
   padding: 0.45rem 0.85rem;
   border: var(--fl-glass-border-subtle);
-  border-radius: 999px;
+  border-radius: var(--fl-radius-sm);
   background: var(--fl-glass-1);
   color: var(--fl-muted);
   font: inherit;
@@ -900,7 +900,7 @@ html[dir='rtl'] .pr-plan-kicker {
 .pr-card-btn {
   width: 100%;
   min-height: 2.85rem;
-  border-radius: 999px;
+  border-radius: var(--fl-radius-sm);
 }
 
 .pr-card-btn-primary {
@@ -1128,11 +1128,6 @@ html[dir='rtl'] .pr-compare thead th {
   gap: 0.65rem;
 }
 
-.pr-final .btn-row .btn {
-  border-radius: 999px;
-  min-height: 2.85rem;
-}
-
 /* Tutorial / guide page */
 .sp-tutorial-banner {
   margin-top: 1rem;
@@ -1313,14 +1308,14 @@ html[dir='rtl'] .pr-compare thead th {
   margin-inline: auto;
   padding: 0.3rem;
   border: var(--fl-glass-border-subtle);
-  border-radius: 999px;
+  border-radius: var(--fl-radius-sm);
   background: var(--fl-glass-1);
 }
 
 .pr-interval-btn {
   appearance: none;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--fl-radius-sm);
   padding: 0.55rem 0.95rem;
   background: transparent;
   color: var(--fl-muted);

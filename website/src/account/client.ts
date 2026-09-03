@@ -2,6 +2,35 @@ import { resolvePublicApiUrl } from '../config.ts'
 import { ensureWebInstall, readWebInstallId } from './webInstall.ts'
 
 const SESSION_KEY = 'flowlary.web.session'
+const AUTH_BROADCAST_CHANNEL = 'flowlary-auth'
+
+let refreshInFlight: Promise<StoredSession | null> | null = null
+
+function broadcastSessionUpdate(session: StoredSession): void {
+  if (typeof BroadcastChannel === 'undefined') return
+  try {
+    const channel = new BroadcastChannel(AUTH_BROADCAST_CHANNEL)
+    channel.postMessage({ type: 'session-updated', session })
+    channel.close()
+  } catch {
+    /* ignore */
+  }
+}
+
+if (typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined') {
+  try {
+    const channel = new BroadcastChannel(AUTH_BROADCAST_CHANNEL)
+    channel.onmessage = (event: MessageEvent) => {
+      const data = event.data as { type?: string; session?: StoredSession } | null
+      if (data?.type !== 'session-updated' || !data.session) return
+      const current = readSession()
+      if (current && current.expiresAt >= data.session.expiresAt) return
+      writeSession(data.session)
+    }
+  } catch {
+    /* ignore */
+  }
+}
 
 export type WebSubscriptionView = {
   status: string
@@ -134,6 +163,7 @@ function writeSession(session: StoredSession): void {
       /* ignore */
     }
   }
+  broadcastSessionUpdate(session)
 }
 
 function clearSession(): void {
@@ -225,7 +255,7 @@ function parseSession(body: Record<string, unknown>, accountId?: string): Stored
   const accessToken = typeof body.access_token === 'string' ? body.access_token : ''
   const refreshToken = typeof body.refresh_token === 'string' ? body.refresh_token : ''
   const sessionId = typeof body.session_id === 'string' ? body.session_id : ''
-  const expiresIn = typeof body.expires_in === 'number' ? body.expires_in : 900
+  const expiresIn = typeof body.expires_in === 'number' ? body.expires_in : 3600
   if (!accessToken || !refreshToken || !sessionId) return null
   const fromAccount = body.account as WebAccountView | undefined
   return {
@@ -238,7 +268,7 @@ function parseSession(body: Record<string, unknown>, accountId?: string): Stored
   }
 }
 
-export async function ensureFreshWebSession(): Promise<StoredSession | null> {
+async function refreshWebSessionOnce(): Promise<StoredSession | null> {
   const current = readSession()
   if (!current) return null
   if (current.expiresAt > Date.now() + 30_000) return current
@@ -263,7 +293,19 @@ export async function ensureFreshWebSession(): Promise<StoredSession | null> {
     return null
   }
   writeSession(next)
+  broadcastSessionUpdate(next)
   return next
+}
+
+export async function ensureFreshWebSession(): Promise<StoredSession | null> {
+  const current = readSession()
+  if (!current) return null
+  if (current.expiresAt > Date.now() + 30_000) return current
+  if (refreshInFlight) return refreshInFlight
+  refreshInFlight = refreshWebSessionOnce().finally(() => {
+    refreshInFlight = null
+  })
+  return refreshInFlight
 }
 
 export async function registerWebAccount(

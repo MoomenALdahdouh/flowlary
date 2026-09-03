@@ -65,6 +65,9 @@ function mapAuthHttpError(
     if (message.includes('password')) return new AccountAuthError('invalid_password')
     return new AccountAuthError('invalid_password')
   }
+  if (status >= 500 || status === 502 || status === 503) {
+    return new AccountAuthError('network')
+  }
   if (status === 401) return new AccountAuthError('account_credentials')
   return new AccountAuthError(fallback)
 }
@@ -179,7 +182,7 @@ function parseAuthResponse(body: AuthResponse): AccountSession | null {
   const sessionId = typeof body.session_id === 'string' ? body.session_id : ''
   const accountId = typeof body.account?.id === 'string' ? body.account.id.trim() : ''
   const email = typeof body.account?.email === 'string' ? body.account.email : ''
-  const expiresIn = typeof body.expires_in === 'number' ? body.expires_in : 900
+  const expiresIn = typeof body.expires_in === 'number' ? body.expires_in : 3600
   if (!accessToken || !refreshToken || !sessionId || !isValidAccountId(accountId)) return null
   return {
     accessToken,
@@ -247,6 +250,8 @@ export async function loginAccount(
   return session
 }
 
+const SESSION_REFRESH_SKEW_MS = 60_000
+
 export async function importWebAccountSession(
   storage: FlowlaryStorage,
   input: {
@@ -261,7 +266,12 @@ export async function importWebAccountSession(
   options?: { force?: boolean },
 ): Promise<AccountSession> {
   const current = await readAccountSession(storage)
-  if (!options?.force && current && current.accountId === input.accountId) {
+  if (
+    !options?.force &&
+    current &&
+    current.accountId === input.accountId &&
+    current.expiresAt > Date.now() + SESSION_REFRESH_SKEW_MS
+  ) {
     return current
   }
 
@@ -272,17 +282,11 @@ export async function importWebAccountSession(
     if (current && current.accountId === input.accountId) return current
     throw err
   }
-  if (!exchanged && current && current.accountId === input.accountId) {
-    return current
+  if (!exchanged) {
+    if (current && current.accountId === input.accountId) return current
+    throw new AccountAuthError('account_import_failed')
   }
-  const session = exchanged ?? {
-    accessToken: input.accessToken,
-    refreshToken: input.refreshToken,
-    sessionId: input.sessionId,
-    accountId: input.accountId,
-    email: input.email,
-    expiresAt: input.expiresAt,
-  }
+  const session = exchanged
   await persistAccountSession(storage, session)
   if (accountView) {
     await seedEntitlementFromAccountView(storage, accountView)
@@ -325,7 +329,9 @@ async function exchangeWebsiteSessionForDevice(
   return session
 }
 
-export async function refreshAccountSession(storage: FlowlaryStorage): Promise<AccountSession | null> {
+let refreshInFlight: Promise<AccountSession | null> | null = null
+
+async function refreshAccountSessionOnce(storage: FlowlaryStorage): Promise<AccountSession | null> {
   const current = await readAccountSession(storage)
   if (!current) return null
   let response: Response
@@ -360,6 +366,38 @@ export async function refreshAccountSession(storage: FlowlaryStorage): Promise<A
   }
   await attachActiveAccount(storage, session.accountId)
   return session
+}
+
+export async function refreshAccountSession(storage: FlowlaryStorage): Promise<AccountSession | null> {
+  if (refreshInFlight) return refreshInFlight
+  refreshInFlight = refreshAccountSessionOnce(storage).finally(() => {
+    refreshInFlight = null
+  })
+  return refreshInFlight
+}
+
+const SESSION_REFRESH_ALARM = 'flowlary-session-refresh'
+const PROACTIVE_REFRESH_WINDOW_MS = 5 * 60_000
+
+export async function refreshAccountSessionIfNeeded(storage: FlowlaryStorage): Promise<void> {
+  const session = await readAccountSession(storage)
+  if (!session) return
+  if (session.expiresAt > Date.now() + PROACTIVE_REFRESH_WINDOW_MS) return
+  await refreshAccountSession(storage)
+}
+
+export function scheduleAccountSessionRefresh(): void {
+  if (typeof chrome === 'undefined' || !chrome.alarms?.create) return
+  void chrome.alarms.create(SESSION_REFRESH_ALARM, { periodInMinutes: 10 })
+}
+
+export function registerAccountSessionRefreshAlarm(
+  onRefresh: () => void | Promise<void>,
+): void {
+  if (typeof chrome === 'undefined' || !chrome.alarms?.onAlarm) return
+  chrome.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === SESSION_REFRESH_ALARM) void onRefresh()
+  })
 }
 
 export type ServerEntitlementCache = {

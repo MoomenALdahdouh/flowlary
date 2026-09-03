@@ -105,7 +105,7 @@ export const tr = buildLocaleCatalog('tr', {
       welcomeLead: 'Hesabınız hazır.',
       successMessage: 'E-postanız doğrulandı.',
       accountReady: 'Hesabınız aktif.',
-      trialActive: '30 günlük denemeniz aktif — {count} gün kaldı.',
+      trialActive: '30 günlük denemeniz aktif, {count} gün kaldı.',
       creditsNote: 'Denemenizde günlük {count} AI kredisi kullanılabilir.',
       startWriting: 'Yazmaya başla',
       expiredTitle: 'Bağlantının süresi doldu',

@@ -134,6 +134,7 @@ export async function runFieldCycle(
   })
 
   if (session.getGeneration() !== generation) return 'stale'
+  if (session.isBulkPasteInput()) return 'noop'
 
   const text = readFieldText(element)
   context.textLength = text.length

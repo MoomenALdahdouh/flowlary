@@ -132,7 +132,7 @@ export function SupportAdminPage() {
               {detail ? (
                 <>
                   <header className="fl-surface-1">
-                    <h2>#{detail.displayNumber} — {detail.subject}</h2>
+                    <h2>#{detail.displayNumber}: {detail.subject}</h2>
                     <p className="muted">
                       {detail.accountEmailMasked} · {detail.plan} · {statusCopy[detail.status]}
                     </p>

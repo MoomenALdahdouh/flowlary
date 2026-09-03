@@ -17,7 +17,7 @@
   text-transform: uppercase;
   vertical-align: middle;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--snow-accent, #6366f1) 14%, transparent);
+  background: color-mix(in srgb, var(--fl-accent) 14%, transparent);
   color: var(--snow-fg-muted, #475569);
 }
 
@@ -36,6 +36,16 @@
   margin: clamp(1.25rem, 3vw, 1.75rem) 0 0;
   padding: 0;
   list-style: none;
+}
+
+.hp-playground.is-embedded .pg-steps {
+  margin-top: 0;
+}
+
+.pg-stage-head {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--fl-space-4);
 }
 
 .pg-steps li {
@@ -403,47 +413,7 @@
   letter-spacing: 0.03em;
 }
 
-/* Buttons */
-
-.pg-btn {
-  min-height: 2.75rem;
-  padding: 0.55rem 1.1rem;
-  border-radius: var(--fl-radius-sm);
-  border: 1px solid transparent;
-  font: inherit;
-  font-size: 0.88rem;
-  font-weight: 650;
-  cursor: pointer;
-  transition:
-    transform 220ms var(--fl-ease),
-    box-shadow 220ms var(--fl-ease),
-    background 220ms var(--fl-ease);
-}
-
-.pg-btn:focus-visible {
-  outline: var(--fl-focus);
-  outline-offset: 3px;
-}
-
-.pg-btn-primary {
-  background: var(--fl-accent);
-  color: #fff;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset;
-}
-
-.pg-btn-primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  background: var(--fl-accent-hover);
-}
-
-.pg-btn-primary:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.pg-btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
+/* Playground action buttons use shared @flowlary/shared/buttons.css (.btn via DemoButton) */
 
 /* Tags & examples */
 

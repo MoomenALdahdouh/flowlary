@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { CHROME_WEB_STORE_URL } from '../config.ts'
 import { useMessages } from '../i18n/index.tsx'
 
-type Variant = 'primary' | 'secondary' | 'tertiary' | 'ghost' | 'danger' | 'link'
+export type Variant = 'primary' | 'secondary' | 'tertiary' | 'ghost' | 'danger' | 'link'
 
 type ButtonProps = {
   children: ReactNode
@@ -18,8 +18,11 @@ type ButtonProps = {
   disabled?: boolean
   className?: string
   ariaLabel?: string
+  target?: string
+  rel?: string
   'aria-busy'?: boolean
   'aria-describedby'?: string
+  'aria-expanded'?: boolean
 }
 
 export function Button({
@@ -34,8 +37,11 @@ export function Button({
   disabled,
   className = '',
   ariaLabel,
+  target,
+  rel,
   'aria-busy': ariaBusy,
   'aria-describedby': ariaDescribedBy,
+  'aria-expanded': ariaExpanded,
 }: ButtonProps) {
   const classes = `btn btn-${variant} ${className}`.trim()
 
@@ -49,7 +55,7 @@ export function Button({
 
   if (href && !disabled) {
     return (
-      <a className={classes} href={href} aria-label={ariaLabel} aria-busy={ariaBusy}>
+      <a className={classes} href={href} aria-label={ariaLabel} aria-busy={ariaBusy} target={target} rel={rel}>
         {children}
       </a>
     )
@@ -67,31 +73,163 @@ export function Button({
       aria-disabled={disabled || undefined}
       aria-busy={ariaBusy}
       aria-describedby={ariaDescribedBy}
+      aria-expanded={ariaExpanded}
     >
       {children}
     </button>
   )
 }
 
-export function GetFlowlaryButton({
+export function ChromeIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className ?? 'fl-chrome-icon'} viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="9.25" fill="currentColor" opacity="0.18" />
+      <path
+        d="M12 2.5c4.8 0 8.8 3.4 9.7 8H12V2.5Z"
+        fill="currentColor"
+        opacity="0.95"
+      />
+      <path d="M12 2.5v8.5H2.3A9.25 9.25 0 0 1 12 2.5Z" fill="currentColor" opacity="0.75" />
+      <path
+        d="M2.3 11H12l4.7 8.1A9.25 9.25 0 0 1 2.3 11Z"
+        fill="currentColor"
+        opacity="0.55"
+      />
+      <circle cx="12" cy="12" r="3.6" fill="var(--fl-bg, #fff)" />
+      <circle cx="12" cy="12" r="2.5" fill="currentColor" />
+    </svg>
+  )
+}
+
+export function InstallFlowlaryButton({
   variant = 'primary',
   className,
+  label,
+  showChromeIcon = false,
 }: {
   variant?: Variant
   className?: string
+  label?: string
+  showChromeIcon?: boolean
 }) {
   const t = useMessages()
+  const text = label ?? t.cta.install ?? t.cta.primary
+  const content = (
+    <>
+      {showChromeIcon ? <ChromeIcon /> : null}
+      {text}
+    </>
+  )
   if (CHROME_WEB_STORE_URL) {
     return (
       <Button variant={variant} href={CHROME_WEB_STORE_URL} className={className}>
-        {t.cta.primary}
+        {content}
       </Button>
     )
   }
   return (
-    <Button variant={variant} to="/support#get-flowlary" className={className}>
-      {t.cta.primary}
+    <Button variant={variant} to="/guide" className={className}>
+      {content}
     </Button>
+  )
+}
+
+/** @deprecated Use InstallFlowlaryButton */
+export function GetFlowlaryButton(props: { variant?: Variant; className?: string }) {
+  return <InstallFlowlaryButton {...props} />
+}
+
+export function FidelityBadge({ mode }: { mode: 'simulated' | 'live' }) {
+  const t = useMessages()
+  const label = mode === 'live' ? t.fidelity.live : t.fidelity.simulated
+  const aria =
+    mode === 'live' ? t.fidelity.liveAria : t.fidelity.simulatedAria
+  return (
+    <span
+      className={`fl-fidelity fl-fidelity-${mode}`}
+      role="status"
+      aria-label={aria}
+    >
+      {label}
+    </span>
+  )
+}
+
+function HighlightedText({ text, highlight }: { text: string; highlight?: string }) {
+  if (!highlight) return <>{text}</>
+  const parts = text.split(highlight)
+  if (parts.length === 1) return <>{text}</>
+  return (
+    <>
+      {parts[0]}
+      <span className="xp-gradient-text">{highlight}</span>
+      {parts[1]}
+    </>
+  )
+}
+
+export function SectionHeading({
+  kicker,
+  title,
+  lead,
+  titleId,
+  badge,
+  highlight,
+  align = 'start',
+}: {
+  kicker?: string
+  title: string
+  lead?: string
+  titleId?: string
+  badge?: ReactNode
+  highlight?: string
+  align?: 'start' | 'center'
+}) {
+  return (
+    <div className={`fl-section-heading${align === 'center' ? ' is-center' : ''}`}>
+      {kicker ? <p className="kicker">{kicker}</p> : null}
+      <h2 id={titleId} className="fl-section-title">
+        <HighlightedText text={title} highlight={highlight} />
+        {badge}
+      </h2>
+      {lead ? <p className="lead">{lead}</p> : null}
+    </div>
+  )
+}
+
+export function ConversionPanel({
+  title,
+  lead,
+  primary,
+  secondary,
+  titleId,
+  highlight,
+  visual,
+}: {
+  title: string
+  lead?: string
+  primary: ReactNode
+  secondary?: ReactNode
+  titleId?: string
+  highlight?: string
+  visual?: ReactNode
+}) {
+  return (
+    <section className="fl-conversion-panel" aria-labelledby={titleId}>
+      <div className="container">
+        <div className="fl-conversion-panel-inner">
+          <h2 id={titleId}>
+            <HighlightedText text={title} highlight={highlight} />
+          </h2>
+          {lead ? <p className="lead">{lead}</p> : null}
+          {visual ? <div className="fl-conversion-visual">{visual}</div> : null}
+          <div className="btn-row">
+            {primary}
+            {secondary}
+          </div>
+        </div>
+      </div>
+    </section>
   )
 }
 
@@ -317,22 +455,19 @@ export function PageHero({
 
 export function CtaBanner() {
   const t = useMessages()
+  const copy = t.marketingHome.final
   return (
-    <section className="cta-banner" aria-labelledby="cta-heading">
-      <div className="container">
-        <div className="cta-panel">
-          <p className="kicker">{t.brand.name}</p>
-          <h2 id="cta-heading">{t.home.finalTitle}</h2>
-          <p className="lead">{t.home.finalLead}</p>
-          <div className="btn-row">
-            <GetFlowlaryButton />
-            <Button variant="secondary" to="/#how">
-              {t.cta.secondary}
-            </Button>
-          </div>
-        </div>
-      </div>
-    </section>
+    <ConversionPanel
+      titleId="cta-heading"
+      title={`${copy.titleLine1} ${copy.titleLine2}`}
+      lead={copy.leadLine1}
+      primary={<InstallFlowlaryButton label={copy.installLabel} showChromeIcon />}
+      secondary={
+        <Button variant="link" to="/try">
+          {copy.tryLabel}
+        </Button>
+      }
+    />
   )
 }
 

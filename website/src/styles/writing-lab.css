@@ -192,21 +192,8 @@
   color: var(--fl-faint);
 }
 
-.writing-lab-inline-btn {
+.writing-lab-correction .btn-link {
   margin-top: 0.55rem;
-  padding: 0.35rem 0.65rem;
-  border-radius: var(--fl-radius);
-  border: 1px solid var(--fl-border);
-  background: transparent;
-  color: var(--fl-accent-hover, var(--fl-accent));
-  font: inherit;
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.writing-lab-inline-btn:hover {
-  background: var(--fl-surface-muted, rgba(127, 127, 127, 0.08));
 }
 
 .writing-lab-explanation {

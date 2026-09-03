@@ -5,6 +5,32 @@
   padding-bottom: var(--fl-space-8);
 }
 
+.xp-feat {
+  position: relative;
+  isolation: isolate;
+}
+
+.xp-feat::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: min(72vh, 42rem);
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -10%, color-mix(in srgb, var(--fl-accent) 14%, transparent), transparent),
+    radial-gradient(ellipse 50% 40% at 90% 20%, color-mix(in srgb, var(--fl-accent-secondary, #22d3ee) 10%, transparent), transparent);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.xp-feat > * {
+  position: relative;
+  z-index: 1;
+}
+
+.xp-feat .feat-hero {
+  border-bottom: 0;
+}
+
 .feat-hero {
   padding: clamp(var(--fl-space-7), 6vw, var(--fl-space-9)) 0 var(--feat-section-y);
 }
@@ -120,6 +146,203 @@
   padding: var(--feat-section-y) 0;
   border-top: 1px solid var(--fl-border);
   scroll-margin-top: calc(var(--fl-header) + 4.5rem);
+}
+
+.feat-index-band {
+  background: var(--fl-bg-soft);
+}
+
+.feat-index-bento {
+  margin-top: var(--fl-space-6);
+}
+
+.feat-index-icon {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-bottom: var(--fl-space-3);
+  border-radius: var(--fl-radius-sm);
+  background: var(--fl-accent-soft);
+  color: var(--fl-accent-hover);
+}
+
+.feat-index-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.feat-index-accent-magenta {
+  border-top: 2px solid var(--xp-accent-magenta, #e879f9);
+}
+
+.feat-index-accent-cyan {
+  border-top: 2px solid var(--xp-accent-cyan, #22d3ee);
+}
+
+.feat-index-accent-purple {
+  border-top: 2px solid var(--xp-accent-purple, #a78bfa);
+}
+
+.feat-index-accent-green {
+  border-top: 2px solid var(--xp-accent-green, #4ade80);
+}
+
+.feat-index-accent-magenta .feat-index-icon {
+  color: var(--xp-accent-magenta, #e879f9);
+  background: color-mix(in srgb, var(--xp-accent-magenta, #e879f9) 14%, var(--fl-surface-1));
+}
+
+.feat-index-accent-cyan .feat-index-icon {
+  color: var(--xp-accent-cyan, #22d3ee);
+  background: color-mix(in srgb, var(--xp-accent-cyan, #22d3ee) 14%, var(--fl-surface-1));
+}
+
+.feat-index-accent-purple .feat-index-icon {
+  color: var(--xp-accent-purple, #a78bfa);
+  background: color-mix(in srgb, var(--xp-accent-purple, #a78bfa) 14%, var(--fl-surface-1));
+}
+
+.feat-index-accent-green .feat-index-icon {
+  color: var(--xp-accent-green, #4ade80);
+  background: color-mix(in srgb, var(--xp-accent-green, #4ade80) 14%, var(--fl-surface-1));
+}
+
+.feat-journey-band {
+  background: linear-gradient(
+    180deg,
+    var(--fl-bg-soft) 0%,
+    color-mix(in srgb, var(--fl-accent) 4%, var(--fl-bg)) 100%
+  );
+}
+
+.feat-journey-grid {
+  display: grid;
+  gap: var(--fl-space-4);
+  margin-top: var(--fl-space-6);
+}
+
+.feat-journey-card {
+  height: 100%;
+  padding: var(--fl-space-5);
+  border: 1px solid var(--fl-border);
+  border-radius: var(--fl-radius-md);
+  background: var(--fl-surface-1);
+}
+
+.feat-journey-label {
+  margin: 0 0 var(--fl-space-2);
+  color: var(--fl-accent-hover);
+  font-size: var(--fl-text-meta);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.feat-journey-card h3 {
+  margin: 0;
+  font-size: var(--fl-text-h3);
+  line-height: 1.25;
+}
+
+.feat-journey-card > p {
+  margin: var(--fl-space-3) 0 0;
+  color: var(--fl-muted);
+  font-size: var(--fl-text-small);
+  line-height: 1.6;
+}
+
+.feat-learning-preview-label {
+  margin: var(--fl-space-5) 0 var(--fl-space-3);
+  color: var(--fl-faint);
+  font-size: var(--fl-text-label);
+  font-weight: 650;
+}
+
+.feat-learning-steps {
+  display: grid;
+  gap: var(--fl-space-2);
+  margin: 0 0 var(--fl-space-4);
+  padding: 0;
+  list-style: none;
+}
+
+.feat-learning-steps li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--fl-space-3);
+  align-items: baseline;
+  padding: var(--fl-space-2) 0;
+  border-top: 1px solid var(--fl-border);
+  color: var(--fl-muted);
+  font-size: var(--fl-text-small);
+}
+
+.feat-learning-steps li:first-child {
+  border-top: 2px solid var(--fl-accent);
+}
+
+.feat-learning-steps li span {
+  color: var(--fl-accent-hover);
+  font-size: var(--fl-text-meta);
+  font-weight: 700;
+}
+
+.feat-learning-items {
+  display: grid;
+  gap: var(--fl-space-2);
+  margin: 0 0 var(--fl-space-4);
+  padding: 0;
+  list-style: none;
+}
+
+.feat-learning-items li {
+  position: relative;
+  padding-inline-start: 1rem;
+  color: var(--fl-muted);
+  font-size: var(--fl-text-small);
+  line-height: 1.5;
+}
+
+.feat-learning-items li::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  top: 0.55em;
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 50%;
+  background: var(--fl-accent);
+}
+
+.feat-learning-note {
+  margin: 0 0 var(--fl-space-4);
+  color: var(--fl-faint);
+  font-size: var(--fl-text-meta);
+  line-height: 1.55;
+}
+
+.feat-section-num {
+  margin: 0 0 var(--fl-space-2);
+  font-size: var(--fl-text-meta);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.feat-demo-accent-magenta .feat-demo-surface {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--xp-accent-magenta, #e879f9) 22%, var(--fl-border));
+}
+
+.feat-demo-accent-cyan .feat-demo-surface {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--xp-accent-cyan, #22d3ee) 22%, var(--fl-border));
+}
+
+.feat-demo-accent-purple .feat-demo-surface {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--xp-accent-purple, #a78bfa) 22%, var(--fl-border));
+}
+
+.feat-demo-accent-green .feat-demo-surface {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--xp-accent-green, #4ade80) 22%, var(--fl-border));
 }
 
 .feat-section-soft,
@@ -363,6 +586,14 @@ html[dir='rtl'] .feat-page h2 {
 }
 
 @media (min-width: 768px) {
+  .feat-index-bento {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .feat-journey-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .feat-communication-grid,
   .feat-built-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -399,6 +630,10 @@ html[dir='rtl'] .feat-page h2 {
   .feat-showcase.is-flip .feat-copy {
     order: 2;
   }
+
+  .feat-index-bento {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 767px) {
@@ -412,13 +647,16 @@ html[dir='rtl'] .feat-page h2 {
 
   .feat-journey-nav .container {
     width: calc(100% - 2rem);
-    justify-content: stretch;
+    justify-content: flex-start;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: thin;
   }
 
   .feat-journey-nav a {
-    flex: 1;
-    padding-inline: var(--fl-space-2);
-    text-align: center;
+    flex: 0 0 auto;
+    padding-inline: var(--fl-space-3);
+    white-space: nowrap;
   }
 
   .feat-feature-link {

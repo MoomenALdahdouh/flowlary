@@ -45,7 +45,7 @@ export function buildDeterministicCoachResponse(
 
   if (context.evidenceQuality === 'insufficient' || context.briefState === 'insufficient') {
     return {
-      summary: 'Your profile is still forming — a few more corrections will unlock sharper coaching.',
+      summary: 'Your profile is still forming. A few more corrections will unlock sharper coaching.',
       observations: ['Not enough writing evidence yet.'],
       recommendations: ['Keep writing naturally and accept or review corrections.'],
       explanations: [],

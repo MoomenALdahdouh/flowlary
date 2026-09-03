@@ -263,7 +263,7 @@ export function LearningReportPanel({ signedIn, onOpenAccount, onOpenPractice }:
                 <li key={line}>{line}</li>
               ))}
             </ol>
-            <button type="button" className="fl-btn fl-btn-secondary" onClick={onOpenPractice}>
+            <button type="button" className="fl-action-btn fl-action-btn-secondary" onClick={onOpenPractice}>
               {t('learningReport.practiceThis')}
             </button>
           </section>

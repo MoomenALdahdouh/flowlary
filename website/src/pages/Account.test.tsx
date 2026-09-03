@@ -36,7 +36,8 @@ describe('Account auth UI', () => {
 
   it('does not show a service-unavailable alert before a failed request', () => {
     const html = renderAccount('/account?mode=register')
-    expect(html).toContain('Create your Flowlary account')
+    expect(html).toContain('Create your')
+    expect(html).toContain('Flowlary account')
     expect(html).toContain('Learn English through your writing.')
     expect(html).toContain('Free to start')
     expect(html).not.toContain('temporarily unavailable')
@@ -54,7 +55,9 @@ describe('Account auth UI', () => {
 
   it('renders a focused login form with password toggle', () => {
     const html = renderAccount('/account')
-    expect(html).toContain('Welcome back')
+    expect(html).toContain('Welcome ')
+    expect(html).toContain('xp-gradient-text')
+    expect(html).toContain('back</span>')
     expect(html).toContain('type="password"')
     expect(html).toContain('aria-pressed="false"')
     expect(html).toContain('Create account')

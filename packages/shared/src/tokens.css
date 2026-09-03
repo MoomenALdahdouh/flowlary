@@ -8,9 +8,9 @@
   --fl-snow-highlight: rgba(255, 255, 255, 0.08);
   --fl-snow-rail: rgba(255, 255, 255, 0.05);
 
-  --fl-bg: #05070b;
-  --fl-bg-soft: #080b11;
-  --fl-bg-raised: #0c1018;
+  --fl-bg: #050508;
+  --fl-bg-soft: #08080c;
+  --fl-bg-raised: #0c0c12;
   --fl-surface: #10151f;
   --fl-surface-2: #151b27;
   --fl-surface-3: #1b2332;
@@ -18,19 +18,36 @@
 
   --fl-border: rgba(236, 242, 255, 0.08);
   --fl-border-strong: rgba(236, 242, 255, 0.14);
-  --fl-border-accent: rgba(91, 140, 255, 0.42);
+  --fl-border-accent: rgba(20, 212, 234, 0.42);
 
   --fl-text: #f3f6fb;
   --fl-muted: #9aa6bb;
   --fl-faint: #8b97ac;
   --fl-text-disabled: #6b7689;
 
-  --fl-accent: #5b8cff;
-  --fl-accent-hover: #7aa4ff;
-  --fl-accent-pressed: #4a7af0;
-  --fl-accent-soft: rgba(91, 140, 255, 0.14);
-  --fl-accent-glow: rgba(91, 140, 255, 0.08);
+  /* Primary action — brand cyan (matches flow / extension identity) */
+  --fl-accent: #14d4ea;
+  --fl-accent-hover: #22f0ff;
+  --fl-accent-pressed: #0fb8cc;
+  --fl-accent-soft: rgba(20, 212, 234, 0.14);
+  --fl-accent-glow: rgba(20, 212, 234, 0.08);
   --fl-on-accent: #061018;
+
+  /* Brand pair — flow (cyan) and transformation (magenta) */
+  --fl-brand-cyan: #22f0ff;
+  --fl-brand-cyan-soft: rgba(34, 240, 255, 0.16);
+  --fl-brand-magenta: #ff3dce;
+  --fl-brand-magenta-soft: rgba(255, 61, 206, 0.16);
+  --fl-brand-lavender: var(--fl-brand-magenta-soft);
+  --fl-gradient-brand: linear-gradient(90deg, var(--fl-brand-cyan), var(--fl-brand-magenta));
+  --fl-gradient-cta: linear-gradient(90deg, var(--fl-brand-cyan), var(--fl-brand-magenta));
+
+  /* Marketing accent aliases — two-color system only */
+  --xp-accent-cyan: var(--fl-brand-cyan);
+  --xp-accent-magenta: var(--fl-brand-magenta);
+  --xp-accent-purple: var(--fl-brand-magenta);
+  --xp-accent-green: var(--fl-brand-cyan);
+  --fl-accent-secondary: var(--fl-brand-cyan);
 
   --fl-success: #3dba86;
   --fl-success-soft: rgba(61, 186, 134, 0.14);
@@ -41,12 +58,14 @@
   --fl-info: #38bdf8;
   --fl-info-soft: rgba(56, 189, 248, 0.14);
 
-  --fl-state-translate: #8b7cf6;
-  --fl-state-translate-soft: rgba(139, 124, 246, 0.14);
-  --fl-state-layout: #e6b04a;
-  --fl-state-layout-soft: rgba(230, 176, 74, 0.14);
-  --fl-state-live: #38bdf8;
-  --fl-state-live-soft: rgba(56, 189, 248, 0.14);
+  --fl-state-translate: var(--fl-brand-magenta);
+  --fl-state-translate-soft: var(--fl-brand-magenta-soft);
+  --fl-state-layout: var(--fl-brand-magenta);
+  --fl-state-layout-soft: var(--fl-brand-magenta-soft);
+  --fl-state-live: var(--fl-brand-cyan);
+  --fl-state-live-soft: var(--fl-brand-cyan-soft);
+  --fl-state-simulated: #fbbf24;
+  --fl-state-simulated-soft: rgba(251, 191, 36, 0.14);
 
   --fl-ai-ready: var(--fl-success);
   --fl-ai-working: var(--fl-accent);
@@ -84,18 +103,18 @@
     0 24px 56px rgba(0, 0, 0, 0.28),
     0 8px 24px rgba(0, 0, 0, 0.16);
   --fl-glass-shadow-focus:
-    0 0 0 1px rgba(91, 140, 255, 0.35),
-    0 16px 40px rgba(18, 36, 80, 0.24);
+    0 0 0 1px rgba(20, 212, 234, 0.35),
+    0 16px 40px rgba(14, 180, 200, 0.24);
 
-  --fl-atmosphere-1: rgba(91, 140, 255, 0.05);
-  --fl-atmosphere-2: rgba(91, 140, 255, 0.03);
-  --fl-atmosphere-cool: rgba(140, 165, 200, 0.05);
+  --fl-atmosphere-1: rgba(34, 240, 255, 0.09);
+  --fl-atmosphere-2: rgba(255, 61, 206, 0.07);
+  --fl-atmosphere-cool: rgba(34, 240, 255, 0.05);
 
   --fl-header-bg: var(--fl-snow-glass);
   --fl-header-bg-strong: var(--fl-snow-glass-strong);
   --fl-overlay: rgba(5, 7, 11, 0.94);
   --fl-hover-fill: rgba(255, 255, 255, 0.04);
-  --fl-hero-glow: rgba(91, 140, 255, 0.05);
+  --fl-hero-glow: rgba(34, 240, 255, 0.06);
   --fl-band: #080b12;
   --fl-band-translate: #070a10;
   --fl-footer-bg: #06080d;
@@ -126,14 +145,14 @@
   --fl-shadow: 0 16px 48px rgba(0, 0, 0, 0.32);
   --fl-shadow-glow: 0 0 0 1px var(--fl-border-accent);
 
-  --fl-font-display: 'Segoe UI Variable Display', 'SF Pro Display', 'Segoe UI', 'Helvetica Neue',
+  --fl-font-display: 'Inter', 'Segoe UI Variable Display', 'SF Pro Display', 'Segoe UI', 'Helvetica Neue',
     ui-sans-serif, system-ui, sans-serif;
-  --fl-font: 'Segoe UI Variable Text', 'SF Pro Text', 'Segoe UI', 'Helvetica Neue', ui-sans-serif,
+  --fl-font: 'Inter', 'Segoe UI Variable Text', 'SF Pro Text', 'Segoe UI', 'Helvetica Neue', ui-sans-serif,
     system-ui, sans-serif;
-  --fl-font-arabic: 'Segoe UI', 'SF Arabic', 'Geeza Pro', 'Tahoma', 'Arial', sans-serif;
+  --fl-font-arabic: 'IBM Plex Sans Arabic', 'Segoe UI', 'SF Arabic', 'Geeza Pro', 'Tahoma', 'Arial', sans-serif;
   --fl-mono: ui-monospace, 'SFMono-Regular', 'Menlo', 'Consolas', monospace;
 
-  --fl-text-display: clamp(2.25rem, 5vw, 3.25rem);
+  --fl-text-display: clamp(2.6rem, 7vw, 4.4rem);
   --fl-text-h1: clamp(1.85rem, 3.2vw, 2.5rem);
   --fl-text-h2: clamp(1.4rem, 2.2vw, 1.85rem);
   --fl-text-h3: 1.125rem;
@@ -156,7 +175,7 @@
   --fl-space-9: 6rem;
   --fl-space-10: 8rem;
 
-  --fl-max: 76rem;
+  --fl-max: 88rem;
   --fl-max-narrow: 42rem;
   --fl-header: 4.35rem;
   --fl-header-pad: 0.72rem;
@@ -183,8 +202,8 @@ html[data-theme='light'] {
   --fl-snow-highlight: rgba(255, 255, 255, 0.95);
   --fl-snow-rail: rgba(255, 255, 255, 0.52);
 
-  --fl-bg: #f4f8fd;
-  --fl-bg-soft: #eef4fc;
+  --fl-bg: #f7fafc;
+  --fl-bg-soft: #f2f4fa;
   --fl-bg-raised: #ffffff;
   --fl-surface: #ffffff;
   --fl-surface-2: #f8fafc;
@@ -193,19 +212,33 @@ html[data-theme='light'] {
 
   --fl-border: rgba(10, 22, 40, 0.08);
   --fl-border-strong: rgba(10, 22, 40, 0.12);
-  --fl-border-accent: rgba(49, 95, 214, 0.38);
+  --fl-border-accent: rgba(8, 145, 178, 0.38);
 
-  --fl-text: #0a1628;
-  --fl-muted: #4a5a72;
-  --fl-faint: #5b6b82;
+  --fl-text: #0f172a;
+  --fl-muted: #64748b;
+  --fl-faint: #64748b;
   --fl-text-disabled: #94a3b8;
 
-  --fl-accent: #315fd6;
-  --fl-accent-hover: #274ec0;
-  --fl-accent-pressed: #2144ab;
-  --fl-accent-soft: rgba(49, 95, 214, 0.1);
-  --fl-accent-glow: rgba(49, 95, 214, 0.08);
+  --fl-accent: #0891b2;
+  --fl-accent-hover: #0e7490;
+  --fl-accent-pressed: #155e75;
+  --fl-accent-soft: rgba(8, 145, 178, 0.1);
+  --fl-accent-glow: rgba(8, 145, 178, 0.08);
   --fl-on-accent: #ffffff;
+
+  --fl-brand-cyan: #19c7e8;
+  --fl-brand-cyan-soft: rgba(25, 199, 232, 0.14);
+  --fl-brand-magenta: #ec4899;
+  --fl-brand-magenta-soft: rgba(236, 72, 153, 0.14);
+  --fl-brand-lavender: var(--fl-brand-magenta-soft);
+  --fl-gradient-brand: linear-gradient(90deg, var(--fl-brand-cyan), var(--fl-brand-magenta));
+  --fl-gradient-cta: linear-gradient(90deg, var(--fl-brand-cyan), var(--fl-brand-magenta));
+
+  --xp-accent-cyan: var(--fl-brand-cyan);
+  --xp-accent-magenta: var(--fl-brand-magenta);
+  --xp-accent-purple: var(--fl-brand-magenta);
+  --xp-accent-green: var(--fl-brand-cyan);
+  --fl-accent-secondary: var(--fl-brand-cyan);
 
   --fl-success: #1d8f62;
   --fl-success-soft: rgba(29, 143, 98, 0.12);
@@ -216,12 +249,14 @@ html[data-theme='light'] {
   --fl-info: #0369a1;
   --fl-info-soft: rgba(8, 145, 178, 0.12);
 
-  --fl-state-translate: #6366f1;
-  --fl-state-translate-soft: rgba(99, 102, 241, 0.12);
-  --fl-state-layout: #b8860b;
-  --fl-state-layout-soft: rgba(184, 134, 11, 0.12);
-  --fl-state-live: #0891b2;
-  --fl-state-live-soft: rgba(8, 145, 178, 0.12);
+  --fl-state-translate: var(--fl-brand-magenta);
+  --fl-state-translate-soft: var(--fl-brand-magenta-soft);
+  --fl-state-layout: var(--fl-brand-magenta);
+  --fl-state-layout-soft: var(--fl-brand-magenta-soft);
+  --fl-state-live: var(--fl-brand-cyan);
+  --fl-state-live-soft: var(--fl-brand-cyan-soft);
+  --fl-state-simulated: #d97706;
+  --fl-state-simulated-soft: rgba(217, 119, 6, 0.12);
 
   --fl-ai-ready: var(--fl-success);
   --fl-ai-working: var(--fl-accent);
@@ -258,18 +293,18 @@ html[data-theme='light'] {
     0 20px 48px rgba(15, 35, 70, 0.08),
     0 8px 20px rgba(15, 35, 70, 0.04);
   --fl-glass-shadow-focus:
-    0 0 0 1px rgba(49, 95, 214, 0.32),
-    0 16px 40px rgba(49, 95, 214, 0.1);
+    0 0 0 1px rgba(8, 145, 178, 0.32),
+    0 16px 40px rgba(8, 145, 178, 0.1);
 
-  --fl-atmosphere-1: rgba(49, 95, 214, 0.04);
-  --fl-atmosphere-2: rgba(180, 200, 230, 0.08);
-  --fl-atmosphere-cool: rgba(140, 165, 200, 0.07);
+  --fl-atmosphere-1: rgba(6, 182, 212, 0.13);
+  --fl-atmosphere-2: rgba(217, 70, 239, 0.11);
+  --fl-atmosphere-cool: rgba(25, 199, 232, 0.08);
 
   --fl-header-bg: var(--fl-snow-glass);
   --fl-header-bg-strong: var(--fl-snow-glass-strong);
   --fl-overlay: rgba(244, 247, 251, 0.96);
   --fl-hover-fill: rgba(10, 22, 40, 0.04);
-  --fl-hero-glow: rgba(49, 95, 214, 0.06);
+  --fl-hero-glow: rgba(25, 199, 232, 0.07);
   --fl-band: rgba(238, 243, 249, 0.65);
   --fl-band-translate: rgba(235, 241, 250, 0.7);
   --fl-footer-bg: rgba(238, 243, 249, 0.85);

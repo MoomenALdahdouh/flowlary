@@ -15,16 +15,15 @@
   --fl-text: #f3f6fb;
   --fl-muted: #9aa6bb;
   --fl-faint: #8b97ac;
-  --fl-accent: #5b8cff;
+  --fl-accent: #14d4ea;
   --fl-success-soft: rgba(61, 186, 134, 0.14);
   --fl-danger: #e06b73;
   --fl-overlay: rgba(5, 7, 11, 0.72);
   --fl-input-bg: #0a0e15;
   --fl-radius: 12px;
   --fl-radius-lg: 18px;
-  --fl-shadow: 0 28px 80px rgba(0, 0, 0, 0.48);
-  --fl-font: 'Segoe UI Variable Text', 'SF Pro Text', 'Segoe UI', 'Helvetica Neue', ui-sans-serif,
-    system-ui, sans-serif;
+  --fl-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+  --fl-font: 'Inter', 'Segoe UI Variable Text', 'SF Pro Text', ui-sans-serif, system-ui, sans-serif;
   --fl-focus: 2px solid var(--fl-accent);
   --fl-mode: var(--fl-accent);
 
@@ -34,22 +33,20 @@
 :host([data-theme='light']) {
   color-scheme: light;
 
-  --fl-surface: rgba(255, 255, 255, 0.96);
-  --fl-surface-2: rgba(255, 255, 255, 0.82);
+  --fl-surface: #ffffff;
+  --fl-surface-2: #f4f8fd;
   --fl-border: rgba(10, 22, 40, 0.08);
   --fl-border-strong: rgba(10, 22, 40, 0.12);
   --fl-border-accent: rgba(49, 95, 214, 0.38);
   --fl-text: #0a1628;
   --fl-muted: #4a5a72;
   --fl-faint: #64748b;
-  --fl-accent: #315fd6;
+  --fl-accent: #0891b2;
   --fl-success-soft: rgba(29, 143, 98, 0.12);
   --fl-danger: #c13d4a;
   --fl-overlay: rgba(10, 22, 40, 0.42);
   --fl-input-bg: #f4f8fd;
-  --fl-shadow:
-    0 32px 80px rgba(15, 35, 70, 0.1),
-    0 12px 32px rgba(15, 35, 70, 0.05);
+  --fl-shadow: 0 24px 64px rgba(15, 35, 70, 0.12);
 }
 
 :host([hidden]) {
@@ -73,13 +70,13 @@
 .panel {
   pointer-events: auto;
   position: absolute;
-  top: 42%;
+  top: 38%;
   left: 50%;
-  width: min(420px, calc(100vw - 24px));
+  width: min(400px, calc(100vw - 24px));
   transform: translate(-50%, -50%);
   display: grid;
-  gap: 10px;
-  padding: 14px;
+  gap: 8px;
+  padding: 12px;
   border-radius: var(--fl-radius-lg);
   color: var(--fl-text);
   background: var(--fl-surface);
@@ -97,7 +94,7 @@
 
 .header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
 }
@@ -105,7 +102,7 @@
 .title {
   margin: 0;
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--fl-faint);
@@ -123,7 +120,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 4px;
-  padding: 4px;
+  padding: 3px;
   border-radius: var(--fl-radius);
   background: var(--fl-input-bg);
   border: 1px solid var(--fl-border);
@@ -131,9 +128,9 @@
 
 .mode {
   appearance: none;
-  min-height: 32px;
+  min-height: 30px;
   margin: 0;
-  padding: 0 8px;
+  padding: 0 6px;
   border: 0;
   border-radius: 8px;
   background: transparent;
@@ -153,13 +150,6 @@
   color: var(--fl-text);
 }
 
-.meta {
-  margin: 0;
-  font-size: 12px;
-  color: var(--fl-muted);
-}
-
-.meta[hidden],
 .pair[hidden] {
   display: none !important;
 }
@@ -173,8 +163,8 @@
 
 select {
   width: 100%;
-  min-height: 34px;
-  padding: 5px 8px;
+  min-height: 32px;
+  padding: 4px 8px;
   border-radius: var(--fl-radius);
   border: 1px solid var(--fl-border);
   background: var(--fl-input-bg);
@@ -190,14 +180,14 @@ select:focus {
 
 .swap {
   appearance: none;
-  width: 34px;
-  min-height: 34px;
+  width: 32px;
+  min-height: 32px;
   padding: 0;
   border-radius: var(--fl-radius);
   border: 1px solid var(--fl-border);
   background: var(--fl-surface-2);
   color: var(--fl-text);
-  font-size: 16px;
+  font-size: 15px;
   cursor: pointer;
 }
 
@@ -212,8 +202,8 @@ button {
 
 textarea {
   width: 100%;
-  min-height: 72px;
-  max-height: 180px;
+  min-height: 64px;
+  max-height: 160px;
   padding: 8px 10px;
   border-radius: var(--fl-radius);
   border: 1px solid var(--fl-border);
@@ -221,6 +211,8 @@ textarea {
   color: var(--fl-text);
   outline: none;
   resize: vertical;
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 textarea:focus {
@@ -235,13 +227,14 @@ textarea:focus {
 .apply {
   appearance: none;
   width: 100%;
-  min-height: 34px;
-  padding: 8px 10px;
+  min-height: 32px;
+  padding: 7px 10px;
   border-radius: var(--fl-radius);
   border: 1px solid var(--fl-border-accent);
   background: color-mix(in srgb, var(--fl-mode) 18%, transparent);
   color: var(--fl-text);
   font-weight: 650;
+  font-size: 12px;
   cursor: pointer;
 }
 
@@ -253,7 +246,7 @@ textarea:focus {
 .result {
   appearance: none;
   display: grid;
-  gap: 4px;
+  gap: 3px;
   width: 100%;
   padding: 8px 10px;
   border-radius: var(--fl-radius);
@@ -276,16 +269,17 @@ textarea:focus {
 .result-text {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+  font-size: 13px;
 }
 
 .result-hint {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--fl-faint);
 }
 
 .status {
   margin: 0;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--fl-danger);
 }
 

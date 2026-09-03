@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Button } from '../../components/Ui.tsx'
+import { WritingLabLink } from '../components/WritingLabLink.tsx'
 import { clearRemoteLearningEvents } from '../../account/learningEventsClient.ts'
 import type { DashboardCopy } from '../types.ts'
 import { computeWebProgress } from '../services/learningData.ts'
@@ -37,7 +38,7 @@ export function ProgressPanel({ bundle, copy, advanced, onRefresh, onOpenPractic
         <article className="wd-card wd-empty">
           <h3>{copy.progress.buildingTitle}</h3>
           <p>{copy.progress.buildingBody}</p>
-          <Button to="/#writing-lab">{copy.overview.writingLab}</Button>
+          <WritingLabLink />
         </article>
       </div>
     )
@@ -70,7 +71,7 @@ export function ProgressPanel({ bundle, copy, advanced, onRefresh, onOpenPractic
         </article>
         <article className="wd-stat">
           <span>{copy.progress.errorsPer100}</span>
-          <strong>{metrics.errorsPer100Words != null ? metrics.errorsPer100Words.toFixed(1) : '—'}</strong>
+          <strong>{metrics.errorsPer100Words != null ? metrics.errorsPer100Words.toFixed(1) : '-'}</strong>
         </article>
       </section>
 

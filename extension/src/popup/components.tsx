@@ -1,13 +1,19 @@
 import { useEffect } from 'react'
 import type { ReactNode } from 'react'
-import { FLOWLARY_MARK } from '@flowlary/shared'
+import { FLOWLARY_MARK, FLOWLARY_LOGO_GRADIENT_ID } from '@flowlary/shared'
 import { subscribeSystemTheme, syncDocumentTheme, toggleTheme } from '@flowlary/shared/theme'
 import { t } from './i18n/index.ts'
 
-export function PopupLogo() {
+export function PopupLogo({ className }: { className?: string }) {
   return (
-    <svg className="fl-logo" viewBox="0 0 32 32" aria-hidden="true">
-      <rect width="32" height="32" rx={FLOWLARY_MARK.radius} fill="var(--fl-accent, #5b8cff)" />
+    <svg className={className ?? 'fl-logo'} viewBox="0 0 32 32" aria-hidden="true">
+      <defs>
+        <linearGradient id={FLOWLARY_LOGO_GRADIENT_ID} x1="4" y1="4" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+          <stop stopColor="var(--fl-brand-cyan, #19c7e8)" />
+          <stop offset="1" stopColor="var(--fl-brand-magenta, #ec4899)" />
+        </linearGradient>
+      </defs>
+      <rect width="32" height="32" rx={FLOWLARY_MARK.radius} fill={`url(#${FLOWLARY_LOGO_GRADIENT_ID})`} />
       <path d={FLOWLARY_MARK.f} fill="var(--fl-on-accent, #061018)" />
       <rect
         x={FLOWLARY_MARK.caret.x}

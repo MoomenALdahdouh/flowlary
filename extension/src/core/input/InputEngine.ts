@@ -144,7 +144,12 @@ export class InputEngine {
     const inputEvent = event as InputEvent
     const session = this.sessions.getOrCreate(target)
     session.noteInput()
-    session.noteInputSource(inputSourceFromType(inputEvent.inputType))
+    const inputSource = inputSourceFromType(inputEvent.inputType)
+    const insertLength =
+      inputSource === 'paste' || inputSource === 'drop'
+        ? inputEvent.data?.length ?? 0
+        : 0
+    session.noteInputSource(inputSource, insertLength)
 
     const composing = session.isComposing() || isComposing()
     const ignoreGeneration =

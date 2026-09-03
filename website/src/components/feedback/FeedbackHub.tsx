@@ -17,7 +17,7 @@ import {
 } from '../../feedback/client.ts'
 import { emitFeedbackEvent } from '../../lib/feedbackEvents.ts'
 
-type Tab = 'feedback' | 'features' | 'support'
+type Tab = 'feedback' | 'features'
 
 const FEATURE_SUGGESTIONS = [
   'Desktop app',
@@ -28,13 +28,14 @@ const FEATURE_SUGGESTIONS = [
   'More language support',
 ] as const
 
-export function FeedbackHub({ initialTab = 'feedback' }: { initialTab?: Tab }) {
+export function FeedbackHub({ initialTab = 'feedback' }: { initialTab?: Tab | 'support' }) {
   const t = useMessages()
   const f = t.feedback
   const { locale } = useI18n()
   const [searchParams] = useSearchParams()
   const signedIn = hasStoredWebSession()
-  const [tab, setTab] = useState<Tab>(initialTab)
+  const resolvedInitial: Tab = initialTab === 'support' ? 'feedback' : initialTab
+  const [tab, setTab] = useState<Tab>(resolvedInitial)
   const [config, setConfig] = useState<FeedbackConfigView | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -288,9 +289,25 @@ export function FeedbackHub({ initialTab = 'feedback' }: { initialTab?: Tab }) {
 
   if (!signedIn) {
     return (
-      <div className="fb-hub fl-surface-1">
+      <div className="fb-signin-panel">
+        <div className="fb-signin-icon" aria-hidden="true">
+          <svg viewBox="0 0 20 20" fill="none">
+            <circle cx="10" cy="7" r="3" stroke="currentColor" strokeWidth="1.35" />
+            <path
+              d="M4.5 16.5c.8-2.8 2.8-4.5 5.5-4.5s4.7 1.7 5.5 4.5"
+              stroke="currentColor"
+              strokeWidth="1.35"
+              strokeLinecap="round"
+            />
+          </svg>
+        </div>
         <h2>{f.signInTitle}</h2>
-        <p className="muted">{f.signInBody}</p>
+        <p>{f.signInBody}</p>
+        <ul className="fb-signin-benefits">
+          {f.signInBenefits.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
         <div className="btn-row">
           <Button to="/account">{f.signInCta}</Button>
           <Button variant="secondary" to="/support">
@@ -308,7 +325,6 @@ export function FeedbackHub({ initialTab = 'feedback' }: { initialTab?: Tab }) {
           [
             ['feedback', f.tabs.feedback],
             ['features', f.tabs.features],
-            ['support', f.tabs.support],
           ] as const
         ).map(([id, label]) => (
           <button
@@ -323,6 +339,12 @@ export function FeedbackHub({ initialTab = 'feedback' }: { initialTab?: Tab }) {
           </button>
         ))}
       </div>
+      <p className="muted fb-escalation">
+        {f.escalationNote}{' '}
+        <Link to="/contact">{f.escalationContact}</Link>
+        {' · '}
+        <Link to="/support">{f.supportDocs}</Link>
+      </p>
 
       {error ? (
         <p className="fl-alert fl-alert-error" role="alert">
@@ -405,15 +427,15 @@ export function FeedbackHub({ initialTab = 'feedback' }: { initialTab?: Tab }) {
             <aside className="fb-store-cta fl-surface-1">
               <h3>{f.storeTitle}</h3>
               <p className="muted">{f.storeBody}</p>
-              <a
-                className="btn btn-secondary"
+              <Button
+                variant="secondary"
                 href={config.chromeWebStoreUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => emitFeedbackEvent('store_review_cta_clicked')}
               >
                 {f.storeCta}
-              </a>
+              </Button>
             </aside>
           ) : (
             <p className="muted fb-store-placeholder">{f.storeUnavailable}</p>
@@ -474,61 +496,19 @@ export function FeedbackHub({ initialTab = 'feedback' }: { initialTab?: Tab }) {
                   <p>{item.description}</p>
                   <div className="fb-feature-foot">
                     <span>{f.votesLabel.replace('{count}', String(item.voteCount))}</span>
-                    <button type="button" className="btn btn-secondary" disabled={loading || item.votedByMe} onClick={() => void handleVote(item.id)}>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={loading || item.votedByMe}
+                      onClick={() => void handleVote(item.id)}
+                    >
                       {item.votedByMe ? f.voted : f.vote}
-                    </button>
+                    </Button>
                   </div>
                 </article>
               ))
             )}
           </div>
-        </section>
-      ) : null}
-
-      {tab === 'support' ? (
-        <section className="fl-surface-1 fb-panel" aria-labelledby="fb-support-title">
-          <h2 id="fb-support-title">{f.supportTitle}</h2>
-          <p className="muted">{f.supportLead}</p>
-          <p className="muted">
-            <Link to="/support">{f.supportDocs}</Link>
-            {' · '}
-            <Link to="/account/support">{f.viewRequests}</Link>
-          </p>
-          {createdTicketNumber ? (
-            <p className="fl-alert fl-alert-success" role="status">
-              {f.ticketCreated.replace('{number}', createdTicketNumber)}
-            </p>
-          ) : null}
-          <label className="fb-field">
-            <span>{f.ticketIssueType}</span>
-            <select value={ticketIssueType} onChange={(e) => setTicketIssueType(e.target.value)}>
-              {issueOptions.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="fb-field">
-            <span>{f.ticketSubject}</span>
-            <input value={ticketSubject} onChange={(e) => setTicketSubject(e.target.value)} maxLength={120} />
-          </label>
-          <label className="fb-field">
-            <span>{f.ticketMessage}</span>
-            <textarea value={ticketMessage} onChange={(e) => setTicketMessage(e.target.value)} rows={5} maxLength={4000} />
-          </label>
-          <label className="fb-check">
-            <input type="checkbox" checked={includeDiagnostics} onChange={(e) => setIncludeDiagnostics(e.target.checked)} />
-            <span>{f.diagnosticsLabel}</span>
-          </label>
-          {includeDiagnostics ? <p className="muted fb-diagnostics-note">{f.diagnosticsNote}</p> : null}
-          <Button
-            type="button"
-            disabled={loading || !ticketSubject.trim() || !ticketMessage.trim()}
-            onClick={() => void handleTicketSubmit()}
-          >
-            {f.sendTicket}
-          </Button>
         </section>
       ) : null}
     </div>

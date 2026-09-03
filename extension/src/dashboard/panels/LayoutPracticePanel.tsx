@@ -153,7 +153,7 @@ export function LayoutPracticePanel({ status }: LayoutPracticePanelProps) {
           </p>
         ) : null}
         <div className="fl-practice-actions">
-          <button type="button" className="fl-btn fl-btn-primary" onClick={startSession} disabled={!supportedPair}>
+          <button type="button" className="fl-action-btn fl-action-btn-primary" onClick={startSession} disabled={!supportedPair}>
             {t('layoutPractice.startSession')}
           </button>
         </div>
@@ -174,10 +174,10 @@ export function LayoutPracticePanel({ status }: LayoutPracticePanelProps) {
           ) : null}
         </ul>
         <div className="fl-practice-actions">
-          <button type="button" className="fl-btn fl-btn-primary" onClick={startSession}>
+          <button type="button" className="fl-action-btn fl-action-btn-primary" onClick={startSession}>
             {t('layoutPractice.practiceAgain')}
           </button>
-          <button type="button" className="fl-btn fl-btn-secondary" onClick={() => setView('home')}>
+          <button type="button" className="fl-action-btn fl-action-btn-secondary" onClick={() => setView('home')}>
             {t('layoutPractice.backHome')}
           </button>
         </div>
@@ -226,7 +226,7 @@ export function LayoutPracticePanel({ status }: LayoutPracticePanelProps) {
             <div className="fl-practice-actions">
               <button
                 type="button"
-                className="fl-btn fl-btn-primary"
+                className="fl-action-btn fl-action-btn-primary"
                 onClick={checkAnswer}
                 disabled={!answer.trim()}
               >
@@ -243,7 +243,7 @@ export function LayoutPracticePanel({ status }: LayoutPracticePanelProps) {
           )}
           {attempt !== 'idle' ? (
             <div className="fl-practice-actions">
-              <button type="button" className="fl-btn fl-btn-primary" onClick={continueNext}>
+              <button type="button" className="fl-action-btn fl-action-btn-primary" onClick={continueNext}>
                 {itemIndex + 1 >= exercises.length
                   ? t('layoutPractice.finishSession')
                   : t('layoutPractice.continueNext')}

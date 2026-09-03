@@ -157,6 +157,10 @@ export class CorrectionCard {
           color: var(--fl-teach-wording, #3730a3);
           background: var(--fl-teach-wording-soft, rgba(99, 102, 241, 0.12));
         }
+        .layout {
+          color: var(--fl-teach-layout, #b8860b);
+          background: var(--fl-teach-layout-soft, rgba(184, 134, 11, 0.12));
+        }
         .error-label {
           font-size: 0.92em;
           color: #b42318;

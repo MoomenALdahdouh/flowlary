@@ -63,6 +63,84 @@ describe('extension account session', () => {
     expect(result.accessToken).toBe('test-access-token')
   })
 
+  it('re-exchanges when the extension session is near expiry', async () => {
+    const mock = createMockChromeStorage()
+    mock.install()
+    seedFlowlaryAccountAuth(mock, { expiresAt: Date.now() + 30_000 })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo) => {
+        const url = String(input)
+        expect(url).toContain('/api/auth/device-session')
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            access_token: 'ext-access-new',
+            refresh_token: 'ext-refresh-new',
+            session_id: 'ext-session-new',
+            expires_in: 3600,
+            account: { id: TEST_ACCOUNT_A, email: 'web@flowlary.com', plan: 'trial' },
+          }),
+        }
+      }),
+    )
+
+    const storage = new FlowlaryStorage()
+    const result = await importWebAccountSession(storage, {
+      accessToken: 'web-access',
+      refreshToken: 'web-refresh',
+      sessionId: 'web-session',
+      accountId: TEST_ACCOUNT_A,
+      email: 'web@flowlary.com',
+      expiresAt: Date.now() + 3_600_000,
+    })
+
+    expect(result.sessionId).toBe('ext-session-new')
+    expect(result.accessToken).toBe('ext-access-new')
+  })
+
+  it('deduplicates concurrent refresh requests', async () => {
+    const mock = createMockChromeStorage()
+    mock.install()
+    seedFlowlaryAccountAuth(mock)
+    let refreshCalls = 0
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo) => {
+        const url = String(input)
+        if (!url.includes('/api/auth/refresh')) {
+          return { ok: false, status: 404, json: async () => ({}) }
+        }
+        refreshCalls += 1
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            access_token: 'refreshed-access',
+            refresh_token: 'refreshed-refresh',
+            session_id: 'refreshed-session',
+            expires_in: 3600,
+            account: { id: TEST_ACCOUNT_A, email: 'test@flowlary.com', plan: 'trial' },
+          }),
+        }
+      }),
+    )
+
+    const storage = new FlowlaryStorage()
+    const [first, second] = await Promise.all([
+      refreshAccountSession(storage),
+      refreshAccountSession(storage),
+    ])
+
+    expect(refreshCalls).toBe(1)
+    expect(first?.accessToken).toBe('refreshed-access')
+    expect(second?.accessToken).toBe('refreshed-access')
+  })
+
   it('exchanges a website session for a separate extension session', async () => {
     const mock = createMockChromeStorage()
     mock.install()

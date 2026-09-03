@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
   <style>
-    .mark { fill: #5b8cff; }
-    .glyph { fill: #061018; }
-    @media (prefers-color-scheme: light) {
-      .mark { fill: #315fd6; }
-      .glyph { fill: #ffffff; }
+    .mark { fill: #0891b2; }
+    .glyph { fill: #ffffff; }
+    @media (prefers-color-scheme: dark) {
+      .mark { fill: #14d4ea; }
+      .glyph { fill: #061018; }
     }
   </style>
   <rect class="mark" width="32" height="32" rx="8.5"/>
   <path class="glyph" d="M9.2 7.7h12.35v3.95h-8v2.05h7.15v3.75h-7.15V24.3H9.2V7.7Z"/>
-  <rect class="glyph" x="22.2" y="13.35" width="2.35" height="5.5" rx="0.75"/>
+  <rect x="22.2" y="13.35" width="2.35" height="5.5" rx="0.75"/>
 </svg>

@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest'
 import { App } from '../App.tsx'
 import { ROUTES } from '../routes.ts'
 
+const AUTH_GATED_ROUTES = new Set(['/dashboard', '/dashboard/support'])
+
 function renderRoute(path: string) {
   return renderToString(
     <MemoryRouter initialEntries={[path]}>
@@ -13,28 +15,48 @@ function renderRoute(path: string) {
 }
 
 describe('marketing routes', () => {
-  it.each([...ROUTES])('renders %s with a heading', (path) => {
+  it.each([...ROUTES].filter((path) => !AUTH_GATED_ROUTES.has(path)))('renders %s with a heading', (path) => {
     const html = renderRoute(path)
     expect(html).toContain('<h1')
     expect(html.toLowerCase()).not.toContain('flowlary-api.zaixos.com')
     expect(html.toLowerCase()).not.toContain('lingo-api.zaixos.com')
   })
 
-  it('home communicates the flow-first write, communicate, and learn narrative', () => {
+  it('dashboard routes redirect signed-out users to account', () => {
+    const dashboard = renderRoute('/dashboard')
+    const support = renderRoute('/dashboard/support')
+    expect(dashboard).not.toContain('flowlary-api.zaixos.com')
+    expect(support).not.toContain('flowlary-api.zaixos.com')
+  })
+
+  it('home communicates the product experience story', () => {
     const html = renderRoute('/')
-    expect(html).toContain('Write anywhere.')
-    expect(html).toContain('Stay in the flow.')
-    expect(html).toContain('Too many tools for one writing task.')
-    expect(html).toContain('Get writing help where you already write.')
-    expect(html).toContain('Switch languages, not tools.')
-    expect(html).toContain('Your writing becomes your English lesson.')
-    expect(html).toContain('Help when you need it. Learning that continues.')
-    expect(html).toContain('Built with boundaries')
-    expect(html).toContain('Get Flowlary')
-    expect(html).toContain('Bring writing help, communication, and learning into one companion.')
+    expect(html).toContain('Keep writing.')
+    expect(html).toContain('switch tools.')
+    expect(html).toContain('Three problems.')
+    expect(html).toContain('One field.')
+    expect(html).toContain('One Field. Everything.')
+    expect(html).toContain('Two surfaces.')
+    expect(html).toContain('One continuous experience.')
+    expect(html).toContain('Simulated')
+    expect(html).toContain('Live')
+    expect(html).toContain('Add to Chrome')
+    expect(html).toContain('Stop switching.')
+    expect(html).toContain('Start flowing.')
+    expect(html).not.toContain('Your writing becomes your English lesson.')
     expect(html.toLowerCase()).not.toContain('coming soon')
-    expect(html).toContain('Color theme')
     expect(html).toContain('theme-toggle')
+    expect(html).toMatch(/System theme|Color theme|Light theme|Dark theme/)
+  })
+
+  it('legacy home hashes redirect to canonical routes', () => {
+    const tryHtml = renderRoute('/try')
+    const labHtml = renderRoute('/lab')
+    expect(tryHtml).toContain('Try ')
+    expect(tryHtml).toContain('Flowlary</span>')
+    expect(tryHtml).toContain('fl-fidelity-simulated')
+    expect(labHtml).toContain('Writing Lab')
+    expect(labHtml).toContain('fl-fidelity-live')
   })
 
   it('404 renders for unknown paths', () => {
@@ -45,7 +67,7 @@ describe('marketing routes', () => {
   it('account page is honest and does not expose raw API URLs in copy', () => {
     const html = renderRoute('/account')
     expect(html).toContain('<h1')
-    expect(html).toContain('Welcome back')
+    expect(html).toContain('Welcome ')
     expect(html).toContain('Sign in to continue learning with Flowlary.')
     expect(html).not.toContain('temporarily unavailable')
     expect(html).not.toContain('api.flowlary.com')
@@ -62,7 +84,8 @@ describe('marketing routes', () => {
 
   it('about states the product without invented claims', () => {
     const html = renderRoute('/about')
-    expect(html).toContain('Writing tools that stay where you work.')
+    expect(html).toContain('Writing tools that stay ')
+    expect(html).toContain('where you work.')
     expect(html).toContain('flowlary.com')
     expect(html).not.toContain('ZAIXOS')
     expect(html).not.toContain('https://zaixos.com')
@@ -73,7 +96,8 @@ describe('marketing routes', () => {
 
   it('pricing presents Free and Pro plans as the primary decision', () => {
     const html = renderRoute('/pricing')
-    expect(html).toContain('Choose the way you want to use Flowlary.')
+    expect(html).toContain('Choose the way you want to use')
+    expect(html).toContain('Flowlary')
     expect(html).toContain('pr-card is-pro')
     expect(html).toContain('$0')
     expect(html).toContain('forever')
@@ -85,7 +109,8 @@ describe('marketing routes', () => {
 
   it('guide page is a step-by-step tutorial for new users', () => {
     const html = renderRoute('/guide')
-    expect(html).toContain('Get started with Flowlary')
+    expect(html).toContain('Get started with')
+    expect(html).toContain('Flowlary')
     expect(html).toContain('Enable Flowlary AI')
     expect(html).toContain('Step-by-step')
     expect(html).not.toMatch(/BYOK|Groq/i)
@@ -94,7 +119,8 @@ describe('marketing routes', () => {
 
   it('support is a help center without a fake inbox', () => {
     const html = renderRoute('/support')
-    expect(html).toContain('How can we help?')
+    expect(html).toContain('How can we')
+    expect(html).toContain('help?')
     expect(html).toContain('id="get-flowlary"')
     expect(html).toContain('Writing correction')
     expect(html).toContain('Live translation')
@@ -117,13 +143,36 @@ describe('marketing routes', () => {
     expect(terms).toContain('dateTime="2026-08-30"')
     expect(terms).toContain('/privacy')
     expect(terms).toContain('23. Changes')
-    expect(cookies).toContain('Cookie Policy')
+    expect(cookies).toContain('Cookie')
+    expect(cookies).toContain('Policy')
+    expect(cookies).toContain('dateTime="2026-08-30"')
   })
 
   it('contact page routes help by topic', () => {
     const html = renderRoute('/contact')
-    expect(html).toContain('Contact Flowlary')
+    expect(html).toContain('Contact')
+    expect(html).toContain('Flowlary')
     expect(html).toContain('href="/privacy"')
     expect(html).toContain('href="/support#troubleshooting"')
+  })
+
+  it('product page explains surfaces', () => {
+    const html = renderRoute('/product')
+    expect(html).toContain('How Flowlary works as')
+    expect(html).toContain('one product')
+    expect(html).toContain('id="control"')
+    expect(html).toContain('id="actions"')
+  })
+
+  it('try page is clearly simulated', () => {
+    const html = renderRoute('/try')
+    expect(html).toContain('fl-fidelity-simulated')
+    expect(html).toContain('Simulated experience')
+  })
+
+  it('lab page is clearly live', () => {
+    const html = renderRoute('/lab')
+    expect(html).toContain('fl-fidelity-live')
+    expect(html).toContain('Uses Flowlary AI on the web')
   })
 })

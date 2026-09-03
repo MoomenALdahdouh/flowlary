@@ -1,46 +1,60 @@
-import { Link } from 'react-router-dom'
-import { Button, GetFlowlaryButton } from '../Ui.tsx'
+import { Button, ConversionPanel, InstallFlowlaryButton, SectionHeading } from '../Ui.tsx'
 import { Reveal } from '../Reveal.tsx'
 import { PopupPreview } from '../demos/PopupPreview.tsx'
 import { useMessages } from '../../i18n/index.tsx'
-import { ProductProofSections } from '../trust/ProductProofSections.tsx'
+
+function splitTitle(title: string, highlight?: string) {
+  if (!highlight) return { before: title, highlight: '', after: '' }
+  const parts = title.split(highlight)
+  if (parts.length === 1) return { before: title, highlight: '', after: '' }
+  return { before: parts[0], highlight, after: parts.slice(1).join(highlight) }
+}
 
 export function AboutShowcase() {
   const t = useMessages()
   const a = t.about
+  const titleParts = splitTitle(a.title, a.titleHighlight)
 
   return (
-    <div className="pp-page ab-page">
-      <header className="pp-hero">
-        <div className="container pp-hero-inner">
+    <div className="xp-about ab-page">
+      <header className="xp-hero ab-hero" aria-labelledby="ab-hero-title">
+        <div className="container ab-hero-inner">
           <Reveal>
-            <p className="kicker">{a.kicker}</p>
-            <h1>{a.title}</h1>
-            <p className="lead">{a.lead}</p>
+            <p className="xp-hero-badge">
+              <span className="xp-hero-badge-dot" aria-hidden="true" />
+              {a.kicker}
+            </p>
+            <h1 id="ab-hero-title" className="mh-display xp-hero-title">
+              {titleParts.before}
+              {titleParts.highlight ? (
+                <span className="xp-gradient-text">{titleParts.highlight}</span>
+              ) : null}
+              {titleParts.after}
+            </h1>
+            <p className="lead mh-hero-lead">{a.lead}</p>
           </Reveal>
         </div>
       </header>
 
-      <section className="section">
-        <div className="container">
+      <section className="xp-page-section">
+        <div className="container xp-page-shell">
           <Reveal>
-            <div className="sp-section-head">
-              <p className="kicker">{a.story.kicker}</p>
-              <h2>{a.story.title}</h2>
-              <p>{a.story.lead}</p>
-            </div>
+            <SectionHeading
+              kicker={a.story.kicker}
+              title={a.story.title}
+              lead={a.story.lead}
+              titleId="ab-story-title"
+            />
             <div className="ab-story-grid">
-              <div>
-                <ul className="ab-problems">
-                  {a.story.problems.map((item) => (
-                    <li key={item.title}>
-                      <strong>{item.title}</strong>
-                      {item.body}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <article className="pp-glass sp-card">
+              <ul className="ab-problems">
+                {a.story.problems.map((item) => (
+                  <li key={item.title}>
+                    <strong>{item.title}</strong>
+                    {item.body}
+                  </li>
+                ))}
+              </ul>
+              <article className="ab-philosophy-card">
                 <p className="kicker">{a.story.philosophyKicker}</p>
                 <h3>{a.story.philosophyTitle}</h3>
                 <p>{a.story.philosophyBody}</p>
@@ -50,59 +64,41 @@ export function AboutShowcase() {
         </div>
       </section>
 
-      <section className="section">
-        <div className="container">
+      <section className="xp-page-section">
+        <div className="container xp-page-shell">
           <Reveal>
-            <div className="sp-section-head">
-              <p className="kicker">{a.capabilities.kicker}</p>
-              <h2>{a.capabilities.title}</h2>
-              <p>{a.capabilities.lead}</p>
-            </div>
-            <div className="ab-caps">
-              {a.capabilities.items.map((item, index) => (
-                <article
-                  key={item.title}
-                  className={`pp-glass ab-cap${index === 0 ? ' ab-cap-wide' : ''}`}
-                >
-                  <span className="ab-cap-num">{item.number}</span>
-                  <h3>{item.title}</h3>
-                  <p>{item.body}</p>
-                </article>
-              ))}
+            <div className="xp-split-section">
+              <div className="xp-split-copy">
+                <SectionHeading
+                  kicker={a.preview.kicker}
+                  title={a.preview.title}
+                  lead={a.preview.body}
+                  titleId="ab-preview-title"
+                />
+                <div className="btn-row">
+                  <Button to="/features">{t.cta.exploreFeatures}</Button>
+                </div>
+              </div>
+              <div className="xp-split-visual ab-preview-wrap">
+                <PopupPreview />
+              </div>
             </div>
           </Reveal>
         </div>
       </section>
 
-      <section className="section">
-        <div className="container split">
-          <Reveal className="split-copy">
-            <p className="kicker">{a.preview.kicker}</p>
-            <h2>{a.preview.title}</h2>
-            <p className="lead">{a.preview.body}</p>
-            <div className="btn-row" style={{ marginTop: '1rem' }}>
-              <Button to="/features">{t.cta.exploreFeatures}</Button>
-            </div>
-          </Reveal>
+      <section className="xp-page-section is-soft">
+        <div className="container xp-page-shell">
           <Reveal>
-            <div className="ab-preview-wrap">
-              <PopupPreview />
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      <section className="section">
-        <div className="container">
-          <Reveal>
-            <div className="sp-section-head">
-              <p className="kicker">{a.principles.kicker}</p>
-              <h2>{a.principles.title}</h2>
-              <p>{a.principles.lead}</p>
-            </div>
+            <SectionHeading
+              kicker={a.principles.kicker}
+              title={a.principles.title}
+              lead={a.principles.lead}
+              titleId="ab-principles-title"
+            />
             <div className="ab-principles">
               {a.principles.items.map((item) => (
-                <article key={item.title} className="pp-glass ab-principle">
+                <article key={item.title} className="ab-principle">
                   <strong>{item.title}</strong>
                   <span>{item.body}</span>
                 </article>
@@ -112,37 +108,32 @@ export function AboutShowcase() {
         </div>
       </section>
 
-      <ProductProofSections />
-
-      <section className="section">
-        <div className="container">
+      <section className="xp-page-section">
+        <div className="container xp-page-shell is-narrow">
           <Reveal>
-            <article className="pp-glass ab-trust">
+            <article className="ab-trust-card">
               <h2>{a.trust.title}</h2>
               <p>{a.trust.body}</p>
-              <p className="muted" style={{ marginTop: '0.85rem', fontSize: '0.88rem' }}>
+              <p className="ab-trust-site">
                 {a.trust.siteLabel}{' '}
-                <Link to="/">{a.trust.siteValue}</Link>
+                <a href={`https://${a.trust.siteValue}`}>{a.trust.siteValue}</a>
               </p>
             </article>
           </Reveal>
         </div>
       </section>
 
-      <section className="pr-final container">
-        <Reveal>
-          <div className="pp-glass sp-contact">
-            <h2>{a.final.title}</h2>
-            <p>{a.final.lead}</p>
-            <div className="btn-row">
-              <GetFlowlaryButton />
-              <Button variant="secondary" to="/features">
-                {a.final.secondary}
-              </Button>
-            </div>
-          </div>
-        </Reveal>
-      </section>
+      <ConversionPanel
+        titleId="ab-final-title"
+        title={a.final.title}
+        lead={a.final.lead}
+        primary={<InstallFlowlaryButton />}
+        secondary={
+          <Button variant="secondary" to="/features">
+            {a.final.secondary}
+          </Button>
+        }
+      />
     </div>
   )
 }

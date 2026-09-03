@@ -12,6 +12,7 @@ export default defineConfig({
       '@flowlary/shared/theme': `${shared}/theme.ts`,
       '@flowlary/shared': `${shared}/index.ts`,
       '@flowlary/layout-repair': new URL('../extension/src/core/engine/layoutSequence.ts', import.meta.url).pathname,
+      '@flowlary/layout-registry': new URL('../extension/src/features/layout/layouts/registry.ts', import.meta.url).pathname,
     },
   },
   test: {

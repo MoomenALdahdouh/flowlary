@@ -16,6 +16,17 @@ export const CORRECTION_DEFAULTS = {
 
 export type ChangeType = 'spelling' | 'grammar' | 'wording' | 'layout'
 
+/** CSS class suffix for system teach colors (`fl-teach-spelling`, etc.). */
+export function teachClass(type: ChangeType | undefined): string {
+  if (type === 'spelling' || type === 'grammar' || type === 'wording' || type === 'layout') {
+    return `fl-teach-${type}`
+  }
+  return 'fl-teach-grammar'
+}
+
+/** Milliseconds to show colored correction preview before direct-mode auto-apply. */
+export const DIRECT_HIGHLIGHT_PREVIEW_MS = 900
+
 export type CorrectionChange = {
   type: ChangeType
   original: string

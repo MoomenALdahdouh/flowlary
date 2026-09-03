@@ -16,6 +16,7 @@ import { createPracticeSessionId } from '../learning/practice/sessions.ts'
 import { syncPracticeLearningEvent } from '../services/webPracticeLearning.ts'
 import { requestWebCorrection } from '../../account/aiClient.ts'
 import { Button } from '../../components/Ui.tsx'
+import { WritingLabLink } from '../components/WritingLabLink.tsx'
 import type { DashboardCopy } from '../types.ts'
 import {
   computeWebPracticeHome,
@@ -255,7 +256,7 @@ export function PracticePanel({
       {recommendation.state === 'none' ? (
         <article className="wd-card wd-empty">
           <p>{copy.practice.none}</p>
-          <Button to="/#writing-lab">{copy.overview.writingLab}</Button>
+          <WritingLabLink />
         </article>
       ) : recommendation.state === 'emerging' ? (
         <article className="wd-card">

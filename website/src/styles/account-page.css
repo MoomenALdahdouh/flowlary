@@ -1,0 +1,320 @@
+/* Account page — auth shell aligned with marketing revamp */
+
+.xp-account {
+  position: relative;
+  isolation: isolate;
+}
+
+.xp-account::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: min(72vh, 42rem);
+  background:
+    radial-gradient(ellipse 78% 58% at 18% -8%, color-mix(in srgb, var(--fl-accent) 13%, transparent), transparent),
+    radial-gradient(ellipse 48% 38% at 88% 16%, color-mix(in srgb, var(--xp-accent-cyan, #22d3ee) 9%, transparent), transparent);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.xp-account > * {
+  position: relative;
+  z-index: 1;
+}
+
+.xp-account.ac-page-signed-out {
+  justify-content: flex-start;
+}
+
+.ac-hero {
+  padding-bottom: clamp(var(--fl-space-7), 6vw, var(--fl-space-9));
+}
+
+.ac-layout-grid {
+  display: grid;
+  gap: clamp(var(--fl-space-6), 5vw, var(--fl-space-8));
+  align-items: start;
+  padding-block: clamp(var(--fl-space-7), 6vw, var(--fl-space-9));
+}
+
+.ac-layout-copy {
+  max-width: 36rem;
+  text-align: start;
+}
+
+.ac-layout-title {
+  margin: 0;
+  max-width: 14ch;
+  font-size: var(--fl-text-display);
+  letter-spacing: -0.04em;
+  line-height: 1.08;
+}
+
+.ac-layout-lead {
+  margin-top: var(--fl-space-4);
+  max-width: 38rem;
+  text-align: start;
+  font-size: var(--fl-text-body);
+  line-height: 1.55;
+}
+
+.ac-trust-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fl-space-2);
+  margin: var(--fl-space-5) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ac-trust-chips li {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.85rem;
+  padding: 0.2rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--fl-accent) 24%, var(--fl-border));
+  border-radius: var(--fl-radius-sm);
+  background: color-mix(in srgb, var(--fl-accent) 5%, var(--fl-product-bg));
+  color: var(--fl-muted);
+  font-size: var(--fl-text-small);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.ac-benefit-cards {
+  display: grid;
+  gap: var(--fl-space-3);
+  margin: var(--fl-space-6) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ac-benefit-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--fl-space-3);
+  align-items: start;
+  padding: var(--fl-space-3) var(--fl-space-4);
+  border: 1px solid var(--fl-border);
+  border-radius: var(--fl-radius-lg);
+  background: var(--fl-product-bg);
+  box-shadow: var(--fl-shadow-sm);
+  color: var(--fl-muted);
+  font-size: var(--fl-text-small);
+  line-height: 1.55;
+}
+
+.ac-benefit-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--fl-radius-sm);
+  background: var(--fl-accent-soft);
+  color: var(--fl-accent-hover);
+}
+
+.ac-benefit-icon svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.ac-layout-panel {
+  width: 100%;
+  max-width: 27rem;
+  margin-inline: auto;
+}
+
+.ac-layout-footer {
+  margin-top: var(--fl-space-4);
+}
+
+.ac-mode-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--fl-space-2);
+  margin-bottom: var(--fl-space-4);
+  padding: var(--fl-space-2);
+  border: 1px solid var(--fl-border);
+  border-radius: var(--fl-radius-lg);
+  background: color-mix(in srgb, var(--fl-bg-soft) 88%, var(--fl-product-bg));
+}
+
+.ac-mode-tab {
+  min-height: var(--fl-control-height);
+  border: 1px solid transparent;
+  border-radius: var(--fl-radius-sm);
+  background: transparent;
+  color: var(--fl-muted);
+  font: inherit;
+  font-size: var(--fl-text-small);
+  font-weight: 650;
+  cursor: pointer;
+  transition:
+    background var(--fl-duration) var(--fl-ease),
+    border-color var(--fl-duration) var(--fl-ease),
+    color var(--fl-duration) var(--fl-ease),
+    box-shadow var(--fl-duration) var(--fl-ease);
+}
+
+.ac-mode-tab.is-active {
+  border-color: var(--fl-border-accent);
+  background: var(--fl-surface-1);
+  color: var(--fl-text);
+  box-shadow: var(--fl-shadow-sm);
+}
+
+.ac-mode-tab:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ac-mode-tab:focus-visible {
+  outline: 2px solid var(--fl-accent);
+  outline-offset: 2px;
+}
+
+.xp-account .ac-auth-card {
+  margin-top: 0;
+  border: 1px solid var(--fl-border-strong);
+  border-radius: var(--fl-radius-lg);
+  background: var(--fl-product-bg);
+  box-shadow: var(--fl-shadow-sm);
+}
+
+.ac-card-head {
+  display: grid;
+  gap: var(--fl-space-2);
+  margin-bottom: var(--fl-space-5);
+  padding-bottom: var(--fl-space-4);
+  border-bottom: 1px solid var(--fl-border);
+}
+
+.ac-card-title {
+  margin: 0;
+  font-family: var(--fl-font-display);
+  font-size: clamp(1.15rem, 2.4vw, 1.35rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.ac-card-subtitle {
+  margin: 0;
+  color: var(--fl-muted);
+  font-size: var(--fl-text-small);
+  line-height: 1.5;
+}
+
+.ac-welcome-card {
+  text-align: center;
+}
+
+.ac-welcome-icon,
+.ac-verify-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  margin: 0 auto var(--fl-space-4);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fl-accent) 12%, var(--fl-product-bg));
+  color: var(--fl-accent-hover);
+}
+
+.ac-welcome-icon svg,
+.ac-verify-icon svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.ac-welcome-lead {
+  margin: 0;
+  color: var(--fl-muted);
+  line-height: 1.55;
+}
+
+.ac-welcome-note {
+  margin-top: var(--fl-space-4);
+  text-align: center;
+}
+
+.ac-verify-embedded .ac-card-head {
+  text-align: center;
+}
+
+.ac-verify-embedded .ac-verify-icon {
+  margin-inline: auto;
+}
+
+.xp-account .ac-welcome-card {
+  margin-top: 0;
+}
+
+.xp-account .ac-welcome-card .ac-card-title {
+  text-align: center;
+}
+
+.xp-account .ac-layout-footer .ac-extension-link {
+  justify-content: flex-start;
+  gap: var(--fl-space-2);
+  margin-top: 0;
+}
+
+.xp-account .ac-layout-footer .ac-extension-link .btn {
+  justify-content: flex-start;
+}
+
+html[dir='rtl'] .xp-account .ac-layout-title,
+html[dir='rtl'] .xp-account .ac-kicker {
+  letter-spacing: 0;
+}
+
+@media (min-width: 960px) {
+  .ac-layout-grid {
+    grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+    align-items: center;
+  }
+
+  .ac-layout-panel {
+    margin-inline: 0 0;
+    justify-self: end;
+  }
+}
+
+@media (max-width: 959px) {
+  .ac-layout-copy {
+    text-align: center;
+    margin-inline: auto;
+  }
+
+  .ac-layout-title {
+    margin-inline: auto;
+  }
+
+  .ac-layout-lead {
+    text-align: center;
+    margin-inline: auto;
+  }
+
+  .ac-trust-chips {
+    justify-content: center;
+  }
+
+  .ac-benefit-cards {
+    max-width: 26rem;
+    margin-inline: auto;
+  }
+}
+
+@media (max-width: 639px) {
+  .ac-layout-panel {
+    max-width: none;
+  }
+
+  .ac-mode-tabs {
+    margin-bottom: var(--fl-space-3);
+  }
+}

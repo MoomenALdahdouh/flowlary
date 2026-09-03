@@ -18,7 +18,7 @@ import {
   type WebAccountView,
   type WebEntitlementView,
 } from '../account/client.ts'
-import { Button, GetFlowlaryButton } from '../components/Ui.tsx'
+import { Button, InstallFlowlaryButton } from '../components/Ui.tsx'
 import { useMessages, useI18n } from '../i18n/index.tsx'
 import { readWebLearningStore } from './webLearningStore.ts'
 import {
@@ -434,14 +434,15 @@ export function WritingLab() {
                           <span>&quot;{change.corrected}&quot;</span>
                         </p>
                         {explanation ? (
-                          <button
+                          <Button
                             type="button"
-                            className="writing-lab-inline-btn"
+                            variant="link"
+                            className="btn-sm"
                             aria-expanded={expanded === index}
                             onClick={() => setExpanded(expanded === index ? null : index)}
                           >
                             {expanded === index ? copy.hideExplanation : copy.understandThis}
-                          </button>
+                          </Button>
                         ) : null}
                         {expanded === index && explanation ? (
                           <div className="writing-lab-explanation">
@@ -496,7 +497,7 @@ export function WritingLab() {
                         {copy.recurringSeen.replace('{count}', String(summary.topRecurring.count))}
                       </p>
                       <div className="writing-lab-bridge">
-                        <GetFlowlaryButton className="btn-sm" />
+                        <InstallFlowlaryButton className="btn-sm" />
                       </div>
                     </>
                   ) : summary.personalizationReady && summary.focusArea ? (
@@ -515,7 +516,7 @@ export function WritingLab() {
                 {copy.continueLearning}
               </h3>
               <div className="writing-lab-bridge">
-                <GetFlowlaryButton />
+                <InstallFlowlaryButton />
                 <Button variant="secondary" to="/account">
                   {copy.viewProgress}
                 </Button>

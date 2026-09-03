@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { PRO_DAILY_CREDITS } from '@flowlary/shared'
-import { Button, GetFlowlaryButton } from '../components/Ui.tsx'
+import { Button, InstallFlowlaryButton } from '../components/Ui.tsx'
 import { useMessages } from '../i18n/index.tsx'
 import {
   loadWebAccount,
@@ -168,7 +168,7 @@ export function VerifyEmailPage() {
                 <Button type="button" onClick={onStartWriting}>
                   {copy.startWriting}
                 </Button>
-                <GetFlowlaryButton variant="secondary" />
+                <InstallFlowlaryButton variant="secondary" />
               </div>
             </article>
           </div>

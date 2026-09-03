@@ -69,3 +69,5 @@ export { isSafeToken } from './tokenKind.ts'
 
 export const MAX_FIELD_CHARS = 2_000
 export const MAX_FIELD_TOKENS = 48
+/** Skip auto fix/review when a single paste/drop inserts more than this many characters. */
+export const BULK_PASTE_CHAR_LIMIT = 1_000

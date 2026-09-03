@@ -4,6 +4,7 @@ import type { DomainState, FeatureStateKind } from '../../ui/domainState.ts'
 import { humanizePopupError, accountSync } from '../../popup/api.ts'
 import { t } from '../../popup/i18n/index.ts'
 import type { CorrectionResponse } from '@flowlary/shared'
+import { DIRECT_HIGHLIGHT_PREVIEW_MS } from '@flowlary/shared'
 import { recordCorrectionDetected } from '../../features/learning/recordCorrectionLearning.ts'
 import { cancelCorrectionRemote, requestCorrectionRemote } from '../../features/correction/client.ts'
 import { requestTranslationRemote } from '../../features/translation/client.ts'
@@ -224,6 +225,19 @@ export function ComposeWorkbench({ status, domain, onAcceptManaged, onOpenAccoun
           return
         }
         if (correctionMode === 'direct') {
+          if (status.correction.highlights && response.data.changes.length > 0) {
+            setResult(response.data.correctedText)
+            setCorrection(response.data)
+            setPhase('done')
+            window.setTimeout(() => {
+              if (token !== correctionRunRef.current) return
+              setInput(response.data.correctedText)
+              setPhase('idle')
+              setResult(null)
+              setCorrection(null)
+            }, DIRECT_HIGHLIGHT_PREVIEW_MS)
+            return
+          }
           setInput(response.data.correctedText)
           setPhase('idle')
           setResult(null)
@@ -239,7 +253,7 @@ export function ComposeWorkbench({ status, domain, onAcceptManaged, onOpenAccoun
         setError(t('compose.runFailed'))
       }
     },
-    [correctionMode, maybeOfferUpgrade, status.account.signedIn],
+    [correctionMode, maybeOfferUpgrade, status.account.signedIn, status.correction.highlights],
   )
 
   const runTranslation = useCallback(
@@ -467,6 +481,11 @@ export function ComposeWorkbench({ status, domain, onAcceptManaged, onOpenAccoun
         ? t('compose.placeholderTranslation')
         : t('compose.placeholderLayout')
 
+  const showCorrectionPreview =
+    phase === 'done' &&
+    Boolean(correction) &&
+    (isCorrectionBox || (isCorrectionDirect && status.correction.highlights))
+
   return (
     <section className="fl-dash-card fl-compose" aria-labelledby="fl-compose-title" data-tour="compose">
       <div className="fl-compose-head">
@@ -526,15 +545,18 @@ export function ComposeWorkbench({ status, domain, onAcceptManaged, onOpenAccoun
           </p>
         ) : null}
 
-        {phase === 'done' && result && isCorrectionBox ? (
+        {showCorrectionPreview && result ? (
           <div className="fl-compose-result" aria-live="polite">
-            <span className="fl-compose-result-label">{t('compose.resultLabel')}</span>
+            <span className="fl-compose-result-label">
+              {isCorrectionDirect ? t('compose.previewLabel') : t('compose.resultLabel')}
+            </span>
             {correction ? (
               <>
                 <CorrectionHighlight
                   original={correction.originalText}
                   corrected={correction.correctedText}
                   changes={correction.changes}
+                  showMistakes
                 />
                 {correction.changes.length > 0 ? (
                   <ul className="fl-compose-change-list">
@@ -551,13 +573,19 @@ export function ComposeWorkbench({ status, domain, onAcceptManaged, onOpenAccoun
                     ))}
                   </ul>
                 ) : null}
-                <button
-                  type="button"
-                  className="fl-action-btn fl-action-btn-primary fl-action-btn-compact fl-compose-apply"
-                  onClick={applyCorrectionSuggestion}
-                >
-                  {t('compose.applySuggestion')}
-                </button>
+                {isCorrectionBox ? (
+                  <button
+                    type="button"
+                    className="fl-action-btn fl-action-btn-primary fl-action-btn-compact fl-compose-apply"
+                    onClick={applyCorrectionSuggestion}
+                  >
+                    {t('compose.applySuggestion')}
+                  </button>
+                ) : (
+                  <p className="fl-compose-status" role="status">
+                    {t('compose.applyingDirect')}
+                  </p>
+                )}
               </>
             ) : (
               <p className="fl-compose-result-text">{result}</p>

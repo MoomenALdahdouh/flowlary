@@ -42,9 +42,16 @@ export function LearningCoachCard({
   }
 
   return (
-    <article className="wd-card">
+    <article className={`wd-card${summary ? ' wd-card-ai' : ''}`}>
       <h3>{copy.coach.title}</h3>
-      {summary ? <p>{summary}</p> : <p className="wd-muted">{copy.coach.ask}</p>}
+      {summary ? (
+        <>
+          <p className="wd-data-label">{copy.coach.aiInterpretation}</p>
+          <p>{summary}</p>
+        </>
+      ) : (
+        <p className="wd-muted">{copy.coach.ask}</p>
+      )}
       {error ? <p className="wd-error">{copy.common.error}</p> : null}
       {busy ? (
         <p className="wd-ai-status is-working" role="status">

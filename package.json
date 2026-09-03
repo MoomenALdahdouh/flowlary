@@ -1,6 +1,6 @@
 {
   "name": "flowlary",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "description": "Flowlary — Your AI Writing Companion",
   "workspaces": [
@@ -27,7 +27,8 @@
     "probe:advisor-live": "node --import tsx scripts/advisor-live-probe.ts",
     "probe:writing-review-live": "node --import tsx scripts/writing-review-live-probe.ts",
     "test:providers": "node --import tsx scripts/provider-connectivity-check.ts",
-    "typecheck": "npm run typecheck -w @flowlary/shared && npm run typecheck -w @flowlary/extension && npm run typecheck -w @flowlary/website"
+    "typecheck": "npm run typecheck -w @flowlary/shared && npm run typecheck -w @flowlary/extension && npm run typecheck -w @flowlary/website",
+    "icons:ext": "node scripts/generate-extension-icons.mjs"
   },
   "engines": {
     "node": ">=20"

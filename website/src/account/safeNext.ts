@@ -32,6 +32,6 @@ export function clearPendingNext(): void {
 }
 
 export function resolvePostAuthDestination(next: SafeNext | null): string {
-  if (next === 'lab') return '/#writing-lab'
-  return '/account'
+  if (next === 'lab') return '/lab'
+  return '/dashboard'
 }

@@ -1,5 +1,4 @@
-import type { ReactNode } from 'react'
-import { Badge, Button, GetFlowlaryButton } from '../../components/Ui.tsx'
+import { Badge, Button, InstallFlowlaryButton } from '../../components/Ui.tsx'
 import { AccountBillingPanel } from '../../account/AccountBillingPanel.tsx'
 import { syncStoredSessionToExtension } from '../../account/extensionBridge.ts'
 import type { WebAccountView, WebEntitlementView } from '../../account/client.ts'
@@ -149,7 +148,7 @@ export function AccountDashboardPanel({
               {accountCopy.syncExtension}
             </Button>
           ) : (
-            <GetFlowlaryButton variant="secondary" />
+            <InstallFlowlaryButton variant="secondary" />
           )}
         </div>
       </article>
@@ -159,65 +158,6 @@ export function AccountDashboardPanel({
           {accountCopy.signOut}
         </Button>
       </div>
-    </div>
-  )
-}
-
-export function DashboardShell({
-  title,
-  navGroups,
-  nav,
-  section,
-  onSectionChange,
-  children,
-}: {
-  title: string
-  navGroups: { label: string; items: { id: string; label: string }[] }[]
-  nav: { id: string; label: string }[]
-  section: string
-  onSectionChange: (id: string) => void
-  children: ReactNode
-}) {
-  return (
-    <div className="wd-shell">
-      <aside className="wd-nav" aria-label="Dashboard">
-        <p className="wd-nav-kicker">{title}</p>
-        <nav className="wd-nav-groups">
-          {navGroups.map((group) => (
-            <div key={group.label} className="wd-nav-group">
-              <p className="wd-nav-group-label">{group.label}</p>
-              <ul>
-                {group.items.map((item) => (
-                  <li key={item.id}>
-                    <button
-                      type="button"
-                      className={section === item.id ? 'is-active' : ''}
-                      aria-current={section === item.id ? 'page' : undefined}
-                      onClick={() => onSectionChange(item.id)}
-                    >
-                      {item.label}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </nav>
-        <nav className="wd-nav-mobile" aria-label="Dashboard sections">
-          {nav.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={section === item.id ? 'is-active' : ''}
-              aria-current={section === item.id ? 'page' : undefined}
-              onClick={() => onSectionChange(item.id)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
-      </aside>
-      <main className="wd-main">{children}</main>
     </div>
   )
 }

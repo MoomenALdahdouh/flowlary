@@ -15,15 +15,33 @@ export const DEFAULT_OG_IMAGE = `${SITE_URL}/og.svg`
 export const PAGE_META: Record<AppRoute, PageMeta> = {
   '/': {
     path: '/',
-    title: `${SITE_NAME} · Writing and English learning companion for Chrome`,
+    title: `${SITE_NAME} · Write where you are`,
     description:
-      'Write, correct, translate, repair keyboard-layout mistakes, and learn from your everyday English writing without switching tools.',
+      'Flowlary is a Chrome writing companion for bilingual writers: keyboard layout repair, English help, and translation in the field you already type in.',
+  },
+  '/product': {
+    path: '/product',
+    title: `How Flowlary works · ${SITE_NAME}`,
+    description:
+      'See how the popup, keyboard shortcuts, Speed Box, Writing Lab, and dashboard work together as one Chrome writing companion.',
+  },
+  '/try': {
+    path: '/try',
+    title: `Try Flowlary · ${SITE_NAME}`,
+    description:
+      'Simulated demos for correction, translation, and keyboard-layout repair. No install or account required.',
+  },
+  '/lab': {
+    path: '/lab',
+    title: `Writing Lab · ${SITE_NAME}`,
+    description:
+      'Live AI writing correction on the web. Sign in to analyze your English and save learning progress to your account.',
   },
   '/features': {
     path: '/features',
-    title: `Writing, communication, and learning features · ${SITE_NAME}`,
+    title: `What Flowlary helps with · ${SITE_NAME}`,
     description:
-      'Explore writing correction, translation, keyboard-layout repair, and learning from recurring patterns — connected in one Chrome writing companion.',
+      'Keyboard layout repair, English help, translation, live translation, Speed Box, and learning from your writing.',
   },
   '/features/writing-correction': {
     path: '/features/writing-correction',
@@ -124,6 +142,19 @@ export const PAGE_META: Record<AppRoute, PageMeta> = {
     title: `Account · ${SITE_NAME}`,
     description:
       'Sign in to your Flowlary account used by the Chrome companion. Pro is confirmed by Flowlary after verified billing.',
+    robots: 'noindex, nofollow',
+  },
+  '/dashboard': {
+    path: '/dashboard',
+    title: `Dashboard · ${SITE_NAME}`,
+    description:
+      'Your Flowlary workspace: overview, practice, progress, learning report, settings, and account.',
+    robots: 'noindex, nofollow',
+  },
+  '/dashboard/support': {
+    path: '/dashboard/support',
+    title: `Support tickets · ${SITE_NAME}`,
+    description: 'Your Flowlary support tickets and requests.',
     robots: 'noindex, nofollow',
   },
   '/account/forgot-password': {

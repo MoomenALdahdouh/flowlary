@@ -11,5 +11,12 @@
     document.documentElement.style.colorScheme = theme
     var meta = document.querySelector('meta[name="theme-color"]')
     if (meta) meta.setAttribute('content', theme === 'light' ? '#f4f7fb' : '#05070b')
+    var favicon = document.querySelector('link[rel="icon"]')
+    if (favicon) {
+      favicon.setAttribute(
+        'href',
+        theme === 'light' ? '/icons/favicon-light.svg' : '/icons/favicon-dark.svg',
+      )
+    }
   } catch (e) {}
 })()

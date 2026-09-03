@@ -1,15 +1,31 @@
 @import './tokens.css';
+@import '@flowlary/shared/buttons.css';
 @import './glass.css';
 @import './a11y.css';
 @import './motion.css';
 @import './product.css';
-@import './home.css';
+@import './about-page.css';
+@import './feature-detail-page.css';
 @import './playground.css';
 @import './account.css';
+@import './account-page.css';
 @import './dashboard.css';
 @import './features-page.css';
+@import './guide-page.css';
+@import './lab-page.css';
+@import './pricing-page.css';
+@import './legal-page.css';
+@import './cookies-page.css';
+@import './support-page.css';
+@import './contact-page.css';
+@import './feedback-page.css';
+@import './try-page.css';
+@import './product-page.css';
 @import './writing-lab.css';
 @import './product-pages.css';
+@import './pe2.css';
+@import './experience.css';
+@import './marketing-revamp.css';
 
 *,
 *::before,
@@ -19,7 +35,7 @@
 
 html {
   color-scheme: light dark;
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
   overflow-x: hidden;
 }
 
@@ -55,10 +71,10 @@ body {
   line-height: var(--fl-line-body, 1.65);
   color: var(--fl-text);
   background:
-    radial-gradient(ellipse 92% 58% at 72% -14%, var(--fl-atmosphere-1), transparent 64%),
-    radial-gradient(ellipse 62% 44% at 4% 20%, var(--fl-atmosphere-cool), transparent 56%),
-    radial-gradient(ellipse 48% 36% at 96% 8%, var(--fl-snow-soft), transparent 52%),
-    linear-gradient(180deg, var(--fl-snow-soft) 0%, var(--fl-bg-soft) 22%, var(--fl-bg) 52%, var(--fl-bg) 100%);
+    radial-gradient(ellipse 78% 52% at 78% -6%, var(--fl-atmosphere-1), transparent 60%),
+    radial-gradient(ellipse 58% 46% at 8% 8%, var(--fl-atmosphere-2), transparent 58%),
+    radial-gradient(ellipse 50% 40% at 50% 28%, var(--fl-atmosphere-cool), transparent 62%),
+    linear-gradient(180deg, var(--fl-bg-soft) 0%, var(--fl-bg) 42%, var(--fl-bg) 100%);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -159,7 +175,7 @@ a:hover {
   width: min(100% - 1.25rem, var(--fl-max));
 }
 
-.header-glass {
+.header-shell {
   pointer-events: auto;
   display: grid;
   grid-template-columns: 1fr auto;
@@ -168,23 +184,22 @@ a:hover {
   min-height: calc(var(--fl-header) - var(--fl-header-pad) * 2);
   padding: var(--fl-space-2) var(--fl-space-2) var(--fl-space-2) var(--fl-space-3);
   border: 1px solid var(--fl-border);
-  border-radius: var(--fl-radius-lg);
+  border-radius: var(--fl-radius-pill);
   background: var(--fl-header-bg);
-  -webkit-backdrop-filter: var(--fl-glass-blur);
-  backdrop-filter: var(--fl-glass-blur);
   box-shadow: var(--fl-shadow-sm);
   transition:
     background var(--fl-duration) var(--fl-ease),
     border-color var(--fl-duration) var(--fl-ease),
-    box-shadow var(--fl-duration) var(--fl-ease),
-    transform var(--fl-duration) var(--fl-ease);
+    box-shadow var(--fl-duration) var(--fl-ease);
 }
 
+.header.is-scrolled .header-shell,
 .header.is-scrolled .header-glass {
   background: var(--fl-header-bg-strong);
   box-shadow: var(--fl-shadow-sm);
 }
 
+.header.is-open .header-shell,
 .header.is-open .header-glass {
   border-color: color-mix(in srgb, var(--fl-accent) 22%, var(--fl-snow-border));
 }
@@ -354,7 +369,7 @@ a:hover {
 }
 
 @media (min-width: 1024px) {
-  .header-glass {
+  .header-shell {
     grid-template-columns: auto 1fr auto;
     padding-inline: 0.85rem;
     gap: 0.75rem 1.25rem;
@@ -496,148 +511,7 @@ a:hover {
   }
 }
 
-/* Buttons */
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--fl-space-2);
-  min-height: var(--fl-control-height);
-  padding: var(--fl-space-2) var(--fl-space-4);
-  border-radius: var(--fl-radius-sm);
-  border: 1px solid transparent;
-  font: inherit;
-  font-weight: 650;
-  font-size: var(--fl-text-small);
-  text-decoration: none;
-  cursor: pointer;
-  transition:
-    background var(--fl-duration) var(--fl-ease),
-    border-color var(--fl-duration) var(--fl-ease),
-    color var(--fl-duration) var(--fl-ease),
-    box-shadow var(--fl-duration) var(--fl-ease);
-}
-
-.btn:hover:not(:disabled):not([aria-disabled='true']) {
-  box-shadow: none;
-}
-
-.btn:active:not(:disabled):not([aria-disabled='true']) {
-  transform: scale(0.98);
-}
-
-.btn:disabled,
-.btn[aria-disabled='true'] {
-  color: var(--fl-text-disabled);
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
-.btn-primary,
-a.btn-primary {
-  background: var(--fl-accent);
-  color: var(--fl-on-accent);
-}
-
-.btn-primary:hover:not(:disabled):not([aria-disabled='true']),
-a.btn-primary:hover:not(:disabled):not([aria-disabled='true']) {
-  background: var(--fl-accent-hover);
-  color: var(--fl-on-accent);
-}
-
-.btn-primary:active:not(:disabled):not([aria-disabled='true']),
-a.btn-primary:active:not(:disabled):not([aria-disabled='true']) {
-  background: var(--fl-accent-pressed);
-}
-
-.btn-primary:disabled,
-.btn-primary[aria-disabled='true'],
-a.btn-primary:disabled {
-  background: var(--fl-accent-soft);
-  color: var(--fl-text-disabled);
-}
-
-.btn-secondary,
-a.btn-secondary {
-  background: var(--fl-product-bg);
-  border: 1px solid var(--fl-border-strong);
-  color: var(--fl-text);
-}
-
-.btn-secondary:hover:not(:disabled):not([aria-disabled='true']),
-a.btn-secondary:hover:not(:disabled):not([aria-disabled='true']) {
-  border-color: var(--fl-border-accent);
-  background: var(--fl-surface-2);
-  color: var(--fl-text);
-}
-
-.btn-tertiary,
-a.btn-tertiary {
-  background: var(--fl-hover-fill);
-  border: 1px solid transparent;
-  color: var(--fl-text);
-}
-
-.btn-tertiary:hover:not(:disabled):not([aria-disabled='true']),
-a.btn-tertiary:hover:not(:disabled):not([aria-disabled='true']) {
-  background: var(--fl-accent-soft);
-}
-
-.btn-ghost,
-a.btn-ghost {
-  background: transparent;
-  color: var(--fl-text);
-  padding-inline: var(--fl-space-3);
-}
-
-.btn-ghost:hover:not(:disabled):not([aria-disabled='true']),
-a.btn-ghost:hover:not(:disabled):not([aria-disabled='true']) {
-  color: var(--fl-text);
-  background: var(--fl-hover-fill);
-}
-
-.btn-danger,
-a.btn-danger {
-  background: var(--fl-danger-soft);
-  border: 1px solid color-mix(in srgb, var(--fl-danger) 35%, transparent);
-  color: var(--fl-danger);
-}
-
-.btn-danger:hover:not(:disabled):not([aria-disabled='true']),
-a.btn-danger:hover:not(:disabled):not([aria-disabled='true']) {
-  background: var(--fl-danger);
-  color: var(--fl-on-accent);
-}
-
-.btn-link,
-a.btn-link {
-  min-height: auto;
-  padding: 0;
-  background: transparent;
-  color: var(--fl-accent);
-  font-weight: 650;
-  text-decoration: underline;
-  text-underline-offset: 0.18em;
-}
-
-.btn-link:hover:not(:disabled):not([aria-disabled='true']),
-a.btn-link:hover:not(:disabled):not([aria-disabled='true']) {
-  color: var(--fl-accent-hover);
-}
-
-.btn-sm {
-  min-height: var(--fl-control-height-compact);
-  padding: var(--fl-space-2) var(--fl-space-3);
-  font-size: var(--fl-text-small);
-}
-
-.btn-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
+/* Buttons — see @flowlary/shared/buttons.css */
 
 /* Badges — used sparingly */
 
@@ -1229,10 +1103,10 @@ html[dir='rtl'] .kicker {
 
 .footer h2 {
   margin: 0 0 0.85rem;
-  font-size: var(--fl-text-label);
-  letter-spacing: 0.12em;
+  font-size: 0.82rem;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--fl-faint);
+  color: var(--fl-muted);
 }
 
 html[dir='rtl'] .footer h2 {
@@ -1245,12 +1119,13 @@ html[dir='rtl'] .footer h2 {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.5rem;
+  gap: 0.55rem;
 }
 
 .footer a {
   color: var(--fl-muted);
   text-decoration: none;
+  font-size: 0.94rem;
 }
 
 .footer a:hover {
@@ -1261,8 +1136,8 @@ html[dir='rtl'] .footer h2 {
   margin-top: 2.4rem;
   padding-top: 1.2rem;
   border-top: 1px solid var(--fl-border);
-  color: var(--fl-faint);
-  font-size: 0.86rem;
+  color: var(--fl-muted);
+  font-size: 0.92rem;
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
@@ -1988,6 +1863,15 @@ html[data-theme='light'] .theme-icon-sun {
 
 html[data-theme='light'] .theme-icon-moon {
   display: block;
+}
+
+.theme-icon-system {
+  display: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .theme-toggle:hover,

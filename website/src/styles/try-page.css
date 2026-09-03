@@ -1,0 +1,282 @@
+/* Try page — simulated playground aligned with marketing revamp */
+
+.tr-page {
+  --tr-section-y: clamp(3.5rem, 7vw, 5.5rem);
+  padding-bottom: var(--fl-space-8);
+}
+
+.xp-try {
+  position: relative;
+  isolation: isolate;
+}
+
+.xp-try::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: min(66vh, 40rem);
+  background:
+    radial-gradient(ellipse 76% 56% at 18% -6%, color-mix(in srgb, var(--xp-accent-purple, #a78bfa) 11%, transparent), transparent),
+    radial-gradient(ellipse 52% 40% at 88% 12%, color-mix(in srgb, var(--fl-accent) 10%, transparent), transparent);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.xp-try > * {
+  position: relative;
+  z-index: 1;
+}
+
+.tr-hero {
+  padding: clamp(var(--fl-space-7), 6vw, var(--fl-space-9)) 0 var(--tr-section-y);
+  border-bottom: 0;
+}
+
+.tr-hero-inner {
+  max-width: 44rem;
+}
+
+.tr-hero-title {
+  margin: 0;
+  max-width: 14ch;
+  font-size: var(--fl-text-display);
+  letter-spacing: -0.04em;
+  line-height: 1.08;
+}
+
+.tr-hero-lead {
+  margin-top: var(--fl-space-4);
+  max-width: 40rem;
+  color: var(--fl-muted);
+}
+
+.tr-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fl-space-3);
+  margin-top: var(--fl-space-5);
+}
+
+.tr-notice-inline {
+  margin: 0;
+  max-width: 28rem;
+  color: var(--fl-muted);
+  font-size: var(--fl-text-small);
+  line-height: 1.5;
+}
+
+.tr-trust-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fl-space-2);
+  margin: var(--fl-space-5) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tr-trust-row li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--xp-accent-purple, #a78bfa) 28%, var(--fl-border));
+  border-radius: var(--fl-radius-full);
+  background: color-mix(in srgb, var(--xp-accent-purple, #a78bfa) 7%, var(--fl-product-bg));
+  color: var(--fl-muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.tr-trust-row li::before {
+  content: '';
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: var(--xp-accent-purple, #a78bfa);
+  flex-shrink: 0;
+}
+
+.tr-notice-band {
+  padding-bottom: var(--fl-space-5);
+}
+
+.tr-notice {
+  padding: var(--fl-space-4) var(--fl-space-5);
+  border: 1px solid color-mix(in srgb, var(--fl-state-info, #3b82f6) 30%, var(--fl-border));
+  border-radius: var(--fl-radius-lg);
+  background: color-mix(in srgb, var(--fl-state-info, #3b82f6) 7%, var(--fl-product-bg));
+}
+
+.tr-notice-kicker {
+  margin: 0 0 var(--fl-space-2);
+  color: var(--fl-faint);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tr-notice p:last-child {
+  margin: 0;
+  color: var(--fl-muted);
+  font-size: var(--fl-text-small);
+  line-height: 1.6;
+}
+
+.tr-modes-band,
+.tr-workspace-band,
+.tr-compare-band {
+  padding: var(--tr-section-y) 0;
+  border-top: 1px solid var(--fl-border);
+}
+
+.tr-modes-grid {
+  display: grid;
+  gap: var(--fl-space-4);
+  margin-top: var(--fl-space-6);
+}
+
+@media (min-width: 640px) {
+  .tr-modes-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .tr-modes-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.tr-mode-card {
+  display: grid;
+  gap: var(--fl-space-3);
+  height: 100%;
+  padding: var(--fl-space-4);
+  border: 1px solid var(--fl-border);
+  border-radius: var(--fl-radius-lg);
+  background: var(--fl-product-bg);
+  box-shadow: var(--fl-shadow-sm);
+}
+
+.tr-mode-icon {
+  display: grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: var(--fl-radius-sm);
+  background: color-mix(in srgb, var(--fl-accent) 10%, var(--fl-product-bg));
+  color: var(--fl-accent-hover);
+}
+
+.tr-mode-icon svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.tr-mode-accent-0 .tr-mode-icon {
+  background: color-mix(in srgb, var(--xp-accent-cyan, #22d3ee) 12%, var(--fl-product-bg));
+  color: var(--xp-accent-cyan, #22d3ee);
+}
+
+.tr-mode-accent-1 .tr-mode-icon {
+  background: color-mix(in srgb, var(--xp-accent-purple, #a78bfa) 12%, var(--fl-product-bg));
+  color: var(--xp-accent-purple, #a78bfa);
+}
+
+.tr-mode-accent-2 .tr-mode-icon {
+  background: color-mix(in srgb, var(--xp-accent-magenta, #e879f9) 12%, var(--fl-product-bg));
+  color: var(--xp-accent-magenta, #e879f9);
+}
+
+.tr-mode-accent-3 .tr-mode-icon {
+  background: color-mix(in srgb, var(--xp-accent-green, #4ade80) 12%, var(--fl-product-bg));
+  color: var(--xp-accent-green, #4ade80);
+}
+
+.tr-mode-card h3 {
+  margin: 0;
+  font-size: var(--fl-text-small);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.tr-mode-card p {
+  margin: 0;
+  color: var(--fl-muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.tr-workspace-shell {
+  margin-top: var(--fl-space-6);
+  padding: clamp(var(--fl-space-4), 3vw, var(--fl-space-5));
+  border: 1px solid var(--fl-border-strong);
+  border-radius: var(--fl-radius-lg);
+  background: var(--fl-product-bg);
+  box-shadow: var(--fl-shadow-md);
+  overflow: hidden;
+}
+
+.tr-workspace-loading {
+  min-height: 16rem;
+}
+
+.xp-try .hp-playground.is-embedded {
+  padding: 0;
+  background: transparent;
+}
+
+.xp-try .hp-playground.is-embedded .pg-stage {
+  margin-top: 0;
+}
+
+.tr-compare-grid {
+  display: grid;
+  gap: var(--fl-space-4);
+  margin-top: var(--fl-space-6);
+}
+
+@media (min-width: 640px) {
+  .tr-compare-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.tr-compare-card {
+  display: grid;
+  gap: var(--fl-space-3);
+  align-content: start;
+  padding: var(--fl-space-5);
+  border: 1px solid var(--fl-border);
+  border-radius: var(--fl-radius-lg);
+  background: var(--fl-product-bg);
+}
+
+.tr-compare-simulated {
+  background: color-mix(in srgb, var(--xp-accent-purple, #a78bfa) 5%, var(--fl-product-bg));
+}
+
+.tr-compare-live {
+  background: color-mix(in srgb, var(--fl-state-live, #22c55e) 6%, var(--fl-product-bg));
+}
+
+.tr-compare-card p {
+  margin: 0;
+  color: var(--fl-muted);
+  font-size: var(--fl-text-small);
+  line-height: 1.55;
+}
+
+.tr-upsell {
+  margin: var(--fl-space-5) 0 0;
+  color: var(--fl-muted);
+  font-size: var(--fl-text-small);
+  line-height: 1.55;
+}
+
+.tr-page .fl-conversion-panel {
+  margin-top: 0;
+}

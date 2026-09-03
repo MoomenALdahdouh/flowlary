@@ -1,4 +1,5 @@
 import type { CorrectionResponse } from '@flowlary/shared'
+import { DIRECT_HIGHLIGHT_PREVIEW_MS } from '@flowlary/shared'
 import { evaluateFieldSafety } from '../../core/safety/index.ts'
 import { readFieldText } from '../../core/dom/read.ts'
 import { commitWriteTransaction } from '../../core/writeGate/writeGate.ts'
@@ -259,6 +260,38 @@ async function deliverCorrectionResult(
     return 'pending'
   }
 
+  if (stateManager.correction.highlights && data.changes.length > 0) {
+    const binding: CorrectionSuggestionBinding = {
+      remoteRequestId,
+      debouncerGeneration,
+      fieldGeneration: session.getGeneration(),
+      segment,
+      requestedFullText,
+      response: { ...data, originalText: segment },
+    }
+    options.getCard(element).setReady(binding)
+    options.metrics.correction_card_shown += 1
+    recordCorrectionDetected(remoteRequestId, segment, binding.response)
+
+    await new Promise((resolve) => setTimeout(resolve, DIRECT_HIGHLIGHT_PREVIEW_MS))
+
+    if (debouncerGeneration !== options.currentDebouncerGeneration()) {
+      options.metrics.correction_stale_results += 1
+      options.getCard(element).hide()
+      return 'stale'
+    }
+
+    const liveText = readFieldText(element)
+    if (
+      !isResultStillRelevant(liveText, requestedFullText, segment, mode) ||
+      !canMergeCorrection(liveText, segment)
+    ) {
+      options.metrics.correction_stale_results += 1
+      options.getCard(element).hide()
+      return 'stale'
+    }
+  }
+
   options.metrics.correction_direct_edit += 1
   return await commitMergedCorrection(element, session, segment, correctedSegment, options, {
     requestId: options.orchestratorLock?.requestId,
@@ -493,6 +526,14 @@ export function syncCardVisibility(
 ): void {
   const mode = stateManager.correction.mode
   const card = options.getCard(element)
+
+  if (
+    mode === 'direct' &&
+    stateManager.correction.highlights &&
+    card.hasReadyCorrection()
+  ) {
+    return
+  }
 
   if (mode !== 'box') {
     card.hide()

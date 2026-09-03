@@ -1,4 +1,4 @@
-import { Button, GetFlowlaryButton } from '../Ui.tsx'
+import { Button, InstallFlowlaryButton } from '../Ui.tsx'
 import { Reveal } from '../Reveal.tsx'
 import { useMessages } from '../../i18n/index.tsx'
 
@@ -12,11 +12,11 @@ export function FinalCta() {
           <div className="mh-final-panel">
             <p className="mh-eyebrow">{copy.kicker}</p>
             <h2 id="mh-final-title" className="mh-title">
-              {copy.title}
+              {copy.titleLine1} {copy.titleLine2}
             </h2>
-            <p className="mh-lead">{copy.lead}</p>
+            <p className="mh-lead">{copy.leadLine1}</p>
             <div className="mh-cta-row">
-              <GetFlowlaryButton />
+              <InstallFlowlaryButton />
               <Button variant="secondary" to="/pricing">
                 {t.cta.viewPricing}
               </Button>

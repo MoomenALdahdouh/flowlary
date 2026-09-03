@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '../components/Ui.tsx'
 import { useMessages } from '../i18n/index.tsx'
 import {
@@ -18,9 +18,10 @@ type Props = {
   onVerified: () => void
   onSignOut: () => void
   compact?: boolean
+  embedded?: boolean
 }
 
-export function EmailVerificationPanel({ email, onVerified, onSignOut, compact = false }: Props) {
+export function EmailVerificationPanel({ email, onVerified, onSignOut, compact = false, embedded = false }: Props) {
   const t = useMessages()
   const copy = t.account.verification
   const [busy, setBusy] = useState<'resend' | 'refresh' | null>(null)
@@ -36,14 +37,11 @@ export function EmailVerificationPanel({ email, onVerified, onSignOut, compact =
     return () => window.clearInterval(timer)
   }, [resendCooldown])
 
-  const mapResendError = useCallback(
-    (err: VerificationClientError): string => {
-      if (err === 'rate_limited') return copy.resendRateLimited
-      if (err === 'network') return copy.networkError
-      return copy.resendFailed
-    },
-    [copy],
-  )
+  const mapResendError = (err: VerificationClientError): string => {
+    if (err === 'rate_limited') return copy.resendRateLimited
+    if (err === 'network') return copy.networkError
+    return copy.resendFailed
+  }
 
   async function onResend() {
     if (resendCooldown > 0) return
@@ -65,13 +63,34 @@ export function EmailVerificationPanel({ email, onVerified, onSignOut, compact =
     setError(mapResendError(result.error))
   }
 
-  const shellClass = compact ? 'ac-verify ac-verify-compact' : 'ac-auth-card ac-verify'
+  const shellClass = compact
+    ? 'ac-verify ac-verify-compact'
+    : embedded
+      ? 'ac-auth-card ac-verify ac-verify-embedded'
+      : 'ac-auth-card ac-verify'
 
   return (
     <article className={shellClass} aria-labelledby="ac-verify-title">
-      <p className="ac-kicker">{copy.kicker}</p>
-      <h2 id="ac-verify-title">{copy.title}</h2>
-      <p className="ac-lead">{copy.lead}</p>
+      {embedded ? (
+        <header className="ac-card-head">
+          <div className="ac-verify-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <rect x="4" y="6" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" />
+              <path d="M4 8.5 12 13l8-4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <h2 id="ac-verify-title" className="ac-card-title">
+            {copy.title}
+          </h2>
+          <p className="ac-card-subtitle">{copy.lead}</p>
+        </header>
+      ) : (
+        <>
+          <p className="ac-kicker">{copy.kicker}</p>
+          <h2 id="ac-verify-title">{copy.title}</h2>
+          <p className="ac-lead">{copy.lead}</p>
+        </>
+      )}
       <p className="ac-hint">{copy.sentTo.replace('{email}', maskEmail(email))}</p>
       <p className="ac-hint">{copy.checkInbox}</p>
 

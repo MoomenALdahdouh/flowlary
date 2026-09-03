@@ -60,7 +60,7 @@ export function ReportExportMenu({ report, accountGuard }: ReportExportMenuProps
     <div className="fl-report-export" ref={menuRef}>
       <button
         type="button"
-        className="fl-btn fl-btn-secondary"
+        className="fl-action-btn fl-action-btn-secondary"
         aria-haspopup="menu"
         aria-expanded={open}
         disabled={busy != null}

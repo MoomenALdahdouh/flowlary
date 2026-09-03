@@ -1,6 +1,13 @@
 export type { WriteOrigin, WriterTag } from './types.ts'
 export * from './types.ts'
 export { FLOWLARY_MARK, FLOWLARY_MARK_COLORS } from './brand.ts'
+export {
+  FLOWLARY_LOGO_GRADIENT_ID,
+  flowlaryFaviconDataUri,
+  flowlaryFaviconSvg,
+  flowlaryFaviconSvgAdaptive,
+  type MarkTheme,
+} from './markSvg.ts'
 export * from './ai.ts'
 export * from './ai/index.ts'
 export * from './features.ts'

@@ -15,9 +15,14 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@flowlary/layout-repair": ["../extension/src/core/engine/layoutSequence.ts"]
+      "@flowlary/layout-repair": ["../extension/src/core/engine/layoutSequence.ts"],
+      "@flowlary/layout-registry": ["../extension/src/features/layout/layouts/registry.ts"]
     }
   },
-  "include": ["src", "../extension/src/core/engine/layoutSequence.ts"],
+  "include": [
+    "src",
+    "../extension/src/core/engine/layoutSequence.ts",
+    "../extension/src/features/layout/layouts/registry.ts"
+  ],
   "exclude": ["src/__tests__"]
 }

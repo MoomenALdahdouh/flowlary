@@ -19,7 +19,8 @@ function hrefs(html: string): string[] {
 }
 
 const INTERNAL = new Set<string>(ROUTES)
-const SUPPORT_HASHES = new Set(['contact', 'troubleshooting', ...en.support.topics.map((topic) => topic.id)])
+const SUPPORT_HASHES = new Set(['contact', 'troubleshooting', 'get-flowlary', ...en.support.topics.map((topic) => topic.id)])
+const PRODUCT_HASHES = new Set(['control', 'actions', 'repair', 'learn'])
 const EXTERNAL = new Set([SITE_URL, API_URL])
 
 function assertInternalHref(href: string, html: string) {
@@ -34,8 +35,8 @@ function assertInternalHref(href: string, html: string) {
 
   const id = url.hash.replace(/^#/, '')
   if (!id) return
-  if (url.pathname === '/') expect(['write', 'communicate', 'learn', 'how', 'try-flowlary', 'writing-lab'].includes(id)).toBe(true)
-  else if (url.pathname === '/features') expect(['feat-write', 'feat-communicate', 'feat-learn', 'feat-connected'].includes(id)).toBe(true)
+  if (url.pathname === '/product') expect(PRODUCT_HASHES.has(id)).toBe(true)
+  else if (url.pathname === '/features') expect(false, `features no longer uses hash ${href}`).toBe(true)
   else if (url.pathname === '/support') expect(SUPPORT_HASHES.has(id)).toBe(true)
   else if (url.pathname === '/contact') expect(id === '').toBe(true)
   else if (url.pathname === '/pricing') expect(['students', 'pr-compare'].includes(id)).toBe(true)
@@ -54,31 +55,26 @@ describe('website buttons and links', () => {
     }
   })
 
-  it('sends Get Flowlary to install and See how it works to the home workflow', () => {
+  it('sends Add to Chrome to the guide and Try the demo to /try', () => {
     const html = renderRoute('/')
-    expect(html).toContain('href="/support#get-flowlary"')
-    expect(html).toContain('href="/#how"')
-    expect(html).toContain('id="how"')
-    expect(html).toContain('href="/pricing#students"')
+    expect(html).toContain('href="/guide"')
+    expect(html).toContain('href="/try"')
+    expect(html).toContain('Add to Chrome')
   })
 
-  it('features final CTA links to the home playground demo', () => {
+  it('features final CTA links to Try', () => {
     const html = renderRoute('/features')
-    expect(html).toContain('Try the interactive demo')
-    expect(html).toContain('href="/#try-flowlary"')
-    expect(html).toContain('One companion for writing, communication, and learning.')
-    const featureCtas = hrefs(html).filter((href) => href === '/features')
-    expect(featureCtas.length).toBeGreaterThan(0)
+    expect(html).toContain('What ')
+    expect(html).toContain('helps with')
+    expect(html).toContain('href="/try"')
     expect(html).not.toMatch(/class="btn btn-secondary"[^>]*href="\/features"/)
   })
 
-  it('preserves focused homepage destinations outside the default narrative', () => {
+  it('redirects legacy homepage hash destinations', () => {
     const playground = renderRoute('/#try-flowlary')
     const writingLab = renderRoute('/#writing-lab')
-    expect(playground).toContain('id="try-flowlary"')
-    expect(writingLab).toContain('id="writing-lab"')
-    expect(playground).toContain('aria-busy="true"')
-    expect(writingLab).toContain('aria-busy="true"')
+    expect(playground).toContain('fl-fidelity-simulated')
+    expect(writingLab).toContain('fl-fidelity-live')
   })
 
   it('wires account create as a mode switch and sign-in as form submit', () => {
@@ -86,7 +82,7 @@ describe('website buttons and links', () => {
     expect(html).toContain('type="submit"')
     expect(html).toContain('Create account')
     expect(html).toContain('Sign in')
-    expect(html).toContain('href="/support#get-flowlary"')
+    expect(html).toContain('href="/guide"')
   })
 
   it('keeps pricing CTAs honest while billing is prepared', () => {
@@ -94,7 +90,7 @@ describe('website buttons and links', () => {
     expect(html).toContain('href="/account?mode=register"')
     expect(html).toContain('Try Pro Free')
     expect(html).toContain('Paid checkout when billing is enabled')
-    expect(html).toContain('href="/support#get-flowlary"')
+    expect(html).toContain('href="/guide"')
     expect(html).not.toMatch(/Unlimited|BYOK/i)
   })
 

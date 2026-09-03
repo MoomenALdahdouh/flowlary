@@ -7,11 +7,11 @@ export const FLOWLARY_MARK = {
 
 /** Static mark colors — align with shared tokens and og.svg. */
 export const FLOWLARY_MARK_COLORS = {
-  /** Default / dark accent — used for toolbar icons and OG mark. */
-  accent: '#5b8cff',
+  /** Default / dark accent — brand cyan for toolbar icons and OG mark. */
+  accent: '#14d4ea',
   onAccent: '#061018',
   light: {
-    accent: '#315fd6',
+    accent: '#0891b2',
     onAccent: '#ffffff',
   },
 } as const

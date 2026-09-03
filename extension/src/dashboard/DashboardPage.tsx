@@ -10,11 +10,11 @@ export function DashboardPage({
   children: ReactNode
 }) {
   return (
-    <div className="fl-dash-page">
+    <div className="wd-panel-stack">
       {title || lead ? (
-        <header className="fl-dash-heading">
-          {title ? <h2 className="fl-dash-page-title">{title}</h2> : null}
-          {lead ? <p className="fl-dash-lead">{lead}</p> : null}
+        <header className="wd-panel-head">
+          {title ? <h2>{title}</h2> : null}
+          {lead ? <p className="wd-lead">{lead}</p> : null}
         </header>
       ) : null}
       {children}

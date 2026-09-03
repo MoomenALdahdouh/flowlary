@@ -13,7 +13,7 @@ import {
   type DashboardSection,
 } from './types.ts'
 import { Button } from '../components/Ui.tsx'
-import { DashboardShell } from './panels/AccountDashboardPanel.tsx'
+import { DashboardShell } from './DashboardShell.tsx'
 import { OverviewPanel } from './panels/OverviewPanel.tsx'
 import { PracticePanel } from './panels/PracticePanel.tsx'
 import { ProgressPanel } from './panels/ProgressPanel.tsx'
@@ -134,7 +134,11 @@ export function DashboardApp({
     () =>
       DASHBOARD_NAV_GROUPS.map((group) => ({
         label: copy.nav[group.labelKey],
-        items: group.items.map((item) => ({ id: item.id, label: copy.nav[item.labelKey] })),
+        items: group.items.map((item) => ({
+          id: item.id,
+          label: copy.nav[item.labelKey],
+          href: item.route,
+        })),
       })),
     [copy.nav],
   )
@@ -227,6 +231,9 @@ export function DashboardApp({
             locale={locale === 'ar' ? 'ar' : 'en'}
             isProOrTrial={isPro || inTrial}
             extensionConnected={extensionConnected}
+            creditsRemaining={creditsRemaining}
+            dailyLimit={dailyLimit}
+            usageDescription={usageView.description}
             onNavigate={navigate}
           />
         </div>
@@ -265,6 +272,7 @@ export function DashboardApp({
             bundle={bundle}
             accountId={accountId}
             copy={copy}
+            locale={locale === 'ar' ? 'ar' : 'en'}
             isProOrTrial={isPro || inTrial}
             onOpenPractice={(target) => navigate('practice', target)}
           />
@@ -280,6 +288,8 @@ export function DashboardApp({
       nav={flatNav}
       section={section}
       onSectionChange={(id) => navigate(id as DashboardSection)}
+      extensionConnected={extensionConnected}
+      onSignOut={onLogout}
     >
       {panel}
     </DashboardShell>

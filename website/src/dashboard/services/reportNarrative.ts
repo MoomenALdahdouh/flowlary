@@ -16,7 +16,7 @@ export function buildWebDeterministicReportNarrative(
 
   const overviewByQuality: Record<string, string> = {
     no_data: 'Start writing to build your learning report.',
-    insufficient: 'Keep writing — your report needs a bit more evidence.',
+    insufficient: 'Keep writing, your report needs a bit more evidence.',
     partial: 'Your learning report is taking shape from recent writing.',
     ready: 'Here is your learning report based on your recent writing.',
   }
@@ -44,7 +44,7 @@ export function buildWebDeterministicReportNarrative(
   })
 
   const focusLines = areasToImprove.map(
-    (category) => `Practice ${categoryLabel(category)} — it shows up often in your writing.`,
+    (category) => `Practice ${categoryLabel(category)}, it shows up often in your writing.`,
   )
 
   const improvements: string[] = []

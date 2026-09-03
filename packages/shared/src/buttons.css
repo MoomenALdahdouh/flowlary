@@ -1,0 +1,230 @@
+/**
+ * Flowlary canonical buttons — website .btn + extension legacy aliases.
+ * Import after tokens.css.
+ */
+
+.btn,
+.fl-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fl-space-2);
+  min-height: var(--fl-control-height);
+  padding: var(--fl-space-2) var(--fl-space-4);
+  border-radius: var(--fl-radius-sm);
+  border: 1px solid transparent;
+  font: inherit;
+  font-weight: 650;
+  font-size: var(--fl-text-small);
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background var(--fl-duration) var(--fl-ease),
+    border-color var(--fl-duration) var(--fl-ease),
+    color var(--fl-duration) var(--fl-ease),
+    box-shadow var(--fl-duration) var(--fl-ease);
+}
+
+.btn:hover:not(:disabled):not([aria-disabled='true']),
+.fl-action-btn:hover:not(:disabled) {
+  box-shadow: none;
+}
+
+.btn:active:not(:disabled):not([aria-disabled='true']),
+.fl-action-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn:disabled,
+.btn[aria-disabled='true'],
+.fl-action-btn:disabled {
+  color: var(--fl-text-disabled);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  opacity: 1;
+}
+
+.btn-primary,
+a.btn-primary,
+.fl-action-btn-primary,
+.fl-action-btn.fl-action-btn-primary,
+a.fl-action-btn-primary {
+  background: var(--fl-accent);
+  color: var(--fl-on-accent);
+  border-color: transparent;
+}
+
+.btn-primary:hover:not(:disabled):not([aria-disabled='true']),
+a.btn-primary:hover:not(:disabled):not([aria-disabled='true']),
+.fl-action-btn-primary:hover:not(:disabled),
+.fl-action-btn.fl-action-btn-primary:hover:not(:disabled),
+a.fl-action-btn-primary:hover:not(:disabled) {
+  background: var(--fl-accent-hover);
+  color: var(--fl-on-accent);
+}
+
+.btn-primary:active:not(:disabled):not([aria-disabled='true']),
+a.btn-primary:active:not(:disabled):not([aria-disabled='true']),
+.fl-action-btn-primary:active:not(:disabled),
+.fl-action-btn.fl-action-btn-primary:active:not(:disabled) {
+  background: var(--fl-accent-pressed);
+}
+
+.btn-primary:disabled,
+.btn-primary[aria-disabled='true'],
+a.btn-primary:disabled,
+.fl-action-btn-primary:disabled,
+.fl-action-btn.fl-action-btn-primary:disabled {
+  background: var(--fl-accent-soft);
+  color: var(--fl-text-disabled);
+}
+
+.btn-secondary,
+a.btn-secondary,
+.fl-action-btn-secondary,
+.fl-action-btn.fl-action-btn-secondary,
+.fl-action-btn:not(.fl-action-btn-primary):not(.fl-action-btn-muted):not(.is-danger),
+a.fl-action-btn-secondary {
+  background: var(--fl-product-bg);
+  border: 1px solid var(--fl-border-strong);
+  color: var(--fl-text);
+}
+
+.btn-secondary:hover:not(:disabled):not([aria-disabled='true']),
+a.btn-secondary:hover:not(:disabled):not([aria-disabled='true']),
+.fl-action-btn-secondary:hover:not(:disabled),
+.fl-action-btn:not(.fl-action-btn-primary):not(.fl-action-btn-muted):not(.is-danger):hover:not(:disabled) {
+  border-color: var(--fl-border-accent);
+  background: var(--fl-surface-2);
+  color: var(--fl-text);
+}
+
+.btn-tertiary,
+a.btn-tertiary {
+  background: var(--fl-hover-fill);
+  border: 1px solid transparent;
+  color: var(--fl-text);
+}
+
+.btn-tertiary:hover:not(:disabled):not([aria-disabled='true']),
+a.btn-tertiary:hover:not(:disabled):not([aria-disabled='true']) {
+  background: var(--fl-accent-soft);
+}
+
+.btn-ghost,
+a.btn-ghost,
+.fl-action-btn-muted {
+  background: transparent;
+  color: var(--fl-text);
+  padding-inline: var(--fl-space-3);
+  border-color: transparent;
+}
+
+.btn-ghost:hover:not(:disabled):not([aria-disabled='true']),
+a.btn-ghost:hover:not(:disabled):not([aria-disabled='true']),
+.fl-action-btn-muted:hover:not(:disabled) {
+  color: var(--fl-text);
+  background: var(--fl-hover-fill);
+}
+
+.btn-danger,
+a.btn-danger,
+.fl-action-btn.is-danger {
+  background: var(--fl-danger-soft);
+  border: 1px solid color-mix(in srgb, var(--fl-danger) 35%, transparent);
+  color: var(--fl-danger);
+}
+
+.btn-danger:hover:not(:disabled):not([aria-disabled='true']),
+a.btn-danger:hover:not(:disabled):not([aria-disabled='true']),
+.fl-action-btn.is-danger:hover:not(:disabled) {
+  background: var(--fl-danger);
+  color: var(--fl-on-accent);
+}
+
+.btn-link,
+a.btn-link,
+.fl-link-btn {
+  min-height: auto;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--fl-accent);
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.btn-link:hover:not(:disabled):not([aria-disabled='true']),
+a.btn-link:hover:not(:disabled):not([aria-disabled='true']),
+.fl-link-btn:hover:not(:disabled) {
+  color: var(--fl-accent-hover);
+}
+
+.btn-sm,
+.fl-action-btn-compact {
+  min-height: var(--fl-control-height-compact);
+  padding: var(--fl-space-2) var(--fl-space-3);
+  font-size: var(--fl-text-small);
+}
+
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+/* Playground demo buttons — same system */
+.pg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fl-space-2);
+  min-height: var(--fl-control-height);
+  padding: var(--fl-space-2) var(--fl-space-4);
+  border-radius: var(--fl-radius-sm);
+  border: 1px solid transparent;
+  font: inherit;
+  font-weight: 650;
+  font-size: var(--fl-text-small);
+  cursor: pointer;
+  transition:
+    background var(--fl-duration) var(--fl-ease),
+    border-color var(--fl-duration) var(--fl-ease),
+    color var(--fl-duration) var(--fl-ease);
+}
+
+.pg-btn:focus-visible {
+  outline: var(--fl-focus);
+  outline-offset: 2px;
+}
+
+.pg-btn-primary {
+  background: var(--fl-accent);
+  color: var(--fl-on-accent);
+}
+
+.pg-btn-primary:hover:not(:disabled) {
+  background: var(--fl-accent-hover);
+}
+
+.pg-btn-secondary {
+  background: var(--fl-product-bg);
+  border: 1px solid var(--fl-border-strong);
+  color: var(--fl-text);
+}
+
+.pg-btn-secondary:hover:not(:disabled) {
+  border-color: var(--fl-border-accent);
+  background: var(--fl-surface-2);
+}
+
+.pg-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.pg-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}

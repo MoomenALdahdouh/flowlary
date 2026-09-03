@@ -13,20 +13,14 @@ function renderRoute(path: string) {
 }
 
 describe('product demonstrations', () => {
-  it('home uses real product previews for write and communicate', () => {
+  it('home hero uses a real popup preview and product experience', () => {
     const html = renderRoute('/')
-    expect(html).toContain('Write anywhere.')
-    expect(html).toContain('Your writing becomes your English lesson.')
-    expect(html).toContain('Corrected in place')
-    expect(html).toContain('received')
-    expect(html).toContain('How are you today?')
-    expect(html).toContain('Illustrative learning flow')
-    expect(html).toContain('Writing correction')
-    expect(html).toContain('Your AI Writing Companion')
-    expect(html).toContain('Extension active')
-    expect(html).toContain('Fix Writing')
-    expect(html).toContain('Ready')
-    expect(html).not.toContain('Writing Intelligence')
+    expect(html).toContain('Keep writing.')
+    expect(html).toContain('switch tools.')
+    expect(html).toContain('Three problems.')
+    expect(html).toContain('One field.')
+    expect(html).toContain('fl-fidelity-simulated')
+    expect(html).toContain('Simulated experience')
     expect(html).not.toContain('1,000,000 users')
   })
 
@@ -45,23 +39,27 @@ describe('product demonstrations', () => {
     expect(ar.demos.browser.pageUrl).toMatch(/[\u0600-\u06FF]/)
   })
 
-  it('features page connects real product demos to the learning narrative', () => {
+  it('try page hosts the interactive playground demo', () => {
+    const html = renderRoute('/try')
+    expect(html).toContain('fl-fidelity-simulated')
+    expect(html).toContain('Simulated experience')
+    expect(html).toContain('Try ')
+    expect(html).toContain('xp-gradient-text">Flowlary</span>')
+  })
+
+  it('features index links to capability detail pages', () => {
     const html = renderRoute('/features')
-    expect(html).toContain('Get help while you write')
-    expect(html).toContain('Communicate without breaking your flow.')
-    expect(html).toContain('Turn everyday writing into a learning loop.')
-    expect(html).toContain('Corrected in place')
-    expect(html).toContain('received')
-    expect(html).toContain('How are you today?')
-    expect(html).toContain('Writing history')
-    expect(html).toContain('Less switching. More continuity.')
-    expect(html).toContain('Built into the experience')
+    expect(html).toContain('What ')
+    expect(html).toContain('helps with')
+    expect(html).toContain('Keyboard layout')
+    expect(html).toContain('href="/features/writing-correction"')
+    expect(html).toContain('href="/product"')
   })
 })
 
 describe('coming soon policy', () => {
   it('does not use coming soon on primary marketing surfaces', () => {
-    for (const path of ['/', '/features', '/pricing', '/about', '/support']) {
+    for (const path of ['/', '/features', '/pricing', '/about', '/support', '/try', '/product']) {
       const html = renderRoute(path).toLowerCase()
       expect(html).not.toContain('coming soon')
     }

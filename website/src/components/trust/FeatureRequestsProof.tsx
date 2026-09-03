@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom'
 import type { PublicFeatureRequestStat } from '@flowlary/shared'
 import { Button } from '../Ui.tsx'
 import { Reveal } from '../Reveal.tsx'
@@ -49,12 +48,10 @@ export function BuiltWithUsersSection() {
             <h2 id="trust-built-title">{copy.title}</h2>
             <p>{copy.lead}</p>
             <div className="btn-row">
-              <Link className="btn btn-primary" to="/feedback">
-                {copy.feedbackCta}
-              </Link>
-              <Link className="btn btn-secondary" to="/feedback?tab=features">
+              <Button to="/feedback">{copy.feedbackCta}</Button>
+              <Button variant="secondary" to="/feedback?tab=features">
                 {copy.featureCta}
-              </Link>
+              </Button>
             </div>
           </article>
         </Reveal>

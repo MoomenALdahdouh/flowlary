@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BRAND, type LearningProfile } from '@flowlary/shared'
 import {
   dismissLearningSetup,
@@ -6,13 +6,13 @@ import {
   fetchStatus,
   restartLearningOnboarding,
 } from '../popup/api.ts'
-import { AccountAvatar, PopupLogo, ThemeToggle } from '../popup/components.tsx'
-import { t } from '../popup/i18n/index.ts'
+import { t, useI18n } from '../popup/i18n/index.ts'
+import { FLOWLARY_SITE_URL } from '../config/endpoints.ts'
 import { type DashboardSection } from '../config/dashboard.ts'
 import { useExtensionSession } from '../popup/useExtensionSession.ts'
 import { useFeatureMutations } from '../ui/useFeatureMutations.ts'
-import { HeaderStatusPill } from '../ui/SystemStatus.tsx'
 import { DashboardPage } from './DashboardPage.tsx'
+import { DashboardShell, type DashboardNavGroup } from './DashboardShell.tsx'
 import { DashboardTour } from './onboarding/DashboardTour.tsx'
 import { OnboardingFlow } from './onboarding/OnboardingFlow.tsx'
 import {
@@ -26,25 +26,7 @@ import { PracticeSection } from './panels/PracticeSection.tsx'
 import { ProgressPanel } from './panels/ProgressPanel.tsx'
 import { HistoryPanel } from './panels/HistoryPanel.tsx'
 import { AccountPanel, SettingsPanel } from './panels/SettingsPanel.tsx'
-
-const NAV_GROUPS: { labelKey: 'navHome' | 'navManage'; items: { id: DashboardSection; label: string }[] }[] = [
-  {
-    labelKey: 'navHome',
-    items: [
-      { id: 'overview', label: t('nav.home') },
-      { id: 'practice', label: t('nav.practice') },
-      { id: 'progress', label: t('nav.progress') },
-      { id: 'report', label: t('nav.report') },
-    ],
-  },
-  {
-    labelKey: 'navManage',
-    items: [
-      { id: 'settings', label: t('settings.title') },
-      { id: 'account', label: t('account.title') },
-    ],
-  },
-]
+import { openAccountSurface } from '../config/upgrade.ts'
 
 function parseSection(hash: string): DashboardSection {
   const id = hash.replace(/^#/, '').split('?')[0] ?? ''
@@ -72,7 +54,51 @@ function parsePracticeTargetFromHash(hash: string): string | undefined {
   return target || undefined
 }
 
+function buildNavGroups(nav: {
+  groupWrite: string
+  groupLearn: string
+  groupAccount: string
+  overview: string
+  practice: string
+  progress: string
+  report: string
+  settings: string
+  account: string
+  activity: string
+  support: string
+}): DashboardNavGroup[] {
+  return [
+    {
+      label: nav.groupWrite,
+      items: [{ id: 'overview', label: nav.overview }],
+    },
+    {
+      label: nav.groupLearn,
+      items: [
+        { id: 'practice', label: nav.practice },
+        { id: 'progress', label: nav.progress },
+        { id: 'report', label: nav.report },
+      ],
+    },
+    {
+      label: nav.groupAccount,
+      items: [
+        { id: 'settings', label: nav.settings },
+        { id: 'account', label: nav.account },
+        { id: 'activity', label: nav.activity },
+        {
+          id: 'support',
+          label: nav.support,
+          href: `${FLOWLARY_SITE_URL}/dashboard/support`,
+        },
+      ],
+    },
+  ]
+}
+
 export function DashboardApp() {
+  const { messages } = useI18n()
+  const nav = messages.dashboard.nav
   const session = useExtensionSession()
   const { status, loading, busy, error, domain, mutate } = session
   const mutations = useFeatureMutations(session)
@@ -87,6 +113,9 @@ export function DashboardApp() {
   const [onboardingBusy, setOnboardingBusy] = useState(false)
   const [tourOpen, setTourOpen] = useState(false)
   const onboardingClosingRef = useRef(false)
+
+  const navGroups = useMemo(() => buildNavGroups(nav), [nav])
+  const flatNav = useMemo(() => navGroups.flatMap((group) => group.items), [navGroups])
 
   useEffect(() => {
     if (!status) return
@@ -225,182 +254,158 @@ export function DashboardApp() {
     }
   }, [])
 
+  const openAccountEntry = useCallback(() => {
+    openAccountSurface({
+      signedIn: Boolean(status?.account.signedIn),
+      openExtensionAccount: () => go('account'),
+    })
+  }, [go, status?.account.signedIn])
+
   const pageTitle =
     section === 'overview'
-      ? t('nav.home')
+      ? nav.overview
       : section === 'progress'
-        ? t('nav.progress')
+        ? nav.progress
         : section === 'practice'
-          ? t('nav.practice')
+          ? nav.practice
           : section === 'report'
-            ? t('nav.report')
+            ? nav.report
             : section === 'settings'
-              ? t('settings.title')
+              ? nav.settings
               : section === 'activity'
-                ? t('activity.title')
+                ? nav.activity
                 : section === 'account'
-                  ? t('account.title')
+                  ? nav.account
                   : t('dashboard.title')
 
-  return (
-    <div className="fl-dash">
-      <aside className="fl-dash-sidebar">
-        <div className="fl-dash-brand">
-          <PopupLogo />
-          <div>
-            <p className="fl-dash-brand-name">{t('brand.name')}</p>
-            <p className="fl-dash-brand-sub">{t('dashboard.title')}</p>
-          </div>
+  let panelContent: React.ReactNode = null
+
+  if (error) {
+    panelContent = (
+      <div className="wd-panel-stack">
+        <div className="wd-card wd-card-highlight">
+          <p className="wd-error" role="alert">
+            {error}
+          </p>
         </div>
-
-        <nav className="fl-dash-nav" aria-label={t('dashboard.title')} data-tour="nav">
-          {NAV_GROUPS.map((group) => (
-            <div key={group.labelKey} className="fl-dash-nav-group">
-              <p className="fl-dash-nav-label">{t(`dashboard.${group.labelKey}`)}</p>
-              <div className="fl-dash-nav-items">
-                {group.items.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={`fl-dash-nav-btn${section === item.id ? ' is-active' : ''}`}
-                    aria-current={section === item.id ? 'page' : undefined}
-                    data-tour={`nav-${item.id}`}
-                    onClick={() => go(item.id)}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </nav>
-
-        <div className="fl-dash-sidebar-foot">
-          <span className="fl-dash-version">v{status?.version ?? BRAND.version}</span>
-        </div>
-      </aside>
-
-      <div className="fl-dash-shell">
-        <header className="fl-dash-topbar">
-          <p className="fl-dash-kicker">{pageTitle}</p>
-          <div className="fl-dash-topbar-status">
-            <HeaderStatusPill domain={domain} />
-          </div>
-          <div className="fl-header-actions" data-tour="account">
-            <ThemeToggle />
-            <AccountAvatar
-              signedIn={Boolean(status?.account.signedIn)}
-              email={status?.account.email ?? null}
-              onClick={() => go('account')}
-            />
-          </div>
-        </header>
-
-        {error ? (
-          <div className="fl-dash-content">
-            <div className="fl-error fl-dash-error" role="alert">
-              {error}
-            </div>
-          </div>
-        ) : null}
-
-        <main className="fl-dash-main">
-          <div className="fl-dash-content">
-            {loading && !status ? (
-              <p className="fl-loading fl-skel" role="status">
-                {t('connection.checking')}
-              </p>
-            ) : null}
-
-            {status && domain && section === 'overview' ? (
-              <OverviewPanel
-                status={status}
-                domain={domain}
-                loading={loading}
-                busy={busy}
-                {...mutations}
-                onOpenAccount={() => go('account')}
-                onOpenSettings={() => go('settings')}
-                onSetupLearning={() => void beginLearningSetup()}
-                onDismissLearningSetup={() => void dismissLearningSetupPrompt()}
-                setupBusy={onboardingBusy || busy === 'learning-dismiss'}
-                onOpenProgress={() => go('progress')}
-                onOpenPractice={(target) => go('practice', target ? { practiceTarget: target } : undefined)}
-                onOpenReport={() => go('report')}
-                onReplayTour={() => void startDashboardTour()}
-              />
-            ) : null}
-
-            {section === 'progress' ? (
-              <DashboardPage lead={t('dashboard.progressLead')}>
-                <ProgressPanel
-                  learningSummary={status?.learning.summary ?? null}
-                  onOpenActivity={() => go('activity')}
-                  onOpenPractice={() => go('practice')}
-                  advanced={Boolean(
-                    status?.entitlement.capabilities.includes('progress.advanced') ||
-                      status?.entitlement.isPro ||
-                      status?.entitlement.inTrial,
-                  )}
-                />
-              </DashboardPage>
-            ) : null}
-
-            {section === 'practice' ? (
-              <DashboardPage lead={t('dashboard.practiceLead')}>
-                <PracticeSection
-                  status={status}
-                  onOpenOverview={() => go('overview')}
-                  onOpenProgress={() => go('progress')}
-                  fullAccess={Boolean(
-                    status?.entitlement.capabilities.includes('practice.full') ||
-                      status?.entitlement.isPro ||
-                      status?.entitlement.inTrial,
-                  )}
-                  initialTargetPatternId={practiceTargetId}
-                />
-              </DashboardPage>
-            ) : null}
-
-            {section === 'report' ? (
-              <LearningReportPanel
-                signedIn={Boolean(status?.account.signedIn)}
-                onOpenAccount={() => go('account')}
-                onOpenPractice={(target) => go('practice', target ? { practiceTarget: target } : undefined)}
-              />
-            ) : null}
-
-            {status && section === 'account' ? (
-              <AccountPanel status={status} busy={busy} onMutate={mutate} />
-            ) : null}
-
-            {status && section === 'settings' ? (
-              <SettingsPanel
-                  status={status}
-                  busy={busy}
-                  onMutate={mutate}
-                  onStatus={session.setStatus}
-                  onRestartOnboarding={() => void beginLearningSetup()}
-                  onReplayTour={() => void startDashboardTour()}
-                  onStatusRefresh={refreshStatus}
-                  onOpenActivity={() => go('activity')}
-                  onOpenProgress={() => go('progress')}
-                />
-            ) : null}
-
-            {section === 'activity' ? (
-              <DashboardPage lead={t('dashboard.activityLead')}>
-                <HistoryPanel
-                  hideHeader
-                  busy={busy}
-                  setBusy={session.setBusy}
-                  setError={session.setError}
-                />
-              </DashboardPage>
-            ) : null}
-          </div>
-        </main>
       </div>
+    )
+  } else if (loading && !status) {
+    panelContent = (
+      <div className="wd-panel-stack" aria-busy="true" aria-label={t('connection.checking')}>
+        <div className="wd-skeleton wd-skeleton-title" />
+        <div className="wd-skeleton wd-skeleton-line" />
+        <article className="wd-card">
+          <div className="wd-skeleton wd-skeleton-line" />
+          <div className="wd-skeleton wd-skeleton-line wd-skeleton-short" />
+        </article>
+      </div>
+    )
+  } else if (status && domain && section === 'overview') {
+    panelContent = (
+      <OverviewPanel
+        status={status}
+        domain={domain}
+        loading={loading}
+        busy={busy}
+        {...mutations}
+        onOpenAccount={openAccountEntry}
+        onOpenSettings={() => go('settings')}
+        onSetupLearning={() => void beginLearningSetup()}
+        onDismissLearningSetup={() => void dismissLearningSetupPrompt()}
+        setupBusy={onboardingBusy || busy === 'learning-dismiss'}
+        onOpenProgress={() => go('progress')}
+        onOpenPractice={(target) => go('practice', target ? { practiceTarget: target } : undefined)}
+        onOpenReport={() => go('report')}
+        onOpenActivity={() => go('activity')}
+        onReplayTour={() => void startDashboardTour()}
+      />
+    )
+  } else if (section === 'progress') {
+    panelContent = (
+      <DashboardPage title={nav.progress} lead={t('dashboard.progressLead')}>
+        <ProgressPanel
+          learningSummary={status?.learning.summary ?? null}
+          onOpenActivity={() => go('activity')}
+          onOpenPractice={() => go('practice')}
+          advanced={Boolean(
+            status?.entitlement.capabilities.includes('progress.advanced') ||
+              status?.entitlement.isPro ||
+              status?.entitlement.inTrial,
+          )}
+        />
+      </DashboardPage>
+    )
+  } else if (section === 'practice') {
+    panelContent = (
+      <DashboardPage title={nav.practice} lead={t('dashboard.practiceLead')}>
+        <PracticeSection
+          status={status}
+          onOpenOverview={() => go('overview')}
+          onOpenProgress={() => go('progress')}
+          fullAccess={Boolean(
+            status?.entitlement.capabilities.includes('practice.full') ||
+              status?.entitlement.isPro ||
+              status?.entitlement.inTrial,
+          )}
+          initialTargetPatternId={practiceTargetId}
+        />
+      </DashboardPage>
+    )
+  } else if (section === 'report') {
+    panelContent = (
+      <LearningReportPanel
+        signedIn={Boolean(status?.account.signedIn)}
+        onOpenAccount={openAccountEntry}
+        onOpenPractice={(target) => go('practice', target ? { practiceTarget: target } : undefined)}
+      />
+    )
+  } else if (status && section === 'account') {
+    panelContent = (
+      <DashboardPage title={nav.account} lead={t('dashboard.accountLead')}>
+        <AccountPanel status={status} busy={busy} onMutate={mutate} />
+      </DashboardPage>
+    )
+  } else if (status && section === 'settings') {
+    panelContent = (
+      <DashboardPage title={nav.settings} lead={t('dashboard.settingsLead')}>
+        <SettingsPanel
+          status={status}
+          busy={busy}
+          onMutate={mutate}
+          onStatus={session.setStatus}
+          onRestartOnboarding={() => void beginLearningSetup()}
+          onReplayTour={() => void startDashboardTour()}
+          onStatusRefresh={refreshStatus}
+          onOpenActivity={() => go('activity')}
+          onOpenProgress={() => go('progress')}
+        />
+      </DashboardPage>
+    )
+  } else if (section === 'activity') {
+    panelContent = (
+      <DashboardPage title={nav.activity} lead={t('dashboard.activityLead')}>
+        <HistoryPanel hideHeader busy={busy} setBusy={session.setBusy} setError={session.setError} />
+      </DashboardPage>
+    )
+  }
+
+  return (
+    <>
+      <DashboardShell
+        title={pageTitle}
+        navGroups={navGroups}
+        flatNav={flatNav}
+        section={section}
+        version={status?.version ?? BRAND.version}
+        domain={domain}
+        signedIn={Boolean(status?.account.signedIn)}
+        email={status?.account.email ?? null}
+        onNavigate={go}
+        onOpenAccount={openAccountEntry}
+      >
+        {panelContent}
+      </DashboardShell>
 
       {status && learningProfile && onboardingOpen ? (
         <OnboardingFlow
@@ -414,6 +419,6 @@ export function DashboardApp() {
       ) : null}
 
       <DashboardTour open={tourOpen && !onboardingOpen} onNavigate={go} onClose={() => setTourOpen(false)} />
-    </div>
+    </>
   )
 }

@@ -4,7 +4,7 @@ import {
   formatUsdFromCents,
   type BillingInterval,
 } from '@flowlary/shared'
-import { Badge, Button, GetFlowlaryButton } from '../Ui.tsx'
+import { Badge, Button, ConversionPanel, InstallFlowlaryButton, SectionHeading } from '../Ui.tsx'
 import { Reveal } from '../Reveal.tsx'
 import { useMessages } from '../../i18n/index.tsx'
 import {
@@ -62,6 +62,24 @@ function PlanFeatures({ items, highlightFirst = false }: { items: readonly strin
             <CheckIcon />
           </span>
           <span>{item}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function TrustRow({ items }: { items: readonly { label: string; detail: string }[] }) {
+  return (
+    <ul className="pr-trust">
+      {items.map((item, index) => (
+        <li key={item.label}>
+          <span className="pr-trust-icon" aria-hidden="true">
+            {index === 0 ? <ShieldIcon /> : <CheckIcon />}
+          </span>
+          <div className="pr-trust-copy">
+            <strong>{item.label}</strong>
+            <span>{item.detail}</span>
+          </div>
         </li>
       ))}
     </ul>
@@ -211,25 +229,41 @@ export function PricingShowcase() {
     a: fill(item.a, pricingVars),
   }))
 
+  const titleHighlight = p.titleHighlight ?? 'Flowlary.'
+  const titleParts = p.title.split(titleHighlight)
+
   return (
-    <div className="pp-page pr-page">
-      <header className="pp-hero pr-hero">
+    <div className="pp-page pr-page xp-pricing">
+      <div className="pr-glow" aria-hidden="true" />
+
+      <header className="pp-hero pr-hero xp-hero" aria-labelledby="pr-hero-title">
         <div className="container pr-hero-inner">
           <Reveal>
-            <div className="pr-hero-copy">
-              <p className="pr-kicker">{p.kicker}</p>
-              <h1>{p.title}</h1>
-              <p className="lead">{p.lead}</p>
+            <div className="pr-hero-copy xp-hero-copy">
+              <p className="xp-hero-badge">
+                <span className="xp-hero-badge-dot" aria-hidden="true" />
+                {p.kicker}
+              </p>
+              <h1 id="pr-hero-title" className="mh-display xp-hero-title">
+                {titleParts[0]}
+                <span className="xp-gradient-text">{titleHighlight}</span>
+                {titleParts[1]}
+              </h1>
+              <p className="lead mh-hero-lead">{p.lead}</p>
               <p className="pr-student-hero-link">
                 <a href="#students">{p.studentHeroLink}</a>
               </p>
+              {p.trust?.length ? <TrustRow items={p.trust} /> : null}
             </div>
           </Reveal>
         </div>
       </header>
 
-      <section className="section pr-body">
-        <div className="container pr-shell">
+      <section className="xp-page-section pr-plans-band" aria-labelledby="pr-plans-title">
+        <div className="container xp-page-shell pr-shell">
+          <h2 id="pr-plans-title" className="visually-hidden">
+            {p.kicker}
+          </h2>
           <Reveal>
             <div className="pr-interval-wrap">
               <div className="pr-interval" role="group" aria-label={p.interval.yearlyHint ?? p.interval.yearly}>
@@ -317,7 +351,7 @@ export function PricingShowcase() {
                   <PlanFeatures items={proItems} highlightFirst />
                   <div className="pr-card-actions">
                     <Button
-                      className="pr-card-btn pr-card-btn-primary"
+                      className="pr-card-btn"
                       disabled={busy || proCta.kind === 'disabled' || (!checkoutReady && proCta.kind === 'checkout')}
                       onClick={() => void onProAction()}
                     >
@@ -341,9 +375,13 @@ export function PricingShowcase() {
           </div>
 
           <StudentProgramSection signedIn={Boolean(account)} />
+        </div>
+      </section>
 
+      <section className="xp-page-section is-soft" aria-labelledby="pr-trial-title">
+        <div className="container xp-page-shell pr-shell">
           <Reveal>
-            <section className="pr-surface pr-trial" aria-labelledby="pr-trial-title">
+            <section className="pr-surface pr-trial">
               <p className="pr-plan-kicker">{p.trialCard.kicker}</p>
               <h2 id="pr-trial-title">{p.trial.title}</h2>
               <p className="pr-card-body">{p.trial.intro}</p>
@@ -366,47 +404,55 @@ export function PricingShowcase() {
               </Button>
             </section>
           </Reveal>
+        </div>
+      </section>
 
+      <section className="xp-page-section" id="pr-compare" aria-labelledby="pr-compare-title">
+        <div className="container xp-page-shell pr-shell">
           <Reveal>
-            <div id="pr-compare" className="pr-compare-section">
-              <header className="pr-section-head">
-                <h2>{p.compare.title}</h2>
-              </header>
-              <div className="pr-surface pr-compare-wrap">
-                <div className="pr-compare-scroll">
-                  <table className="pr-compare">
-                    <caption className="visually-hidden">{p.compare.title}</caption>
-                    <thead>
-                      <tr>
-                        <th scope="col">{p.compare.featureCol}</th>
-                        <th scope="col" className="pr-col-plan">{p.compare.freeCol}</th>
-                        <th scope="col" className="pr-col-plan pr-col-pro">{p.compare.proCol}</th>
+            <SectionHeading title={p.compare.title} titleId="pr-compare-title" />
+            <div className="pr-surface pr-compare-wrap">
+              <div className="pr-compare-scroll">
+                <table className="pr-compare">
+                  <caption className="visually-hidden">{p.compare.title}</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">{p.compare.featureCol}</th>
+                      <th scope="col" className="pr-col-plan">{p.compare.freeCol}</th>
+                      <th scope="col" className="pr-col-plan pr-col-pro">{p.compare.proCol}</th>
+                    </tr>
+                  </thead>
+                  {p.compare.categories.map((category) => (
+                    <tbody key={category.title}>
+                      <tr className="pr-compare-category-row">
+                        <th scope="rowgroup" colSpan={3}>{category.title}</th>
                       </tr>
-                    </thead>
-                    {p.compare.categories.map((category) => (
-                      <tbody key={category.title}>
-                        <tr className="pr-compare-category-row">
-                          <th scope="rowgroup" colSpan={3}>{category.title}</th>
+                      {category.rows.map((row) => (
+                        <tr key={row.feature}>
+                          <th scope="row">{row.feature}</th>
+                          <td className="pr-col-plan">{fill(row.free, pricingVars)}</td>
+                          <td className="pr-col-plan pr-col-pro">{fill(row.pro, pricingVars)}</td>
                         </tr>
-                        {category.rows.map((row) => (
-                          <tr key={row.feature}>
-                            <th scope="row">{row.feature}</th>
-                            <td className="pr-col-plan">{fill(row.free, pricingVars)}</td>
-                            <td className="pr-col-plan pr-col-pro">{fill(row.pro, pricingVars)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    ))}
-                  </table>
-                </div>
+                      ))}
+                    </tbody>
+                  ))}
+                </table>
               </div>
             </div>
           </Reveal>
+        </div>
+      </section>
 
+      <section className="xp-page-section is-soft" aria-labelledby="pr-ai-title">
+        <div className="container xp-page-shell pr-shell">
           <Reveal>
             <article className="pr-surface pr-ai-usage">
-              <h2>{p.aiUsage.title}</h2>
-              <p className="pr-ai-lead">{p.aiUsage.lead}</p>
+              <SectionHeading
+                kicker={p.kicker}
+                title={p.aiUsage.title}
+                lead={p.aiUsage.lead}
+                titleId="pr-ai-title"
+              />
               <p>{p.aiUsage.body}</p>
               <ul className="pr-ai-bullets">
                 {p.aiUsage.bullets.map((item) => (
@@ -419,68 +465,58 @@ export function PricingShowcase() {
               <p>{p.aiUsage.exhaustionBody}</p>
             </article>
           </Reveal>
+        </div>
+      </section>
 
+      <section className="xp-page-section" aria-labelledby="pr-billing-title">
+        <div className="container xp-page-shell pr-shell">
           <Reveal>
             <article className="pr-surface pr-billing">
               <div className="pr-billing-icon" aria-hidden="true">
                 <ShieldIcon />
               </div>
               <div>
-                <h2>{p.billing.title}</h2>
+                <h2 id="pr-billing-title">{p.billing.title}</h2>
                 <p>{fill(p.billing.body, pricingVars)}</p>
               </div>
             </article>
-
-            {p.trust?.length ? (
-              <div className="pr-trust-row">
-                {p.trust.map((item) => (
-                  <article key={item.label} className="pr-trust-card fl-surface-1">
-                    <h3>{item.label}</h3>
-                    <p>{item.detail}</p>
-                  </article>
-                ))}
-              </div>
-            ) : null}
-          </Reveal>
-
-          <Reveal>
-            <section className="pr-faq" aria-labelledby="pr-faq-title">
-              <h2 id="pr-faq-title">{p.faq.title}</h2>
-              <div className="pr-faq-list">
-                {faqItems.map((item) => (
-                  <details
-                    key={item.q}
-                    className="pr-surface pr-faq-item"
-                    onToggle={(event) => {
-                      if ((event.target as HTMLDetailsElement).open) emitPricingEvent('faq_opened')
-                    }}
-                  >
-                    <summary>{item.q}</summary>
-                    <p>{item.a}</p>
-                  </details>
-                ))}
-              </div>
-            </section>
           </Reveal>
         </div>
       </section>
 
-      <section className="pr-final">
-        <div className="container pr-shell">
+      <section className="xp-page-section is-soft" aria-labelledby="pr-faq-title">
+        <div className="container xp-page-shell pr-shell">
           <Reveal>
-            <div className="pr-surface pr-final-card">
-              <h2>{p.final.title}</h2>
-              <p>{p.final.lead}</p>
-              <div className="btn-row pr-final-actions">
-                <Button to="/account?mode=register" onClick={() => emitPricingEvent('free_cta_click')}>
-                  {p.final.ctaFree}
-                </Button>
-                <GetFlowlaryButton variant="secondary" />
-              </div>
+            <SectionHeading kicker={p.kicker} title={p.faq.title} titleId="pr-faq-title" />
+            <div className="pr-faq-list">
+              {faqItems.map((item) => (
+                <details
+                  key={item.q}
+                  className="pr-surface pr-faq-item"
+                  onToggle={(event) => {
+                    if ((event.target as HTMLDetailsElement).open) emitPricingEvent('faq_opened')
+                  }}
+                >
+                  <summary>{item.q}</summary>
+                  <p>{item.a}</p>
+                </details>
+              ))}
             </div>
           </Reveal>
         </div>
       </section>
+
+      <ConversionPanel
+        titleId="pr-final-title"
+        title={p.final.title}
+        lead={p.final.lead}
+        primary={
+          <Button to="/account?mode=register" onClick={() => emitPricingEvent('free_cta_click')}>
+            {p.final.ctaFree}
+          </Button>
+        }
+        secondary={<InstallFlowlaryButton variant="secondary" />}
+      />
     </div>
   )
 }

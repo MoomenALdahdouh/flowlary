@@ -5,9 +5,7 @@ import { SUPPORTED_LANGUAGES } from '../../features/translation/languages.ts'
 import { getSupportedLayouts } from '../../features/layout/layouts/registry.ts'
 import {
   acceptFlowlaryAi,
-  accountLogin,
   accountLogout,
-  accountRegister,
   patchCorrection,
   patchLayout,
   patchSettings,
@@ -20,10 +18,10 @@ import { t } from '../../popup/i18n/index.ts'
 import { correctionAiLabel } from '../../popup/status.ts'
 import { getShortcutLabels } from '../../popup/shortcuts.ts'
 import { DataFlowDiagram, InfoCard, ShortcutKey } from '../../ui/shared.tsx'
-import { FLOWLARY_SITE_URL } from '../../config/endpoints.ts'
 import { getAccountUrl, openUpgradePage } from '../../config/upgrade.ts'
 import { UsageStatusCard } from '../../ui/UsageStatusCard.tsx'
 import { resolveUsageUxFromStatus } from '../../ui/usageUx.ts'
+import { WebsiteAccountSignInCard } from '../components/WebsiteAccountSignInCard.tsx'
 import { LearningSettingsSection } from './LearningSettingsSection.tsx'
 import { DataControlSection } from './DataControlSection.tsx'
 
@@ -527,29 +525,12 @@ type AccountPanelProps = {
 }
 
 export function AccountPanel({ status, busy, onMutate }: AccountPanelProps) {
-  const [accountEmail, setAccountEmail] = useState('')
-  const [accountPassword, setAccountPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
-  const [formError, setFormError] = useState<string | null>(null)
   const usage = resolveUsageUxFromStatus(status)
 
   function openAccountSite() {
     const url = getAccountUrl()
     if (typeof chrome !== 'undefined' && chrome.tabs?.create) void chrome.tabs.create({ url })
     else window.open(url, '_blank', 'noopener')
-  }
-
-  async function submitAuth() {
-    setFormError(null)
-    if (authMode === 'register' && accountPassword !== confirmPassword) {
-      setFormError(t('account.passwordMismatch'))
-      return
-    }
-    const run = authMode === 'register' ? accountRegister : accountLogin
-    const key = authMode === 'register' ? 'account-register' : 'account-login'
-    await onMutate(key, () => run(accountEmail.trim(), accountPassword))
   }
 
   return (
@@ -627,132 +608,7 @@ export function AccountPanel({ status, busy, onMutate }: AccountPanelProps) {
           </div>
         </div>
       ) : (
-        <div className="fl-account-grid is-single">
-          <article className="fl-account-card">
-            <div className="fl-account-offer">
-              <span className="fl-account-offer-tag">{t('account.offerHeadline')}</span>
-              <p>{t('account.offerNote')}</p>
-            </div>
-            <div className="fl-account-card-head">
-              <h3>{authMode === 'register' ? t('account.createAccount') : t('account.formTitle')}</h3>
-              <p>{t('account.formLead')}</p>
-            </div>
-            <div className="fl-account-callout">
-              <strong>{t('account.localMode')}</strong>
-              <span>{t('account.localModeDesc')}</span>
-            </div>
-            <form
-              className="fl-account-form"
-              onSubmit={(event) => {
-                event.preventDefault()
-                void submitAuth()
-              }}
-            >
-              <label className="fl-account-field">
-                <span>{t('account.email')}</span>
-                <input
-                  type="email"
-                  value={accountEmail}
-                  onChange={(e) => setAccountEmail(e.target.value)}
-                  autoComplete="email"
-                  required
-                />
-              </label>
-              <label className="fl-account-field">
-                <span>{t('account.password')}</span>
-                <div className="fl-account-input-wrap">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={accountPassword}
-                    onChange={(e) => setAccountPassword(e.target.value)}
-                    autoComplete={authMode === 'register' ? 'new-password' : 'current-password'}
-                    minLength={8}
-                    required
-                  />
-                  <button
-                    type="button"
-                    className="fl-account-toggle-pw"
-                    aria-pressed={showPassword}
-                    onClick={() => setShowPassword((value) => !value)}
-                  >
-                    {showPassword ? t('account.hidePassword') : t('account.showPassword')}
-                  </button>
-                </div>
-              </label>
-              {authMode === 'register' ? (
-                <label className="fl-account-field">
-                  <span>{t('account.confirmPassword')}</span>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    autoComplete="new-password"
-                    minLength={8}
-                    required
-                  />
-                </label>
-              ) : null}
-              {authMode === 'login' ? (
-                <p className="fl-account-hint">
-                  <button
-                    type="button"
-                    className="fl-link-btn"
-                    onClick={() => {
-                      const url = `${FLOWLARY_SITE_URL}/account/forgot-password`
-                      if (typeof chrome !== 'undefined' && chrome.tabs?.create) void chrome.tabs.create({ url })
-                      else window.open(url, '_blank', 'noopener')
-                    }}
-                  >
-                    {t('account.forgotPassword')}
-                  </button>
-                </p>
-              ) : null}
-              <p className="fl-account-hint">{t('account.passwordHint')}</p>
-              {formError ? (
-                <p className="fl-account-hint" role="alert">
-                  {formError}
-                </p>
-              ) : null}
-              <div className="fl-account-form-actions fl-account-form-actions-single">
-                <button
-                  type="submit"
-                  className="fl-action-btn fl-action-btn-primary"
-                  disabled={busy === 'account-login' || busy === 'account-register'}
-                >
-                  {authMode === 'register' ? t('account.createAccount') : t('account.signIn')}
-                </button>
-              </div>
-              <p className="fl-account-switch">
-                {authMode === 'register' ? (
-                  <button
-                    type="button"
-                    className="fl-link-btn"
-                    onClick={() => {
-                      setAuthMode('login')
-                      setFormError(null)
-                    }}
-                  >
-                    {t('account.haveAccount')}
-                  </button>
-                ) : (
-                  <>
-                    <span>{t('account.noAccount')}</span>{' '}
-                    <button
-                      type="button"
-                      className="fl-link-btn"
-                      onClick={() => {
-                        setAuthMode('register')
-                        setFormError(null)
-                      }}
-                    >
-                      {t('account.createOne')}
-                    </button>
-                  </>
-                )}
-              </p>
-            </form>
-          </article>
-        </div>
+        <WebsiteAccountSignInCard />
       )}
     </div>
   )

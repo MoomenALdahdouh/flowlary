@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { FLOWLARY_PRICING, FREE_DAILY_CREDITS, PRO_DAILY_CREDITS } from '@flowlary/shared'
-import { Button, GetFlowlaryButton } from '../components/Ui.tsx'
+import { Button, InstallFlowlaryButton } from '../components/Ui.tsx'
 import { useMessages } from '../i18n/index.tsx'
 import {
   fetchBillingConfig,
@@ -22,6 +22,8 @@ import {
   resolveCommercialPlanState,
 } from '../account/billing.ts'
 import { EmailVerificationPanel } from '../account/EmailVerificationPanel.tsx'
+import { AccountAuthLayout } from '../components/account/AccountAuthLayout.tsx'
+import { AccountAuthForm } from '../components/account/AccountAuthForm.tsx'
 import { probeExtensionBridge, syncStoredSessionToExtension } from '../account/extensionBridge.ts'
 import {
   clearPendingNext,
@@ -31,8 +33,6 @@ import {
   storePendingNext,
 } from '../account/safeNext.ts'
 import { bootstrapWebLearningSync } from '../lab/webLearningSync.ts'
-import { DashboardApp } from '../dashboard/DashboardApp.tsx'
-import { StudentVerificationPanel } from '../account/StudentVerificationPanel.tsx'
 
 function fill(template: string, vars: Record<string, string | number>): string {
   return template.replace(/\{(\w+)\}/g, (_, key: string) => String(vars[key] ?? ''))
@@ -78,6 +78,7 @@ export function AccountPage() {
   const t = useMessages()
   const copy = t.account
   const navigate = useNavigate()
+  const location = useLocation()
   const [search, setSearch] = useSearchParams()
   const waitingForWebhook = search.get('checkout') === 'complete'
   const studentIntent = search.get('intent') === 'student' || search.get('student') === '1'
@@ -229,7 +230,7 @@ export function AccountPage() {
     const pending = next ?? readPendingNext()
     if (pending === 'lab' && active?.emailVerified !== false) {
       clearPendingNext()
-      navigate('/#writing-lab', { replace: true })
+      navigate('/lab', { replace: true })
       return
     }
     if (pending === 'checkout' && active?.emailVerified !== false) {
@@ -254,7 +255,7 @@ export function AccountPage() {
     const pending = readPendingNext() ?? next
     if (pending === 'lab') {
       clearPendingNext()
-      navigate('/#writing-lab', { replace: true })
+      navigate('/lab', { replace: true })
       return
     }
     if (pending === 'checkout') {
@@ -431,306 +432,152 @@ export function AccountPage() {
     (authMode === 'register' &&
       (password.length < 8 || confirmPassword.length < 8 || password !== confirmPassword))
 
+  const authFooter = (
+    <p className="ac-extension-link">
+      <Button variant="ghost" to="/guide">
+        {copy.installExtensionCta}
+      </Button>
+      <Button variant="ghost" to="/pricing">
+        {copy.viewPlans}
+      </Button>
+    </p>
+  )
+
   return (
-    <div className={`ac-page${account ? ' ac-page-dashboard' : ' ac-page-signed-out'}`}>
+    <>
       {restoring ? (
-        <section className="section ac-section">
-          <div className="container ac-auth-shell" aria-busy="true">
-            <p className="ac-kicker">{copy.dashboardKicker}</p>
-            <h1>{copy.loading}</h1>
-            <div className="ac-auth-card">
-              <div className="ac-skeleton ac-skeleton-line" />
-              <div className="ac-skeleton ac-skeleton-line" />
-              <div className="ac-skeleton ac-skeleton-line" />
-            </div>
-          </div>
-        </section>
+        <AccountAuthLayout
+          kicker={copy.dashboardKicker}
+          title={copy.loading}
+          trustLine={copy.trustLine}
+        >
+          <article className="ac-auth-card" aria-busy="true">
+            <div className="ac-skeleton ac-skeleton-line" />
+            <div className="ac-skeleton ac-skeleton-line" />
+            <div className="ac-skeleton ac-skeleton-line" />
+          </article>
+        </AccountAuthLayout>
       ) : restoreError && hasStoredWebSession() && !account ? (
-        <section className="section ac-section">
-          <div className="container ac-auth-shell">
-            <h1>{copy.dashboardKicker}</h1>
-            <div className="ac-auth-card">
-              <div className="ac-alert" role="alert">
-                <p>{copy.restoreError}</p>
-                <div className="ac-actions">
-                  <Button type="button" onClick={() => void onRetryRestore()} disabled={busy === 'restore'}>
-                    {copy.retry}
-                  </Button>
-                  <Button type="button" variant="ghost" onClick={() => void onLogout()}>
-                    {copy.signOut}
-                  </Button>
-                </div>
+        <AccountAuthLayout kicker={copy.dashboardKicker} title={copy.dashboardKicker} trustLine={copy.trustLine}>
+          <article className="ac-auth-card">
+            <div className="ac-alert" role="alert">
+              <p>{copy.restoreError}</p>
+              <div className="ac-actions">
+                <Button type="button" onClick={() => void onRetryRestore()} disabled={busy === 'restore'}>
+                  {copy.retry}
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => void onLogout()}>
+                  {copy.signOut}
+                </Button>
               </div>
             </div>
-          </div>
-        </section>
+          </article>
+        </AccountAuthLayout>
       ) : showVerificationGate && account ? (
-        <section className="section ac-section">
-          <div className="container ac-auth-shell">
-            <EmailVerificationPanel
-              email={account.email}
-              onVerified={() => void onVerifiedEmail()}
-              onSignOut={() => void onLogout()}
-            />
-          </div>
-        </section>
+        <AccountAuthLayout
+          kicker={copy.verification.kicker}
+          title={copy.verification.title}
+          lead={copy.verification.lead}
+          trustLine={copy.trustLine}
+        >
+          <EmailVerificationPanel
+            email={account.email}
+            embedded
+            onVerified={() => void onVerifiedEmail()}
+            onSignOut={() => void onLogout()}
+          />
+        </AccountAuthLayout>
       ) : showWelcome && account ? (
-        <section className="section ac-section">
-          <div className="container ac-auth-shell">
-            <p className="ac-kicker">{copy.kicker}</p>
-            <h1>{copy.welcomeNextTitle}</h1>
-            <p className="ac-lead">{copy.welcomeNextLead}</p>
-            <article className="ac-auth-card ac-welcome-card">
-              <p>{copy.welcomeNextBody}</p>
-              {inTrial ? (
-                <ul className="ac-welcome-facts">
-                  <li>{copy.welcomeTrialDuration}</li>
-                  <li>{fill(copy.welcomeTrialCredits, { count: entitlement?.dailyLimit ?? PRO_DAILY_CREDITS })}</li>
-                  {trialDays ? <li>{fill(copy.trialRemaining, { count: trialDays })}</li> : null}
-                </ul>
-              ) : (
-                <p className="ac-hint">{copy.trustLine}</p>
-              )}
-              <div className="ac-welcome-actions">
-                <Button to="/#writing-lab">{copy.startWriting}</Button>
-                <GetFlowlaryButton variant="secondary" />
-              </div>
-            </article>
-          </div>
-        </section>
+        <AccountAuthLayout
+          kicker={copy.kicker}
+          title={copy.welcomeNextTitle}
+          titleHighlight="Flowlary"
+          lead={copy.welcomeNextLead}
+          benefits={copy.companionPoints}
+          trustLine={copy.trustLine}
+          footer={authFooter}
+        >
+          <article className="ac-auth-card ac-welcome-card">
+            <div className="ac-welcome-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M8 12.5 10.5 15 16 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <h2 className="ac-card-title">{copy.welcomeNextTitle}</h2>
+            <p className="ac-welcome-lead">{copy.welcomeNextBody}</p>
+            {inTrial ? (
+              <ul className="ac-welcome-facts">
+                <li>{copy.welcomeTrialDuration}</li>
+                <li>{fill(copy.welcomeTrialCredits, { count: entitlement?.dailyLimit ?? PRO_DAILY_CREDITS })}</li>
+                {trialDays ? <li>{fill(copy.trialRemaining, { count: trialDays })}</li> : null}
+              </ul>
+            ) : (
+              <p className="ac-hint ac-welcome-note">{copy.trustLine}</p>
+            )}
+            <div className="ac-welcome-actions">
+              <Button to="/lab">{copy.startWriting}</Button>
+              <InstallFlowlaryButton variant="secondary" />
+            </div>
+          </article>
+        </AccountAuthLayout>
       ) : account ? (
-        <section className="section ac-section ac-section-dashboard">
-          <div className="container ac-dash-wide">
-            <DashboardApp
-              account={account}
-              entitlement={entitlement}
-              planState={planState}
-              planLabel={planLabel}
-              isPro={isPro}
-              studentProActive={studentProActive}
-              inTrial={inTrial}
-              trialDays={trialDays}
-              checkoutReady={checkoutReady}
-              portalReady={portalReady}
-              activating={activating && !isPro}
-              billingBusy={busy === 'checkout' || busy === 'portal' ? busy : null}
-              billingMessage={billingMessage}
-              proPriceLabel={proPriceLabel}
-              creditsRemaining={creditsRemaining}
-              creditsUsed={creditsUsed}
-              dailyLimit={dailyLimit}
-              usagePercent={usagePercent}
-              resetIn={resetIn}
-              onLogout={() => void onLogout()}
-              onUpgrade={() => void onUpgrade()}
-              onManageBilling={() => void onManageBilling()}
-              onRefreshAccount={() => void refreshAccount()}
-            />
-            {studentIntent ? (
-              <StudentVerificationPanel
-                autoFocus
-                confirmToken={studentToken}
-                onConfirmed={() => void refreshAccount()}
-              />
-            ) : null}
-          </div>
-        </section>
+        <Navigate to={`/dashboard${location.hash}${location.search}`} replace />
       ) : (
-        <section className="section ac-section">
-          <div className="container ac-auth-shell">
-            <p className="ac-kicker">{copy.kicker}</p>
-            <h1>{authMode === 'register' ? copy.createTitle : copy.formTitle}</h1>
-            <p className="ac-lead">{authMode === 'register' ? copy.createLead : copy.formLead}</p>
-            {studentIntent && authMode === 'register' ? (
-              <p className="ac-student-register-note">{copy.student.verificationOpensNote}</p>
-            ) : null}
-
-            <article className="ac-auth-card">
-              <form
-                className="ac-form"
-                noValidate
-                onSubmit={(event) => {
-                  event.preventDefault()
-                  if (authMode === 'register') void onRegister()
-                  else void onLogin()
-                }}
-              >
-                <label className="ac-field" htmlFor="ac-email">
-                  <span>{copy.email}</span>
-                  <input
-                    id="ac-email"
-                    type="email"
-                    name="email"
-                    autoComplete="email"
-                    inputMode="email"
-                    value={email}
-                    onChange={(event) => {
-                      setEmail(event.target.value)
-                      if (fieldError === 'email') setFieldError(null)
-                    }}
-                    required
-                    aria-invalid={fieldError === 'email' || undefined}
-                    aria-describedby={error ? 'ac-auth-error' : undefined}
-                    disabled={inputsDisabled}
-                  />
-                </label>
-                <label className="ac-field" htmlFor="ac-password">
-                  <span>{copy.password}</span>
-                  <div className="ac-input-wrap">
-                    <input
-                      id="ac-password"
-                      type={showPassword ? 'text' : 'password'}
-                      name="password"
-                      autoComplete={authMode === 'register' ? 'new-password' : 'current-password'}
-                      value={password}
-                      onChange={(event) => {
-                        setPassword(event.target.value)
-                        if (fieldError === 'password') setFieldError(null)
-                      }}
-                      minLength={8}
-                      required
-                      aria-invalid={fieldError === 'password' || undefined}
-                      aria-describedby={authMode === 'register' ? 'ac-password-hint' : error ? 'ac-auth-error' : undefined}
-                      disabled={inputsDisabled}
-                    />
-                    <button
-                      type="button"
-                      className="ac-toggle-pw ac-toggle-pw-inline"
-                      aria-pressed={showPassword}
-                      aria-controls="ac-password"
-                      aria-label={showPassword ? copy.hidePassword : copy.showPassword}
-                      onClick={() => setShowPassword((value) => !value)}
-                    >
-                      {showPassword ? copy.hidePassword : copy.showPassword}
-                    </button>
-                  </div>
-                </label>
-                {authMode === 'register' ? (
-                  <>
-                    <p id="ac-password-hint" className="ac-hint">
-                      {copy.passwordHint}
-                    </p>
-                    <label className="ac-field" htmlFor="ac-confirm-password">
-                      <span>{copy.confirmPassword}</span>
-                      <div className="ac-input-wrap">
-                        <input
-                          id="ac-confirm-password"
-                          type={showConfirmPassword ? 'text' : 'password'}
-                          name="confirm-password"
-                          autoComplete="new-password"
-                          value={confirmPassword}
-                          onChange={(event) => {
-                            setConfirmPassword(event.target.value)
-                            if (fieldError === 'confirmPassword') setFieldError(null)
-                          }}
-                          minLength={8}
-                          required
-                          aria-invalid={fieldError === 'confirmPassword' || undefined}
-                          disabled={inputsDisabled}
-                        />
-                        <button
-                          type="button"
-                          className="ac-toggle-pw ac-toggle-pw-inline"
-                          aria-pressed={showConfirmPassword}
-                          aria-controls="ac-confirm-password"
-                          aria-label={showConfirmPassword ? copy.hidePassword : copy.showPassword}
-                          onClick={() => setShowConfirmPassword((value) => !value)}
-                        >
-                          {showConfirmPassword ? copy.hidePassword : copy.showPassword}
-                        </button>
-                      </div>
-                    </label>
-                  </>
-                ) : null}
-
-                {fieldError === 'confirmPassword' ? (
-                  <div className="ac-alert" role="alert">
-                    <p>{copy.passwordMismatch}</p>
-                  </div>
-                ) : null}
-
-                {error ? (
-                  <div className="ac-alert" id="ac-auth-error" role="alert">
-                    <p>{errorCopy(error, copy)}</p>
-                    {isRetryable(error) ? (
-                      <div className="ac-actions">
-                        <Button type="button" variant="secondary" onClick={() => void onRetryAuth()}>
-                          {copy.retry}
-                        </Button>
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-
-                <Button
-                  type="submit"
-                  className="ac-submit"
-                  disabled={submitDisabled}
-                  aria-busy={busy === authMode}
-                >
-                  {busy === 'register'
-                    ? copy.submittingRegister
-                    : busy === 'login'
-                      ? copy.submittingLogin
-                      : authMode === 'register'
-                        ? copy.createAccount
-                        : copy.signIn}
-                </Button>
-                {authMode === 'login' ? (
-                  <p className="ac-forgot">
-                    <Link className="ac-link" to="/account/forgot-password">
-                      {copy.forgotPassword}
-                    </Link>
-                  </p>
-                ) : null}
-              </form>
-            </article>
-
-            <p className="ac-switch">
-              {authMode === 'register' ? (
-                <button
-                  type="button"
-                  className="ac-text-btn"
-                  disabled={inputsDisabled}
-                  onClick={() => {
-                    setError(null)
-                    setFieldError(null)
-                    setAuthMode('login')
-                  }}
-                >
-                  {copy.haveAccount}
-                </button>
-              ) : (
-                <>
-                  {copy.noAccount}{' '}
-                  <button
-                    type="button"
-                    className="ac-text-btn"
-                    disabled={inputsDisabled}
-                    onClick={() => {
-                      setError(null)
-                      setFieldError(null)
-                      setAuthMode('register')
-                    }}
-                  >
-                    {copy.createAccount}
-                  </button>
-                </>
-              )}
-            </p>
-
-            <p className="ac-trust">{copy.trustLine}</p>
-            <p className="ac-extension-link">
-              <Button variant="ghost" to="/support#get-flowlary">
-                {copy.installExtensionCta}
-              </Button>
-              <Button variant="ghost" to="/pricing">
-                {copy.viewPlans}
-              </Button>
-            </p>
-          </div>
-        </section>
+        <AccountAuthLayout
+          kicker={copy.kicker}
+          title={authMode === 'register' ? copy.createTitle : copy.formTitle}
+          titleHighlight={authMode === 'register' ? copy.createTitleHighlight : copy.loginTitleHighlight}
+          lead={authMode === 'register' ? copy.createLead : copy.formLead}
+          note={
+            studentIntent && authMode === 'register' ? copy.student.verificationOpensNote : undefined
+          }
+          benefits={authMode === 'register' ? copy.companionPoints : undefined}
+          trustLine={copy.trustLine}
+          footer={authFooter}
+        >
+          <AccountAuthForm
+            copy={copy}
+            authMode={authMode}
+            email={email}
+            password={password}
+            confirmPassword={confirmPassword}
+            showPassword={showPassword}
+            showConfirmPassword={showConfirmPassword}
+            fieldError={fieldError}
+            error={error}
+            errorMessage={error ? errorCopy(error, copy) : null}
+            busy={busy === 'login' || busy === 'register' ? busy : null}
+            inputsDisabled={inputsDisabled}
+            submitDisabled={submitDisabled}
+            retryable={error ? isRetryable(error) : false}
+            onAuthModeChange={(mode) => {
+              setError(null)
+              setFieldError(null)
+              setAuthMode(mode)
+            }}
+            onEmailChange={(value) => {
+              setEmail(value)
+              if (fieldError === 'email') setFieldError(null)
+            }}
+            onPasswordChange={(value) => {
+              setPassword(value)
+              if (fieldError === 'password') setFieldError(null)
+            }}
+            onConfirmPasswordChange={(value) => {
+              setConfirmPassword(value)
+              if (fieldError === 'confirmPassword') setFieldError(null)
+            }}
+            onTogglePassword={() => setShowPassword((value) => !value)}
+            onToggleConfirmPassword={() => setShowConfirmPassword((value) => !value)}
+            onSubmit={() => {
+              if (authMode === 'register') void onRegister()
+              else void onLogin()
+            }}
+            onRetry={() => void onRetryAuth()}
+          />
+        </AccountAuthLayout>
       )}
-    </div>
+    </>
   )
 }

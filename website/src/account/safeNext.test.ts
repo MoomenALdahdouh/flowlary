@@ -10,8 +10,8 @@ describe('safeNext redirect handling', () => {
     expect(parseSafeNext(null)).toBeNull()
   })
 
-  it('maps lab to the writing lab anchor', () => {
-    expect(resolvePostAuthDestination('lab')).toBe('/#writing-lab')
-    expect(resolvePostAuthDestination(null)).toBe('/account')
+  it('maps lab to the writing lab route and defaults to dashboard', () => {
+    expect(resolvePostAuthDestination('lab')).toBe('/lab')
+    expect(resolvePostAuthDestination(null)).toBe('/dashboard')
   })
 })

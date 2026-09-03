@@ -64,10 +64,10 @@ html[dir='rtl'] .ac-kicker {
 .ac-auth-card,
 .ac-panel {
   border: 1px solid var(--fl-border);
-  border-radius: var(--fl-radius);
+  border-radius: var(--fl-radius-lg);
   background: var(--fl-surface-2);
   box-shadow: none;
-  padding: 1.25rem 1.2rem 1.3rem;
+  padding: clamp(1.15rem, 3vw, 1.45rem);
   text-align: start;
 }
 
@@ -97,10 +97,10 @@ html[dir='rtl'] .ac-kicker {
 
 .ac-field input {
   width: 100%;
-  min-height: 2.75rem;
+  min-height: var(--fl-control-height);
   padding: 0.58rem 0.85rem;
-  border: 1px solid var(--fl-border);
-  border-radius: var(--fl-radius);
+  border: 1px solid var(--fl-border-strong);
+  border-radius: var(--fl-radius-sm);
   background: var(--fl-input-bg);
   color: var(--fl-text);
   font: inherit;
@@ -476,6 +476,18 @@ html[dir='rtl'] .ac-value {
 .ac-skeleton-line {
   height: 0.9rem;
   margin-bottom: 0.55rem;
+  animation: ac-skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes ac-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+
+  50% {
+    opacity: 0.9;
+  }
 }
 
 .ac-skeleton-line:last-child {
@@ -486,6 +498,11 @@ html[dir='rtl'] .ac-value {
 @media (prefers-reduced-motion: reduce) {
   .ac-skeleton {
     opacity: 0.65;
+    animation: none;
+  }
+
+  .ac-skeleton-line {
+    animation: none;
   }
 
   .ac-usage-fill {

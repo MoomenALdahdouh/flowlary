@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import type { LegalDocumentContent } from '../../content/legal/types.ts'
 import { useMessages } from '../../i18n/index.tsx'
+import { Button } from '../Ui.tsx'
 
 type RelatedLink = { to: string; label: string }
 
@@ -14,50 +15,70 @@ export function LegalDocument({ doc, related, localeNote }: LegalDocumentProps) 
   const t = useMessages()
 
   return (
-    <article className="prose legal-doc">
-      <div className="container legal-layout">
-        <aside className="legal-toc-aside">
-          <nav className="legal-toc" aria-label={t.legal.tocAria}>
-            <p className="legal-toc-title">{t.legal.onThisPage}</p>
+    <article className="prose lg-doc">
+      <div className="container lg-layout">
+        <aside className="lg-toc-aside">
+          <nav className="lg-toc lg-toc-panel" aria-label={t.legal.tocAria}>
+            <p className="lg-toc-title">{t.legal.onThisPage}</p>
             <ol>
               {doc.sections.map((section) => (
                 <li key={section.id}>
-                  <a href={`#${section.id}`}>{section.title}</a>
+                  <a href={`#${section.id}`}>{section.title.replace(/^\d+\.\s*/, '')}</a>
                 </li>
               ))}
             </ol>
           </nav>
         </aside>
 
-        <div className="container-narrow legal-shell">
-          {localeNote ? <p className="muted legal-locale-note">{localeNote}</p> : null}
-          <p>
-            <strong>{t.legal.effective}:</strong>{' '}
-            <time dateTime={doc.effectiveIso}>{doc.effectiveLabel}</time>
-          </p>
+        <div className="lg-content">
+          {localeNote ? <p className="lg-locale-note">{localeNote}</p> : null}
 
-          {doc.intro.map((block, index) => (
-            <LegalBlockView key={`intro-${index}`} block={block} />
-          ))}
-
-          {doc.sections.map((section) => (
-            <section key={section.id} id={section.id} className="legal-section" aria-labelledby={`${section.id}-title`}>
-              <h2 id={`${section.id}-title`}>{section.title}</h2>
-              {section.blocks.map((block, index) => (
-                <LegalBlockView key={`${section.id}-${index}`} block={block} />
+          {doc.intro.length ? (
+            <div className="lg-intro-card">
+              {doc.intro.map((block, index) => (
+                <LegalBlockView key={`intro-${index}`} block={block} />
               ))}
-            </section>
-          ))}
+            </div>
+          ) : null}
 
-          <p className="legal-related">
-            {doc.relatedLabel}{' '}
-            {related.map((link, index) => (
-              <span key={link.to}>
-                {index > 0 ? ' · ' : null}
-                <Link to={link.to}>{link.label}</Link>
-              </span>
+          <div className="lg-sections">
+            {doc.sections.map((section) => (
+              <section
+                key={section.id}
+                id={section.id}
+                className="lg-section legal-section"
+                aria-labelledby={`${section.id}-title`}
+              >
+                <h2 id={`${section.id}-title`}>{section.title}</h2>
+                {section.blocks.map((block, index) => (
+                  <LegalBlockView key={`${section.id}-${index}`} block={block} />
+                ))}
+              </section>
             ))}
-          </p>
+          </div>
+
+          <div className="lg-related">
+            <p className="lg-related-label">{doc.relatedLabel}</p>
+            <div className="lg-related-links">
+              {related.map((link) => (
+                <Link key={link.to} to={link.to}>
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          <div className="lg-contact-band">
+            <div className="lg-contact-band-inner">
+              <div>
+                <h2>{t.legal.questionsTitle}</h2>
+                <p>{t.legal.questionsLead}</p>
+              </div>
+              <Button to="/contact" variant="secondary">
+                {t.legal.contact}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </article>

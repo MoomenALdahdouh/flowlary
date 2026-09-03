@@ -1,0 +1,134 @@
+/* Pricing page — marketing revamp overlay */
+
+.xp-pricing {
+  position: relative;
+  isolation: isolate;
+}
+
+.xp-pricing .pr-glow {
+  z-index: 0;
+}
+
+.xp-pricing > * {
+  position: relative;
+  z-index: 1;
+}
+
+.xp-pricing .pr-hero {
+  text-align: start;
+  border-bottom: 0;
+}
+
+.xp-pricing .pr-hero-copy {
+  max-width: 44rem;
+}
+
+.xp-pricing .pr-hero h1 {
+  max-width: 20ch;
+  font-family: var(--fl-font-display);
+  letter-spacing: -0.04em;
+}
+
+.xp-pricing .pr-trust {
+  margin-top: var(--fl-space-6);
+}
+
+.pr-plans-band {
+  padding-top: clamp(var(--fl-space-5), 4vw, var(--fl-space-7));
+}
+
+.xp-pricing .pr-shell {
+  gap: var(--fl-space-5);
+}
+
+.xp-pricing .pr-grid {
+  margin-top: 0;
+}
+
+.xp-pricing .pr-student {
+  margin: 0;
+}
+
+.xp-pricing .pr-billing {
+  margin-top: 0;
+}
+
+.pr-compare-band,
+.pr-ai-band,
+.pr-faq-band {
+  margin-top: 0;
+}
+
+.xp-pricing .pr-card.is-featured {
+  position: relative;
+  overflow: hidden;
+}
+
+.xp-pricing .pr-card.is-featured::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: var(--fl-gradient-brand);
+}
+
+.pr-compare-band .fl-section-heading,
+.pr-faq-band .fl-section-heading,
+.xp-pricing .pr-ai-usage .fl-section-heading {
+  margin-bottom: var(--fl-space-5);
+}
+
+.xp-pricing .pr-student {
+  border-radius: var(--fl-radius-lg);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--fl-accent) 6%, var(--fl-product-bg)),
+    var(--fl-product-bg)
+  );
+}
+
+.xp-pricing .pr-trial {
+  border-radius: var(--fl-radius-lg);
+  background: var(--fl-bg-soft);
+}
+
+.xp-pricing .pr-billing {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--fl-space-4);
+  align-items: start;
+  margin-top: var(--fl-space-5);
+  padding: var(--fl-space-5);
+  border-radius: var(--fl-radius-md);
+}
+
+.xp-pricing .pr-faq-item {
+  border-radius: var(--fl-radius-md);
+  transition: border-color 0.2s ease;
+}
+
+.xp-pricing .pr-faq-item[open] {
+  border-color: var(--fl-border-strong);
+}
+
+html[dir='rtl'] .xp-pricing .kicker,
+html[dir='rtl'] .xp-pricing h1,
+html[dir='rtl'] .xp-pricing h2 {
+  letter-spacing: 0;
+}
+
+@media (min-width: 1024px) {
+  .xp-pricing .pr-grid {
+    align-items: stretch;
+  }
+
+  .xp-pricing .pr-card.is-featured {
+    transform: translateY(-0.35rem);
+  }
+}
+
+@media (max-width: 767px) {
+  .xp-pricing .pr-billing {
+    grid-template-columns: 1fr;
+  }
+}

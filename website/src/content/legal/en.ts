@@ -163,10 +163,10 @@ export const privacyEn: LegalDocumentContent = {
           type: 'ul',
           items: [
             'Locally on your device: learning events, optional sample text, learning profile preferences, and practice session history under account-scoped extension storage.',
-            'On Flowlary servers when signed in: learning events with original and corrected snippets (each up to 512 characters), category, action, timestamps, and sample metadata (word count and hash — not the full sample text). Up to 2,000 events per account.',
+            'On Flowlary servers when signed in: learning events with original and corrected snippets (each up to 512 characters), category, action, timestamps, and sample metadata (word count and hash: not the full sample text). Up to 2,000 events per account.',
             'Learning profile and practice session aggregates may sync between your browser and the server.',
             'You can clear learning data locally from extension Settings → Data and delete server-side learning data with DELETE /api/learning/events when signed in.',
-            'Pro AI learning coach and report narration send aggregated learning context to managed AI — not your full documents.',
+            'Pro AI learning coach and report narration send aggregated learning context to managed AI: not your full documents.',
           ],
         },
       ],
@@ -238,10 +238,10 @@ export const privacyEn: LegalDocumentContent = {
         {
           type: 'ul',
           items: [
-            'Groq — AI inference for correction, translation, layout classification, and some Pro learning features.',
-            'Google Cloud Translation — translation when configured on the server.',
-            'Paddle — payment processing and subscription management when you checkout.',
-            'SMTP email infrastructure — transactional email (verification, password reset, student verification).',
+            'Groq, AI inference for correction, translation, layout classification, and some Pro learning features.',
+            'Google Cloud Translation: translation when configured on the server.',
+            'Paddle: payment processing and subscription management when you checkout.',
+            'SMTP email infrastructure: transactional email (verification, password reset, student verification).',
             'Hosting/infrastructure providers that operate the servers where the API and website run (provider depends on deployment; confirm in operations documentation).',
           ],
         },
@@ -431,7 +431,7 @@ export const termsEn: LegalDocumentContent = {
       blocks: [
         {
           type: 'p',
-          text: 'Pro provides higher daily AI writing checks (currently 1,000 per day) and additional learning capabilities. Pro is billed at $4.99/month or $39/year when checkout is enabled. Pro access is granted only after server-side billing verification — completing checkout alone does not instantly grant Pro if verification is pending.',
+          text: 'Pro provides higher daily AI writing checks (currently 1,000 per day) and additional learning capabilities. Pro is billed at $4.99/month or $39/year when checkout is enabled. Pro access is granted only after server-side billing verification: completing checkout alone does not instantly grant Pro if verification is pending.',
         },
       ],
     },
@@ -646,9 +646,9 @@ export const cookiesEn: LegalDocumentContent = {
         {
           type: 'ul',
           items: [
-            'flowlary-theme — remembers light or dark appearance.',
-            'flowlary-locale — remembers your language choice when you change it.',
-            'flowlary.web.account.{id}.ai.consent — stores your Writing Lab AI consent choice per account in localStorage.',
+            'flowlary-theme: remembers light or dark appearance.',
+            'flowlary-locale: remembers your language choice when you change it.',
+            'flowlary.web.account.{id}.ai.consent: stores your Writing Lab AI consent choice per account in localStorage.',
           ],
         },
       ],

@@ -41,6 +41,7 @@ export default defineConfig({
     alias: {
       '@': new URL('./src', import.meta.url).pathname,
       '@flowlary/shared/tokens.css': `${shared}/tokens.css`,
+      '@flowlary/shared/buttons.css': `${shared}/buttons.css`,
       '@flowlary/shared/theme': `${shared}/theme.ts`,
       '@flowlary/shared': `${shared}/index.ts`,
     },

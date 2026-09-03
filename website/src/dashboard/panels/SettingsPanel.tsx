@@ -105,7 +105,7 @@ export function SettingsPanel({ accountId, copy, onRefresh }: SettingsPanelProps
               setSaved(false)
             }}
           >
-            <option value="">—</option>
+            <option value="">, </option>
             {LEARNING_LEVELS.map((level) => (
               <option key={level} value={level}>
                 {level.replace(/_/g, ' ')}

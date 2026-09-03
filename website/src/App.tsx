@@ -21,8 +21,13 @@ import { GrowthAdminPage } from './pages/admin/GrowthAdmin.tsx'
 import { SupportAdminPage } from './pages/admin/SupportAdmin.tsx'
 import { GuidePage } from './pages/Guide.tsx'
 import { BlogPage } from './pages/Blog.tsx'
+import { ProductPage } from './pages/Product.tsx'
+import { TryPage } from './pages/Try.tsx'
+import { LabPage } from './pages/Lab.tsx'
+import { DashboardPage } from './pages/Dashboard.tsx'
+import { DashboardSupportPage } from './pages/DashboardSupport.tsx'
 import { AccountPage } from './pages/Account.tsx'
-import { AccountSupportPage } from './pages/AccountSupport.tsx'
+import { AccountSupportRedirect } from './components/AccountRedirects.tsx'
 import { VerifyEmailPage } from './pages/VerifyEmail.tsx'
 import { ForgotPasswordPage } from './pages/ForgotPassword.tsx'
 import { ResetPasswordPage } from './pages/ResetPassword.tsx'
@@ -36,6 +41,9 @@ export function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<HomePage />} />
+          <Route path="/product" element={<ProductPage />} />
+          <Route path="/try" element={<TryPage />} />
+          <Route path="/lab" element={<LabPage />} />
           <Route path="/features" element={<FeaturesPage />} />
           <Route path="/features/writing-correction" element={<WritingCorrectionPage />} />
           <Route path="/features/translation" element={<TranslationPage />} />
@@ -56,7 +64,9 @@ export function App() {
           <Route path="/blog" element={<BlogPage />} />
           <Route path="/admin/support" element={<SupportAdminPage />} />
           <Route path="/account" element={<AccountPage />} />
-          <Route path="/account/support" element={<AccountSupportPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/dashboard/support" element={<DashboardSupportPage />} />
+          <Route path="/account/support" element={<AccountSupportRedirect />} />
           <Route path="/account/verify-email" element={<VerifyEmailPage />} />
           <Route path="/account/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/account/reset-password" element={<ResetPasswordPage />} />

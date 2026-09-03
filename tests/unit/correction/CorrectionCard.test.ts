@@ -118,7 +118,7 @@ describe('CorrectionCard', () => {
 
     const host = document.querySelector(`[${HOST_ATTR}]`) as HTMLElement
     const marks = [...host.shadowRoot!.querySelectorAll('.mark')].map((el) => el.textContent)
-    expect(marks.join('')).toBe('e')
+    expect(marks.join('')).toBe('receive')
     expect(card.getState()).toBe('ready')
 
     card.ensureVisible('I recieve your email. more text')
@@ -131,7 +131,7 @@ describe('CorrectionCard', () => {
     expect(host.shadowRoot!.querySelector('.dots')).toBeTruthy()
   })
 
-  it('colors only the characters the model changed', () => {
+  it('colors full changed words in the suggestion card', () => {
     const card = new CorrectionCard({ highlights: true, onApply: () => undefined, onDismiss: () => undefined })
     const ta = document.getElementById('t') as HTMLTextAreaElement
     card.mount(ta)
@@ -154,7 +154,7 @@ describe('CorrectionCard', () => {
 
     const host = document.querySelector(`[${HOST_ATTR}]`) as HTMLElement
     const marks = [...host.shadowRoot!.querySelectorAll('.mark')]
-    expect(marks.map((el) => el.textContent)).toEqual(['e', 'r', 'l'])
+    expect(marks.map((el) => el.textContent)).toEqual(['receive', 'your', 'email'])
     expect(marks[0]?.className).toContain('spelling')
     expect(marks[1]?.className).toContain('grammar')
     expect(marks[2]?.className).toContain('spelling')

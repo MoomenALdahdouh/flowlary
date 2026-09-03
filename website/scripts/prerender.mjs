@@ -20,6 +20,9 @@ const { render } = await import(pathToFileURL(serverEntry).href)
 
 const routes = [
   '/',
+  '/product',
+  '/try',
+  '/lab',
   '/features',
   '/features/writing-correction',
   '/features/translation',

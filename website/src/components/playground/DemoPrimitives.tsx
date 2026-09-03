@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Button } from '../Ui.tsx'
 import { useMessages } from '../../i18n/index.tsx'
 
 export type DemoPhase = 'idle' | 'working' | 'done' | 'error'
@@ -17,14 +18,15 @@ export function DemoButton({
   className?: string
 }) {
   return (
-    <button
+    <Button
       type="button"
-      className={`pg-btn pg-btn-${variant} ${className}`.trim()}
+      variant={variant}
+      className={className}
       onClick={onClick}
       disabled={disabled}
     >
       {children}
-    </button>
+    </Button>
   )
 }
 

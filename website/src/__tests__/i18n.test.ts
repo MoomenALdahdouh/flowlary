@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { UI_LOCALE_CODES } from '@flowlary/shared'
 import { catalogs, isLocaleEnabled } from '../i18n/index.tsx'
 import { en } from '../i18n/en.ts'
 import { ar } from '../i18n/ar.ts'
@@ -24,12 +23,13 @@ describe('i18n architecture', () => {
     expect(isLocaleEnabled('en')).toBe(true)
   })
 
-  it('enables all keyboard-layout UI locales', () => {
-    expect(ENABLED_LOCALES).toEqual([...UI_LOCALE_CODES])
-    for (const code of UI_LOCALE_CODES) {
-      expect(isLocaleEnabled(code)).toBe(true)
-      expect(catalogs[code].meta.complete).toBe(true)
-    }
+  it('enables English and Arabic UI locales', () => {
+    expect(ENABLED_LOCALES).toEqual(['en', 'ar'])
+    expect(isLocaleEnabled('en')).toBe(true)
+    expect(isLocaleEnabled('ar')).toBe(true)
+    expect(catalogs.en.meta.complete).toBe(true)
+    expect(catalogs.ar.meta.complete).toBe(true)
+    expect(isLocaleEnabled('ru')).toBe(false)
   })
 
   it('enables Arabic with a complete RTL catalog', () => {

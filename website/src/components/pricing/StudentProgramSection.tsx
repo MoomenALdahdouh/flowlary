@@ -53,7 +53,7 @@ export function StudentProgramSection({ signedIn }: StudentProgramSectionProps) 
         <div className="pr-student-actions">
           <Button
             to={verifyHref}
-            className="pr-card-btn pr-card-btn-primary"
+            className="pr-card-btn"
             onClick={() => emitPricingEvent('student_cta_click')}
           >
             {s.cta}

@@ -531,9 +531,9 @@ export const cookiesAr: LegalDocumentContent = {
         {
           type: 'ul',
           items: [
-            'flowlary-theme — المظهر.',
-            'flowlary-locale — اللغة.',
-            'flowlary.web.account.{id}.ai.consent — موافقة Writing Lab.',
+            'flowlary-theme: المظهر.',
+            'flowlary-locale: اللغة.',
+            'flowlary.web.account.{id}.ai.consent: موافقة Writing Lab.',
           ],
         },
       ],

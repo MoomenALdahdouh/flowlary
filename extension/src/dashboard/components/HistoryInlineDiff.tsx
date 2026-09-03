@@ -1,3 +1,4 @@
+import type { CorrectionChange } from '@flowlary/shared'
 import { buildHistoryDiffTokens } from '../../features/correction/diff/tokenDiff.ts'
 import { t } from '../../popup/i18n/index.ts'
 import { truncateHistoryText } from '../../popup/history.ts'
@@ -6,9 +7,10 @@ import { teachClass } from './CorrectionHighlight.tsx'
 type HistoryInlineDiffProps = {
   original: string
   corrected: string
+  changes?: CorrectionChange[]
 }
 
-export function HistoryInlineDiff({ original, corrected }: HistoryInlineDiffProps) {
+export function HistoryInlineDiff({ original, corrected, changes = [] }: HistoryInlineDiffProps) {
   if (original === corrected) {
     return (
       <article className="fl-history-diff fl-history-same">
@@ -18,7 +20,7 @@ export function HistoryInlineDiff({ original, corrected }: HistoryInlineDiffProp
     )
   }
 
-  const tokens = buildHistoryDiffTokens(original, corrected)
+  const tokens = buildHistoryDiffTokens(original, corrected, changes)
   const edits = Math.max(1, tokens.filter((token) => token.type !== 'equal').length)
 
   return (

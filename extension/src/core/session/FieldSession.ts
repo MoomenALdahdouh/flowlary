@@ -2,6 +2,7 @@ import type { WriterTag } from '@flowlary/shared'
 import { hashWritingSample } from '@flowlary/shared'
 import type { FieldSnapshot } from '../dom/types.ts'
 import { resolveEditableKind } from '../dom/read.ts'
+import { BULK_PASTE_CHAR_LIMIT } from '../safety/index.ts'
 
 let nextFieldCounter = 0
 
@@ -65,6 +66,7 @@ export class FieldSession {
   private correctedRanges: { start: number; end: number; hash: string }[] = []
   private lastPipelineTranslateKey: string | null = null
   private inputSource: 'typing' | 'paste' | 'drop' | 'programmatic' | 'unknown' = 'unknown'
+  private lastInputInsertLength = 0
   private lastEngineSpan: { start: number; end: number; hash: string; generation: number } | null = null
   private overrideRanges: { start: number; end: number }[] = []
   private commitOpenToken = false
@@ -261,12 +263,27 @@ export class FieldSession {
     this.pendingLayoutRun = null
   }
 
-  noteInputSource(source: 'typing' | 'paste' | 'drop' | 'programmatic' | 'unknown'): void {
+  noteInputSource(
+    source: 'typing' | 'paste' | 'drop' | 'programmatic' | 'unknown',
+    insertLength = 0,
+  ): void {
     this.inputSource = source
+    this.lastInputInsertLength = Math.max(0, insertLength)
   }
 
   getInputSource(): 'typing' | 'paste' | 'drop' | 'programmatic' | 'unknown' {
     return this.inputSource
+  }
+
+  getLastInputInsertLength(): number {
+    return this.lastInputInsertLength
+  }
+
+  isBulkPasteInput(): boolean {
+    return (
+      (this.inputSource === 'paste' || this.inputSource === 'drop')
+      && this.lastInputInsertLength > BULK_PASTE_CHAR_LIMIT
+    )
   }
 
   noteEngineSpan(start: number, end: number, text: string): void {

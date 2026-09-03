@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { Button } from '../components/Ui.tsx'
+import { AccountAuthLayout } from '../components/account/AccountAuthLayout.tsx'
 import { useMessages } from '../i18n/index.tsx'
 import { API_URL } from '../config.ts'
 
@@ -35,54 +35,57 @@ export function ForgotPasswordPage() {
   }
 
   return (
-    <div className="ac-page ac-page-signed-out">
-      <section className="section ac-section">
-        <div className="container ac-auth-shell">
-          <p className="ac-kicker">{copy.kicker}</p>
-          <h1>{copy.forgotPasswordTitle}</h1>
-          <p className="ac-lead">{copy.forgotPasswordLead}</p>
+    <AccountAuthLayout
+      kicker={copy.kicker}
+      title={copy.forgotPasswordTitle}
+      titleHighlight="password"
+      lead={copy.forgotPasswordLead}
+      trustLine={copy.trustLine}
+    >
+      <article className="ac-auth-card">
+        <header className="ac-card-head">
+          <h2 className="ac-card-title">{copy.forgotPasswordTitle}</h2>
+          <p className="ac-card-subtitle">{copy.forgotPasswordLead}</p>
+        </header>
 
-          <article className="ac-auth-card">
-            {sent ? (
-              <p className="ac-alert is-ok" role="status">
-                {copy.forgotPasswordSent}
-              </p>
-            ) : (
-              <form className="ac-form" noValidate onSubmit={onSubmit}>
-                <label className="ac-field" htmlFor="fp-email">
-                  <span>{copy.emailLabel}</span>
-                  <input
-                    id="fp-email"
-                    type="email"
-                    name="email"
-                    autoComplete="email"
-                    inputMode="email"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    required
-                    disabled={busy}
-                    aria-describedby={error ? 'fp-error' : undefined}
-                  />
-                </label>
-                {error ? (
-                  <div className="ac-alert" id="fp-error" role="alert">
-                    <p>{error}</p>
-                  </div>
-                ) : null}
-                <Button type="submit" className="ac-submit" disabled={busy} aria-busy={busy}>
-                  {busy ? copy.submittingReset : copy.forgotPasswordSubmit}
-                </Button>
-              </form>
-            )}
-          </article>
+        {sent ? (
+          <div className="ac-alert is-ok" role="status">
+            <p>{copy.forgotPasswordSent}</p>
+          </div>
+        ) : (
+          <form className="ac-form" noValidate onSubmit={onSubmit}>
+            <label className="ac-field" htmlFor="fp-email">
+              <span>{copy.emailLabel}</span>
+              <input
+                id="fp-email"
+                type="email"
+                name="email"
+                autoComplete="email"
+                inputMode="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+                disabled={busy}
+                aria-describedby={error ? 'fp-error' : undefined}
+              />
+            </label>
+            {error ? (
+              <div className="ac-alert" id="fp-error" role="alert">
+                <p>{error}</p>
+              </div>
+            ) : null}
+            <Button type="submit" className="ac-submit" disabled={busy} aria-busy={busy}>
+              {busy ? copy.submittingReset : copy.forgotPasswordSubmit}
+            </Button>
+          </form>
+        )}
+      </article>
 
-          <p className="ac-switch">
-            <Link className="ac-link" to="/account">
-              {copy.backToSignIn}
-            </Link>
-          </p>
-        </div>
-      </section>
-    </div>
+      <p className="ac-switch">
+        <Button variant="link" to="/account">
+          {copy.backToSignIn}
+        </Button>
+      </p>
+    </AccountAuthLayout>
   )
 }

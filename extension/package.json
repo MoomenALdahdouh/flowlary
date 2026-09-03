@@ -1,10 +1,11 @@
 {
   "name": "@flowlary/extension",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node ../scripts/generate-extension-icons.mjs",
     "build": "vite build",
     "postbuild": "node ../scripts/print-extension-reload.mjs",
     "build:release": "FLOWLARY_RELEASE=1 NODE_ENV=production vite build",

@@ -155,10 +155,18 @@ function findChangeType(tokenValue: string, changes: CorrectionChange[]): Change
   return undefined
 }
 
+export type HighlightGranularity = 'full' | 'character'
+
+/**
+ * Suggestion highlights: colors every corrected word or character span that
+ * differs from the original, using the change type for system teach colors.
+ * Default `full` marks entire changed tokens; `character` marks only the delta.
+ */
 export function buildHighlightedTokens(
   original: string,
   corrected: string,
   changes: CorrectionChange[],
+  granularity: HighlightGranularity = 'full',
 ): DiffToken[] {
   const base = diffTokens(original, corrected)
   const out: DiffToken[] = []
@@ -173,7 +181,11 @@ export function buildHighlightedTokens(
       token.changeType ??
       'wording'
     if (token.type === 'replace' && token.originalValue != null) {
-      out.push(...diffCharacters(token.originalValue, token.value, changeType))
+      if (granularity === 'character') {
+        out.push(...diffCharacters(token.originalValue, token.value, changeType))
+      } else {
+        out.push({ value: token.value, type: 'insert', changeType })
+      }
       continue
     }
     out.push({ ...token, changeType })

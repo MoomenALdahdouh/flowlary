@@ -11,9 +11,15 @@ const arOverrides: Partial<MessageCatalog> = {
   card: {
     apply: 'اعتماد',
     dismiss: 'تجاهل',
+    clickToAccept: 'انقر للاعتماد',
+    applied: 'تم الاعتماد',
+    analyzing: 'جاري التحليل…',
   },
   firstWin: {
-    title: 'بماذا تريد أن يساعدك فلوولاري؟',
+    titleShort: 'بماذا تريد أن يساعدك فلوولاري؟',
+    qLayoutShort: 'إصلاح لوحة خاطئة؟',
+    qEnglishShort: 'تحسين الإنجليزية',
+    qTranslateShort: 'العربية → الإنجليزية',
     lead: 'مساعد كتابة واحد بثلاث سلوكيات. يمكنك تغيير ذلك لاحقاً.',
     qLayout: 'إصلاح الكتابة على لوحة المفاتيح الخاطئة تلقائياً؟',
     qEnglish: 'تحسين الإنجليزية أثناء الكتابة، أم عند الاختصار فقط؟',
@@ -26,6 +32,10 @@ const arOverrides: Partial<MessageCatalog> = {
     skip: 'استخدم الإعدادات الافتراضية',
     yes: 'نعم',
     no: 'لا',
+  },
+  popup: {
+    speedBoxHint: 'Speed Box: {shortcut}',
+    settingsLink: 'كل الإعدادات',
   },
   assistant: {
     section: 'مساعدة الكتابة',
@@ -79,6 +89,50 @@ const arOverrides: Partial<MessageCatalog> = {
     writingLabBridgeTitle: 'مساحة الكتابة',
     writingLabBridgeLead: 'اكتب على الموقع.',
     openWritingLab: 'مساحة الكتابة',
+    nav: {
+      groupWrite: 'اكتب',
+      groupLearn: 'تعلّم',
+      groupAccount: 'الحساب',
+      overview: 'نظرة عامة',
+      practice: 'التدريب',
+      progress: 'التقدم',
+      report: 'التقرير',
+      settings: 'الإعدادات',
+      account: 'الحساب',
+      activity: 'النشاط',
+      support: 'الدعم',
+    },
+    shell: {
+      navAria: 'لوحة التحكم',
+      writingLab: 'مساحة الكتابة',
+    },
+    connection: {
+      checking: 'جاري التحقق…',
+      connected: 'الإضافة نشطة',
+      paused: 'الإضافة متوقفة',
+      aiReady: 'Flowlary AI جاهز',
+      aiUnavailable: 'Flowlary AI غير متاح',
+    },
+    learningLoop: {
+      aria: 'حلقة التعلم',
+      steps: [
+        { title: 'كتابة حقيقية', body: 'تصحيحات في حقول الويب أو مساحة الكتابة.' },
+        { title: 'أنماط ملاحظة', body: 'مشكلات متكررة تُسجّل في حسابك.' },
+        { title: 'تدريب', body: 'جلسات قصيرة على أنماط رآها Flowlary.' },
+        { title: 'تقدم', body: 'اتجاهات من نشاطك — وليس درجة طلاقة.' },
+      ],
+    },
+    overview: {
+      title: 'نظرة عامة',
+      lead: 'حالة الإضافة، تجربة سريعة، وما يمكنك التدرب عليه.',
+      writingLab: 'مساحة الكتابة',
+      writingLabBody: 'تصحيح مباشر بالذكاء على الويب. يتزامن التقدم مع حسابك.',
+      features: 'ميزات الكتابة',
+    },
+  },
+  fidelity: {
+    live: 'مباشر',
+    simulated: 'محاكاة',
   },
   compose: {
     title: 'جربه',
@@ -238,11 +292,18 @@ const arOverrides: Partial<MessageCatalog> = {
   account: {
     title: 'الحساب',
     signIn: 'تسجيل الدخول',
+    popupSignInShort: 'سجّل الدخول لاستخدام الذكاء.',
     signOut: 'تسجيل الخروج',
     localMode: 'وضع محلي',
     localModeDesc: 'Flowlary يعمل بدون حساب. سجل الدخول لمزامنة خطتك واستخدامك.',
     formTitle: 'تسجيل الدخول إلى Flowlary',
     formLead: 'حساب واحد للإضافة و flowlary.com.',
+    websiteSignInTitle: 'سجّل الدخول على الموقع',
+    websiteSignInLead:
+      'الحساب والفوترة وتأكيد البريد واستعادة كلمة المرور على {site}. بعد تسجيل الدخول هناك، تتزامن جلستك مع الإضافة.',
+    websiteSignInCta: 'فتح صفحة تسجيل الدخول',
+    websiteRegisterCta: 'إنشاء حساب',
+    websiteSignInNote: 'اترك هذه الصفحة مفتوحة. بعد تسجيل الدخول على الموقع، عد هنا — يُحدَّث حسابك تلقائيا.',
   },
   dialog: {
     cancel: 'إلغاء',

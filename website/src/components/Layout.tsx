@@ -1,50 +1,64 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
-import { isLocaleEnabled, useI18n, useMessages } from '../i18n/index.tsx'
-import { UI_LOCALES } from '@flowlary/shared'
+import { useI18n, useMessages } from '../i18n/index.tsx'
+import { ENABLED_LOCALES } from '../config.ts'
+import { hasStoredWebSession } from '../account/client.ts'
 import { Logo } from './Logo.tsx'
 import { ThemeToggle } from './ThemeToggle.tsx'
-import { GetFlowlaryButton } from './Ui.tsx'
+import { InstallFlowlaryButton } from './Ui.tsx'
 import { DocumentHead } from './DocumentHead.tsx'
 import { ScrollManager } from './ScrollManager.tsx'
+import { LegacyHashRedirect } from './LegacyHashRedirect.tsx'
 
 const NAV = [
-  { to: '/#write', key: 'product' as const },
-  { to: '/#how', key: 'howItWorks' as const },
   { to: '/features', key: 'features' as const },
-  { to: '/pricing#students', key: 'students' as const },
+  { to: '/guide', key: 'extension' as const },
+  { to: '/lab', key: 'writingLab' as const },
   { to: '/pricing', key: 'pricing' as const },
 ]
 
 export function Layout() {
   const t = useMessages()
-  const { pathname, hash } = useLocation()
+  const { pathname } = useLocation()
   const { direction, locale } = useI18n()
   const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const [signedIn, setSignedIn] = useState(false)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const mobileNavRef = useRef<HTMLDivElement>(null)
-  const isCurrentNav = (to: string) => {
-    const [targetPath, targetHash] = to.split('#')
-    if (pathname !== targetPath) return false
-    if (!targetHash) return hash === ''
-    if (to === '/#write' && hash === '') return true
-    return hash === `#${targetHash}`
-  }
+
+  const isCurrentNav = (to: string) => pathname === to
 
   useEffect(() => {
     setOpen(false)
-  }, [pathname, hash])
+  }, [pathname])
+
+  useEffect(() => {
+    setSignedIn(hasStoredWebSession())
+  }, [pathname])
 
   useEffect(() => {
     const node = sentinelRef.current
     if (!node || typeof IntersectionObserver === 'undefined') return
+
+    let frame = 0
+    let lastScrolled = false
     const observer = new IntersectionObserver(([entry]) => {
-      setScrolled(!entry.isIntersecting)
+      const next = !entry.isIntersecting
+      if (next === lastScrolled) return
+      if (frame) window.cancelAnimationFrame(frame)
+      frame = window.requestAnimationFrame(() => {
+        frame = 0
+        lastScrolled = next
+        setScrolled(next)
+      })
     })
     observer.observe(node)
-    return () => observer.disconnect()
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame)
+      observer.disconnect()
+    }
   }, [])
 
   useEffect(() => {
@@ -80,8 +94,12 @@ export function Layout() {
     }
   }, [open])
 
+  const accountLabel = signedIn ? t.nav.dashboard : t.nav.signIn
+  const accountHref = signedIn ? '/dashboard' : '/account'
+
   return (
     <div className="site snow-grain" lang={locale} dir={direction}>
+      <LegacyHashRedirect />
       <ScrollManager />
       <DocumentHead />
       <div ref={sentinelRef} className="scroll-sentinel" aria-hidden="true" />
@@ -90,7 +108,7 @@ export function Layout() {
       </a>
       <header className={`header${scrolled || open ? ' is-scrolled' : ''}${open ? ' is-open' : ''}`}>
         <div className="container header-wrap">
-          <div className="header-glass">
+          <div className="header-shell">
             <Link className="brand" to="/">
               <Logo className="brand-mark" />
               <span className="brand-name">{t.brand.name}</span>
@@ -109,14 +127,14 @@ export function Layout() {
             </nav>
             <div className="header-actions">
               <div className="header-utilities">
-                <ThemeToggle />
                 <LocaleSwitcher />
+                <ThemeToggle />
               </div>
-              <Link className="nav-account" to="/account">
-                {t.nav.account}
+              <Link className="nav-account" to={accountHref}>
+                {accountLabel}
               </Link>
               <span className="nav-cta">
-                <GetFlowlaryButton className="btn-sm" />
+                <InstallFlowlaryButton className="btn-sm" showChromeIcon />
               </span>
               <button
                 ref={menuButtonRef}
@@ -147,7 +165,7 @@ export function Layout() {
         aria-label={t.a11y.menu}
       >
         <div className="mobile-nav-backdrop" aria-hidden="true" onClick={() => setOpen(false)} />
-        <div className="mobile-nav-panel glass-3">
+        <div className="mobile-nav-panel">
           <div className="container mobile-nav-inner">
             <nav className="mobile-nav-links">
               {NAV.map((item) => (
@@ -160,12 +178,12 @@ export function Layout() {
                   {t.nav[item.key]}
                 </Link>
               ))}
-              <Link className="nav-link mobile-nav-link" to="/account">
-                {t.nav.account}
+              <Link className="nav-link mobile-nav-link" to={accountHref}>
+                {accountLabel}
               </Link>
             </nav>
             <div className="mobile-nav-cta">
-              <GetFlowlaryButton />
+              <InstallFlowlaryButton />
             </div>
           </div>
         </div>
@@ -173,71 +191,45 @@ export function Layout() {
       <main id="content" className="main">
         <Outlet />
       </main>
-      <SiteFooter />
+      <SiteFooter accountHref={accountHref} accountLabel={accountLabel} />
     </div>
   )
 }
 
 function LocaleSwitcher() {
   const t = useMessages()
-  const { locale, setLocale, enabledLocales } = useI18n()
-  const [open, setOpen] = useState(false)
-  const id = useId()
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    function onDoc(event: MouseEvent) {
-      if (!ref.current?.contains(event.target as Node)) setOpen(false)
-    }
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') setOpen(false)
-    }
-    document.addEventListener('mousedown', onDoc)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onDoc)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [])
+  const { locale, setLocale } = useI18n()
+  const hero = t.marketingHome.hero
 
   return (
-    <div className="locale-switcher" ref={ref}>
-      <button
-        type="button"
-        className="locale-btn"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-controls={id}
-        aria-label={t.a11y.locale}
-        onClick={() => setOpen((value) => !value)}
-      >
-        {UI_LOCALES.find((item) => item.code === locale)?.code.toUpperCase() ?? locale.toUpperCase()}
-      </button>
-      {open ? (
-        <div className="locale-menu" id={id} role="listbox" aria-label={t.a11y.locale}>
-          {enabledLocales.map((code) => (
-            <button
-              key={code}
-              type="button"
-              className="locale-option"
-              role="option"
-              aria-selected={locale === code}
-              disabled={!isLocaleEnabled(code)}
-              onClick={() => {
-                setLocale(code)
-                setOpen(false)
-              }}
-            >
-              {t.locale[code as keyof typeof t.locale] ?? code}
-            </button>
-          ))}
-        </div>
-      ) : null}
+    <div className="locale-toggle" role="group" aria-label={t.a11y.locale}>
+      {ENABLED_LOCALES.map((code) => {
+        const label = code === 'ar' ? hero.localeArabic : hero.localeEnglish
+        const active = locale === code
+        return (
+          <button
+            key={code}
+            type="button"
+            className={`locale-toggle-btn${active ? ' is-active' : ''}`}
+            aria-pressed={active}
+            lang={code}
+            onClick={() => setLocale(code)}
+          >
+            {label}
+          </button>
+        )
+      })}
     </div>
   )
 }
 
-function SiteFooter() {
+function SiteFooter({
+  accountHref,
+  accountLabel,
+}: {
+  accountHref: string
+  accountLabel: string
+}) {
   const t = useMessages()
   return (
     <footer className="footer">
@@ -257,13 +249,13 @@ function SiteFooter() {
                 <Link to="/features">{t.nav.features}</Link>
               </li>
               <li>
-                <Link to="/#how">{t.nav.howItWorks}</Link>
-              </li>
-              <li>
-                <Link to="/pricing#students">{t.nav.students}</Link>
-              </li>
-              <li>
                 <Link to="/pricing">{t.nav.pricing}</Link>
+              </li>
+              <li>
+                <Link to="/try">{t.nav.try}</Link>
+              </li>
+              <li>
+                <Link to="/product">{t.nav.product}</Link>
               </li>
             </ul>
           </div>
@@ -271,7 +263,24 @@ function SiteFooter() {
             <h2>{t.footer.account}</h2>
             <ul>
               <li>
-                <Link to="/account">{t.nav.account}</Link>
+                <Link to={accountHref}>{accountLabel}</Link>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h2>{t.footer.help}</h2>
+            <ul>
+              <li>
+                <Link to="/guide">{t.nav.guide}</Link>
+              </li>
+              <li>
+                <Link to="/support">{t.nav.support}</Link>
+              </li>
+              <li>
+                <Link to="/contact">{t.nav.contact}</Link>
+              </li>
+              <li>
+                <Link to="/feedback">{t.nav.feedback}</Link>
               </li>
             </ul>
           </div>
@@ -286,20 +295,6 @@ function SiteFooter() {
               </li>
               <li>
                 <Link to="/cookies">{t.nav.cookies}</Link>
-              </li>
-            </ul>
-          </div>
-          <div>
-            <h2>{t.footer.support}</h2>
-            <ul>
-              <li>
-                <Link to="/guide">{t.nav.guide}</Link>
-              </li>
-              <li>
-                <Link to="/support">{t.nav.support}</Link>
-              </li>
-              <li>
-                <Link to="/contact">{t.nav.contact}</Link>
               </li>
             </ul>
           </div>

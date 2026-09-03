@@ -128,38 +128,38 @@ function speedError(code: string): string {
     case 'usage_exhausted':
     case 'entitlement_denied':
     case 'AI_ENTITLEMENT_DENIED':
-      return "Today's AI writing checks are used up."
+      return "Today's AI checks are used up."
     case 'account_required':
-      return 'Sign in to use Flowlary AI.'
+      return 'Sign in to use AI.'
     case 'auth_failed':
-      return 'Session expired — open Flowlary and sign in again.'
+      return 'Sign in again in Flowlary.'
     case 'consent_required':
-      return 'Enable Flowlary AI in Flowlary settings.'
+      return 'Enable Flowlary AI in settings.'
     case 'disabled':
-      return 'Turn this feature on in Flowlary settings.'
+      return 'Turn this on in Flowlary settings.'
     case 'same-language':
       return 'Pick two different languages.'
     case 'extension_disconnected':
-      return 'Flowlary needs a refresh. Reload the extension at chrome://extensions, then try again.'
+      return 'Reload the extension, then try again.'
     case 'too-long':
     case 'empty':
-      return 'Add some text first.'
+      return 'Add some text.'
     case 'translation_unavailable':
     case 'network':
     case 'upstream':
       return isLocalDevApi()
-        ? 'Cannot reach the local Flowlary API. Start it with npm run dev:api, then try again.'
-        : 'Cannot reach Flowlary AI right now. Try again in a moment.'
+        ? 'Local API not running.'
+        : 'Flowlary AI unavailable. Try again.'
     case 'AI_UNAVAILABLE':
     case 'AI_PROVIDER_ERROR':
     case 'AI_TIMEOUT':
-      return 'Flowlary AI is temporarily unavailable. Try again in a moment.'
+      return 'AI unavailable. Try again.'
     case 'rate_limited':
     case 'AI_RATE_LIMITED':
     case 'rate-limited':
-      return 'Too many requests. Try again shortly.'
+      return 'Too many requests. Wait a moment.'
     default:
-      return 'Something went wrong. Try again.'
+      return 'Something went wrong.'
   }
 }
 
@@ -270,10 +270,6 @@ export function createSpeedBox(options: {
     return q('[data-flowlary="speed-status"]')
   }
 
-  function metaEl(): HTMLElement | null {
-    return q('[data-flowlary="speed-meta"]')
-  }
-
   function pairLayoutEl(): HTMLElement | null {
     return q('[data-flowlary="speed-pair-layout"]')
   }
@@ -352,12 +348,12 @@ export function createSpeedBox(options: {
   }
 
   function resultHintText(hasResult: boolean): string {
-    if (busy) return 'Working…'
+    if (busy) return '…'
     if (!hasResult) return ''
-    if (mode === 'fix' && isFixBoxMode()) return 'Apply to your writing'
-    if (mode === 'translate' && isTranslateBoxMode()) return 'Apply to your writing'
-    if (mode === 'layout' && isLayoutBoxMode()) return 'Apply to your writing'
-    if (canInsert()) return 'Click to copy · Enter to insert'
+    if (mode === 'fix' && isFixBoxMode()) return 'Apply'
+    if (mode === 'translate' && isTranslateBoxMode()) return 'Apply'
+    if (mode === 'layout' && isLayoutBoxMode()) return 'Apply'
+    if (canInsert()) return 'Enter to insert'
     return 'Click to copy'
   }
 
@@ -374,7 +370,7 @@ export function createSpeedBox(options: {
     boxSuggestion = null
     applyEl()?.setAttribute('hidden', '')
     clearResult()
-    setStatus('Applied to your writing.', 'info')
+    setStatus('Applied.', 'info')
     queueMicrotask(() => inputEl()?.focus())
   }
 
@@ -456,24 +452,6 @@ export function createSpeedBox(options: {
     if (panel) panel.dataset.mode = mode
     if (pairLayoutEl()) pairLayoutEl()!.hidden = mode !== 'layout'
     if (pairTranslateEl()) pairTranslateEl()!.hidden = mode !== 'translate'
-    const meta = metaEl()
-    if (meta) {
-      meta.hidden = mode !== 'fix'
-      const fixMode = profile().correctionMode === 'direct' ? 'Direct' : 'Card'
-      meta.textContent = `Fix mode: ${fixMode} · uses your correction settings`
-    }
-    const translateMeta = q('[data-flowlary="speed-meta-translate"]')
-    if (translateMeta) {
-      translateMeta.hidden = mode !== 'translate'
-      const translateMode = profile().translationMode === 'direct' ? 'Direct' : 'Card'
-      translateMeta.textContent = `Translate mode: ${translateMode} · uses your translation settings`
-    }
-    const layoutMeta = q('[data-flowlary="speed-meta-layout"]')
-    if (layoutMeta) {
-      layoutMeta.hidden = mode !== 'layout'
-      const layoutModeLabel = profile().layoutMode === 'direct' ? 'Direct' : 'Card'
-      layoutMeta.textContent = `Layout mode: ${layoutModeLabel} · uses your layout settings`
-    }
     shadow?.querySelectorAll<HTMLButtonElement>('[data-flowlary="speed-mode"]').forEach((btn) => {
       const active = btn.dataset.mode === mode
       btn.classList.toggle('is-active', active)
@@ -590,7 +568,7 @@ export function createSpeedBox(options: {
         input.value = converted
       }
       setResult('')
-      setStatus('Converted as you typed.', 'info')
+      setStatus('Converted.', 'info')
       return
     }
     setResult(show ? converted : '', layoutDirection(current.targetLayout))
@@ -674,7 +652,7 @@ export function createSpeedBox(options: {
         }
         writeInput(response.translation)
         setResult('')
-        setStatus('Translated as you typed.', 'info')
+        setStatus('Translated.', 'info')
         return
       }
 
@@ -694,7 +672,7 @@ export function createSpeedBox(options: {
         boxSuggestion = null
         applyEl()?.setAttribute('hidden', '')
         setResult('')
-        setStatus('Looks good — no changes needed.', 'info')
+        setStatus('Looks good.', 'info')
         return
       }
       if (isFixBoxMode()) {
@@ -708,7 +686,7 @@ export function createSpeedBox(options: {
       boxSuggestion = null
       applyEl()?.setAttribute('hidden', '')
       setResult('')
-      setStatus('Fixed as you typed.', 'info')
+      setStatus('Fixed.', 'info')
     } catch {
       if (token !== runToken) return
       setResult('')
@@ -821,10 +799,7 @@ export function createSpeedBox(options: {
           <button type="button" class="swap" data-flowlary="speed-swap-lang" aria-label="Swap languages">⇄</button>
           <select data-flowlary="speed-lang-target" aria-label="Target language"></select>
         </div>
-        <p class="meta" data-flowlary="speed-meta-translate" hidden>Uses your Flowlary translation settings</p>
-        <p class="meta" data-flowlary="speed-meta-layout" hidden>Uses your Flowlary layout settings</p>
-        <p class="meta" data-flowlary="speed-meta" hidden>Uses your Flowlary correction settings</p>
-        <textarea data-flowlary="speed-input" rows="3" spellcheck="false" autocomplete="off" dir="auto" placeholder="Type or paste text"></textarea>
+        <textarea data-flowlary="speed-input" rows="3" spellcheck="false" autocomplete="off" dir="auto" placeholder="Type or paste…"></textarea>
         <div class="fix-actions" data-flowlary="speed-fix-actions">
           <button type="button" class="result" data-flowlary="speed-result" hidden>
             <span class="result-text" data-flowlary="speed-result-text" dir="auto"></span>

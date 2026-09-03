@@ -1,0 +1,131 @@
+
+/* Phase 3 PE2 — fidelity, conversion, home sections */
+.fl-fidelity {
+  display: inline-flex;
+  align-items: center;
+  margin-inline-start: 0.65rem;
+  padding: 0.18rem 0.55rem;
+  border-radius: var(--fl-radius-sm);
+  font-size: var(--fl-text-caption);
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+}
+
+.fl-fidelity-simulated {
+  color: var(--fl-state-simulated);
+  background: var(--fl-state-simulated-soft);
+  border: 1px solid color-mix(in srgb, var(--fl-state-simulated) 35%, var(--fl-border));
+}
+
+.fl-fidelity-live {
+  color: var(--fl-state-live);
+  background: var(--fl-state-live-soft);
+  border: 1px solid color-mix(in srgb, var(--fl-state-live) 35%, var(--fl-border));
+}
+
+.fl-conversion-panel {
+  padding: var(--fl-space-8) 0;
+}
+
+.fl-conversion-panel-inner {
+  padding: var(--fl-space-6);
+  border: 1px solid var(--fl-border);
+  border-radius: var(--fl-radius-lg);
+  background: var(--fl-surface-1);
+  text-align: center;
+}
+
+.fl-conversion-panel-inner h2 {
+  margin: 0 0 var(--fl-space-3);
+}
+
+.fl-conversion-panel-inner .lead {
+  margin: 0 auto var(--fl-space-5);
+  max-width: 38rem;
+}
+
+.fl-section-heading {
+  margin-bottom: var(--fl-space-5);
+}
+
+.fl-section-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mh-section {
+  padding: var(--mh-section-y, var(--fl-space-8)) 0;
+}
+
+.mh-section-soft {
+  background: var(--fl-surface-soft);
+}
+
+.mh-surfaces-grid,
+.mh-try-grid,
+.feat-index-grid {
+  display: grid;
+  gap: var(--fl-space-4);
+  margin-top: var(--fl-space-5);
+}
+
+@media (min-width: 768px) {
+  .mh-surfaces-grid,
+  .mh-try-grid,
+  .feat-index-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mh-surfaces-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.mh-surface-card,
+.mh-try-card,
+.feat-index-card {
+  padding: var(--fl-space-5);
+  border: 1px solid var(--fl-border);
+  border-radius: var(--fl-radius-md);
+  background: var(--fl-surface-1);
+}
+
+.mh-surface-card h3,
+.mh-try-card h3,
+.feat-index-card h3 {
+  margin: var(--fl-space-2) 0;
+}
+
+.mh-surfaces-cta,
+.feat-product-link {
+  margin-top: var(--fl-space-5);
+}
+
+.mobile-nav-panel {
+  border: 1px solid var(--fl-border);
+  background: var(--fl-surface-1);
+  box-shadow: var(--fl-shadow-md);
+}
+
+.product-surface-section + .product-surface-section {
+  border-top: 1px solid var(--fl-border);
+}
+
+.product-surface-bullets {
+  margin: var(--fl-space-4) 0 0;
+  padding-inline-start: 1.2rem;
+}
+
+.fb-escalation {
+  margin: var(--fl-space-3) 0 var(--fl-space-4);
+}
+
+.page-hero h1 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}

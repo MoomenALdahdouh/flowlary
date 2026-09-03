@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState, type KeyboardEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { SHORTCUTS } from '../../config.ts'
-import { Button, GetFlowlaryButton } from '../Ui.tsx'
+import { Button, ConversionPanel, InstallFlowlaryButton, SectionHeading } from '../Ui.tsx'
 import { Reveal } from '../Reveal.tsx'
 import { useMessages } from '../../i18n/index.tsx'
 
@@ -21,6 +21,21 @@ const TOPIC_IDS = [
   'privacy',
   'troubleshooting',
 ] as const
+
+const FEATURE_DETAIL_PATHS: Record<string, string> = {
+  'writing-correction': '/features/writing-correction',
+  translation: '/features/translation',
+  'live-translation': '/features/live-translation',
+  'keyboard-layout': '/features/keyboard-layout',
+  'speed-box': '/features/speed-box',
+}
+
+function splitTitle(title: string, highlight?: string) {
+  if (!highlight) return { before: title, highlight: '', after: '' }
+  const parts = title.split(highlight)
+  if (parts.length === 1) return { before: title, highlight: '', after: '' }
+  return { before: parts[0], highlight, after: parts.slice(1).join(highlight) }
+}
 
 function splitKeys(combo: string): string[] {
   return combo.split(/(?=[⌘⇧⌥⌃])|\+/).filter(Boolean)
@@ -43,6 +58,7 @@ function KeyCombo({ mac, other }: { mac: string; other: string }) {
 export function SupportCenter() {
   const t = useMessages()
   const s = t.support
+  const titleParts = splitTitle(s.title, s.titleHighlight)
   const [query, setQuery] = useState('')
   const [activeTopic, setActiveTopic] = useState<string>('get-flowlary')
 
@@ -111,16 +127,26 @@ export function SupportCenter() {
     [s.billing.title, s.billing.body, ...s.billing.items].join(' ').toLowerCase().includes(normalizedQuery)
   const showPrivacy =
     !normalizedQuery || [s.privacyHelp.title, s.privacyHelp.body].join(' ').toLowerCase().includes(normalizedQuery)
+  const showPlans = showTrial || showPro || showStudent || showBilling
 
   return (
-    <div className="pp-page sp-page">
-      <header className="pp-hero">
-        <div className="container pp-hero-inner">
+    <div className="pp-page sp-page xp-support">
+      <header className="sp-hero xp-hero" aria-labelledby="support-hero-title">
+        <div className="container sp-hero-inner">
           <Reveal>
-            <p className="kicker">{s.kicker}</p>
-            <h1>{s.title}</h1>
-            <p className="lead">{s.lead}</p>
-            <div className="sp-tutorial-banner pp-glass">
+            <p className="xp-hero-badge">
+              <span className="xp-hero-badge-dot" aria-hidden="true" />
+              {s.kicker}
+            </p>
+            <h1 id="support-hero-title" className="sp-hero-title mh-display xp-hero-title">
+              {titleParts.before}
+              {titleParts.highlight ? (
+                <span className="xp-gradient-text">{titleParts.highlight}</span>
+              ) : null}
+              {titleParts.after}
+            </h1>
+            <p className="sp-hero-lead mh-hero-lead">{s.lead}</p>
+            <div className="sp-tutorial-banner">
               <p>
                 {s.tutorialBanner}{' '}
                 <Link className="text-link" to="/guide">
@@ -132,23 +158,29 @@ export function SupportCenter() {
               <label className="visually-hidden" htmlFor="support-search">
                 {s.searchAria}
               </label>
-              <input
-                id="support-search"
-                type="search"
-                className="sp-search"
-                placeholder={s.searchPlaceholder}
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                autoComplete="off"
-              />
+              <div className="sp-search-field">
+                <svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true">
+                  <circle cx="7" cy="7" r="4.25" stroke="currentColor" strokeWidth="1.25" />
+                  <path d="M10.2 10.2 13.5 13.5" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
+                </svg>
+                <input
+                  id="support-search"
+                  type="search"
+                  className="sp-search"
+                  placeholder={s.searchPlaceholder}
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  autoComplete="off"
+                />
+              </div>
             </div>
           </Reveal>
         </div>
       </header>
 
-      <div className="container">
-        <div className="sp-nav-wrap">
-          <div className="sp-nav" role="tablist" aria-label={s.navAria}>
+      <nav className="sp-topic-nav" aria-label={s.navAria}>
+        <div className="container">
+          <div className="sp-nav" role="tablist">
             {s.topics.map((topic, index) => (
               <button
                 key={topic.id}
@@ -164,27 +196,29 @@ export function SupportCenter() {
             ))}
           </div>
         </div>
-      </div>
+      </nav>
 
       {showInstall ? (
         <section className="sp-section" id="get-flowlary" aria-labelledby="sp-install-title">
           <div className="container">
             <Reveal>
-              <div className="sp-section-head">
-                <h2 id="sp-install-title">{s.install.title}</h2>
-                <p>{s.install.lead}</p>
-              </div>
+              <SectionHeading
+                kicker={s.kicker}
+                title={s.install.title}
+                lead={s.install.lead}
+                titleId="sp-install-title"
+              />
               <div className="sp-install-grid">
-                <article className="pp-glass sp-card">
+                <article className="sp-card">
                   <h3>{s.install.title}</h3>
                   <p>{s.install.body}</p>
-                  <div className="btn-row" style={{ marginTop: '1rem' }}>
-                    <GetFlowlaryButton />
+                  <div className="sp-card-actions btn-row">
+                    <InstallFlowlaryButton />
                   </div>
                 </article>
-                <article className="pp-glass sp-card">
+                <article className="sp-card">
                   <h3>{s.shortcutsTitle}</h3>
-                  <div className="sp-shortcuts" style={{ marginTop: '0.75rem' }}>
+                  <div className="sp-shortcuts">
                     <div className="sp-shortcut">
                       <span>{s.shortcutTranslate}</span>
                       <KeyCombo {...SHORTCUTS.translate} />
@@ -209,30 +243,31 @@ export function SupportCenter() {
         <section className="sp-section" aria-labelledby="sp-features-title">
           <div className="container">
             <Reveal>
-              <div className="sp-section-head">
-                <h2 id="sp-features-title">{s.featuresTitle}</h2>
-                <p>{s.featuresLead}</p>
-              </div>
+              <SectionHeading
+                kicker={s.kicker}
+                title={s.featuresTitle}
+                lead={s.featuresLead}
+                titleId="sp-features-title"
+              />
               <div className="sp-help-list">
-                {filteredFeatures.map((item) => (
-                  <details key={item.id} className="sp-help-item" id={item.id} open={Boolean(normalizedQuery)}>
-                    <summary>{item.title}</summary>
-                    <div className="sp-help-body">
-                      <p>{item.summary}</p>
-                      <p>
-                        <strong>{s.howLabel}</strong> {item.how}
-                      </p>
-                      <p>
-                        <strong>{s.limitLabel}</strong> {item.limit}
-                      </p>
-                      {item.action ? (
-                        <p>
-                          <strong>{s.actionLabel}</strong> {item.action}
-                        </p>
-                      ) : null}
-                    </div>
-                  </details>
-                ))}
+                {filteredFeatures.map((item) => {
+                  const detailPath = FEATURE_DETAIL_PATHS[item.id]
+                  return (
+                    <details key={item.id} className="sp-help-item" id={item.id} open={Boolean(normalizedQuery)}>
+                      <summary>{item.title}</summary>
+                      <div className="sp-help-body">
+                        <p>{item.summary}</p>
+                        {detailPath ? (
+                          <div className="sp-card-actions btn-row">
+                            <Button variant="link" to={detailPath}>
+                              {s.featureDetailAction}
+                            </Button>
+                          </div>
+                        ) : null}
+                      </div>
+                    </details>
+                  )
+                })}
               </div>
             </Reveal>
           </div>
@@ -243,15 +278,15 @@ export function SupportCenter() {
         <section className="sp-section" id="account" aria-labelledby="sp-account-title">
           <div className="container">
             <Reveal>
-              <article className="pp-glass sp-card">
+              <article className="sp-card">
                 <h2 id="sp-account-title">{s.account.title}</h2>
                 <p>{s.account.body}</p>
-                <ul style={{ margin: '0.75rem 0 0', paddingLeft: '1.1rem', color: 'var(--fl-muted)', fontSize: '0.9rem' }}>
+                <ul className="sp-list">
                   {s.account.items.map((item) => (
                     <li key={item}>{item}</li>
                   ))}
                 </ul>
-                <div className="btn-row" style={{ marginTop: '1rem' }}>
+                <div className="sp-card-actions btn-row">
                   <Button to="/account">{t.nav.account}</Button>
                 </div>
               </article>
@@ -264,7 +299,7 @@ export function SupportCenter() {
         <section className="sp-section" id="ai" aria-labelledby="sp-ai-title">
           <div className="container">
             <Reveal>
-              <article className="pp-glass sp-card">
+              <article className="sp-card">
                 <h2 id="sp-ai-title">{s.ai.title}</h2>
                 <p>{s.ai.managed}</p>
               </article>
@@ -273,28 +308,50 @@ export function SupportCenter() {
         </section>
       ) : null}
 
-      {showTrial ? (
-        <PlanHelpSection id="trial" title={s.trial.title} body={s.trial.body} items={s.trial.items} />
-      ) : null}
-
-      {showPro ? <PlanHelpSection id="pro" title={s.pro.title} body={s.pro.body} items={s.pro.items} /> : null}
-
-      {showStudent ? (
-        <PlanHelpSection id="student" title={s.student.title} body={s.student.body} items={s.student.items} />
-      ) : null}
-
-      {showBilling ? (
-        <PlanHelpSection id="billing" title={s.billing.title} body={s.billing.body} items={s.billing.items} />
+      {showPlans ? (
+        <section className="sp-section sp-plans-band" aria-labelledby="sp-plans-title">
+          <div className="container">
+            <Reveal>
+              <h2 id="sp-plans-title" className="visually-hidden">
+                Plans and billing
+              </h2>
+              <div className="sp-plans-grid">
+                {showTrial ? (
+                  <PlanHelpCard id="trial" title={s.trial.title} body={s.trial.body} items={s.trial.items} />
+                ) : null}
+                {showPro ? (
+                  <PlanHelpCard id="pro" title={s.pro.title} body={s.pro.body} items={s.pro.items} />
+                ) : null}
+                {showStudent ? (
+                  <PlanHelpCard
+                    id="student"
+                    title={s.student.title}
+                    body={s.student.body}
+                    items={s.student.items}
+                  />
+                ) : null}
+                {showBilling ? (
+                  <PlanHelpCard
+                    id="billing"
+                    title={s.billing.title}
+                    body={s.billing.body}
+                    items={s.billing.items}
+                  />
+                ) : null}
+              </div>
+            </Reveal>
+          </div>
+        </section>
       ) : null}
 
       {showPrivacy ? (
         <section className="sp-section" id="privacy" aria-labelledby="sp-privacy-title">
           <div className="container">
             <Reveal>
-              <article className="pp-glass sp-card">
+              <article className="sp-card">
                 <h2 id="sp-privacy-title">{s.privacyHelp.title}</h2>
                 <p>{s.privacyHelp.body}</p>
-                <div className="btn-row" style={{ marginTop: '1rem' }}>
+                <div className="sp-card-actions btn-row">
                   <Button variant="secondary" to="/privacy">
                     {s.privacyHelp.linkLabel}
                   </Button>
@@ -309,23 +366,26 @@ export function SupportCenter() {
         <section className="sp-section" id="troubleshooting" aria-labelledby="sp-issues-title">
           <div className="container">
             <Reveal>
-              <div className="sp-section-head">
-                <h2 id="sp-issues-title">{s.troubleshootingTitle}</h2>
-              </div>
+              <SectionHeading kicker={s.kicker} title={s.troubleshootingTitle} titleId="sp-issues-title" />
               <div className="sp-issues">
                 {filteredIssues.map((item) => (
-                  <details key={item.title} className="sp-help-item pp-glass" open={Boolean(normalizedQuery)}>
+                  <details key={item.title} className="sp-help-item" open={Boolean(normalizedQuery)}>
                     <summary>{item.title}</summary>
                     <div className="sp-help-body">
-                      <p>
-                        <strong>{s.causeLabel}</strong> {item.cause}
-                      </p>
-                      <p>
-                        <strong>{s.checkLabel}</strong> {item.check}
-                      </p>
-                      <p>
-                        <strong>{s.nextLabel}</strong> {item.next}
-                      </p>
+                      <div className="sp-help-meta">
+                        <p>
+                          <strong>{s.causeLabel.replace(':', '')}</strong>
+                          {item.cause}
+                        </p>
+                        <p>
+                          <strong>{s.checkLabel.replace(':', '')}</strong>
+                          {item.check}
+                        </p>
+                        <p>
+                          <strong>{s.nextLabel.replace(':', '')}</strong>
+                          {item.next}
+                        </p>
+                      </div>
                     </div>
                   </details>
                 ))}
@@ -353,71 +413,42 @@ export function SupportCenter() {
         </div>
       ) : null}
 
-      <section className="sp-section" id="feedback-hub" aria-labelledby="sp-hub-title">
-        <div className="container">
-          <Reveal>
-            <div className="sp-section-head">
-              <h2 id="sp-hub-title">{s.hubTitle}</h2>
-              <p>{s.hubLead}</p>
-            </div>
-            <div className="sp-hub-grid">
-              {s.hubActions.map((action) => (
-                <article key={action.id} className="pp-glass sp-card">
-                  <h3>{action.title}</h3>
-                  <p>{action.body}</p>
-                  <div className="btn-row" style={{ marginTop: '0.75rem' }}>
-                    <Link className="btn btn-primary" to={action.href}>
-                      {action.title}
-                    </Link>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
       <section className="sp-section" id="contact">
         <div className="container">
           <Reveal>
-            <article className="pp-glass sp-contact">
+            <article className="sp-card sp-contact-band">
               <h2>{s.contactTitle}</h2>
               <p>{s.contactBody}</p>
-              <div className="btn-row" style={{ justifyContent: 'center', marginTop: '1rem' }}>
-                <Link className="btn btn-primary" to="/contact">
-                  {s.contactAction}
-                </Link>
-                <Link className="btn btn-secondary" to="/privacy">
+              <div className="sp-contact-actions btn-row">
+                <Button to="/contact">{s.contactAction}</Button>
+                <Button variant="secondary" to="/privacy">
                   {t.cta.readPrivacy}
-                </Link>
-                <Link className="btn btn-secondary" to="/account">
+                </Button>
+                <Button variant="secondary" to="/account">
                   {t.nav.account}
-                </Link>
+                </Button>
               </div>
             </article>
           </Reveal>
         </div>
       </section>
 
-      <section className="pr-final container">
-        <Reveal>
-          <div className="pp-glass sp-contact">
-            <h2>{s.final.title}</h2>
-            <p>{s.final.lead}</p>
-            <div className="btn-row">
-              <GetFlowlaryButton />
-              <Button variant="secondary" to="/#try-flowlary">
-                {s.final.secondary}
-              </Button>
-            </div>
-          </div>
-        </Reveal>
-      </section>
+      <ConversionPanel
+        titleId="support-final-title"
+        title={s.final.title}
+        lead={s.final.lead}
+        primary={<InstallFlowlaryButton />}
+        secondary={
+          <Button variant="secondary" to="/try">
+            {s.final.secondary}
+          </Button>
+        }
+      />
     </div>
   )
 }
 
-function PlanHelpSection({
+function PlanHelpCard({
   id,
   title,
   body,
@@ -429,20 +460,14 @@ function PlanHelpSection({
   items: readonly string[]
 }) {
   return (
-    <section className="sp-section" id={id} aria-labelledby={`sp-${id}-title`}>
-      <div className="container">
-        <Reveal>
-          <article className="pp-glass sp-card">
-            <h2 id={`sp-${id}-title`}>{title}</h2>
-            <p>{body}</p>
-            <ul style={{ margin: '0.75rem 0 0', paddingLeft: '1.1rem', color: 'var(--fl-muted)', fontSize: '0.9rem' }}>
-              {items.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </article>
-        </Reveal>
-      </div>
-    </section>
+    <article className="sp-card sp-plan-card" id={id} aria-labelledby={`sp-${id}-title`}>
+      <h2 id={`sp-${id}-title`}>{title}</h2>
+      <p>{body}</p>
+      <ul className="sp-list">
+        {items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    </article>
   )
 }

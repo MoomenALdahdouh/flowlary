@@ -25,6 +25,13 @@ describe('SEO metadata', () => {
     expect(renderHeadTags(meta)).toContain('noindex, nofollow')
   })
 
+  it('dashboard routes are noindex', () => {
+    for (const path of ['/dashboard', '/dashboard/support'] as const) {
+      const meta = PAGE_META[path]
+      expect(meta.robots).toBe('noindex, nofollow')
+    }
+  })
+
   it('includes SoftwareApplication, Organization, and WebSite structured data without reviews', () => {
     const head = renderHeadTags(PAGE_META['/'])
     expect(head).toContain('application/ld+json')
@@ -46,14 +53,15 @@ describe('SEO metadata', () => {
 })
 
 describe('CTAs', () => {
-  it('Get Flowlary points at support while the store URL is unpublished', () => {
+  it('Add to Chrome points at the guide while the store URL is unpublished', () => {
     expect(CHROME_WEB_STORE_URL).toBeNull()
     const html = renderToString(
       <MemoryRouter initialEntries={['/']}>
         <App />
       </MemoryRouter>,
     )
-    expect(html).toContain('/support#get-flowlary')
+    expect(html).toContain('href="/guide"')
+    expect(html).toContain('Add to Chrome')
     expect(html).not.toContain('Coming soon')
     expect(html).not.toContain('chromewebstore')
   })
@@ -66,7 +74,8 @@ describe('pricing honesty', () => {
         <App />
       </MemoryRouter>,
     )
-    expect(html).toContain('Choose the way you want to use Flowlary.')
+    expect(html).toContain('Choose the way you want to use')
+    expect(html).toContain('Flowlary.')
     expect(html).toContain('$0')
     expect(html).toContain('$4.99')
     expect(html).toContain('Try Pro free for 30 days')

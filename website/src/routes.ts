@@ -1,5 +1,8 @@
 export const ROUTES = [
   '/',
+  '/product',
+  '/try',
+  '/lab',
   '/features',
   '/features/writing-correction',
   '/features/translation',
@@ -18,6 +21,8 @@ export const ROUTES = [
   '/guide',
   '/blog',
   '/account',
+  '/dashboard',
+  '/dashboard/support',
   '/account/forgot-password',
   '/account/reset-password',
 ] as const

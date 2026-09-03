@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { t } from '../i18n/index.ts'
-import { getShortcutLabels } from '../shortcuts.ts'
 
 export type FirstWinAnswers = {
   fixWrongTyping: boolean
@@ -15,7 +14,6 @@ type FirstWinViewProps = {
 }
 
 export function FirstWinView({ busy, onSave, onSkip }: FirstWinViewProps) {
-  const shortcuts = getShortcutLabels()
   const [fixWrongTyping, setFixWrongTyping] = useState(true)
   const [improveEnglishAuto, setImproveEnglishAuto] = useState(true)
   const [arabicToEnglishMode, setArabicToEnglishMode] = useState(false)
@@ -23,13 +21,11 @@ export function FirstWinView({ busy, onSave, onSkip }: FirstWinViewProps) {
   return (
     <section className="fl-first-win" aria-labelledby="first-win-heading">
       <h2 id="first-win-heading" className="fl-first-win-title">
-        {t('firstWin.title')}
+        {t('firstWin.titleShort')}
       </h2>
-      <p className="fl-first-win-lead">{t('firstWin.lead')}</p>
-      <p className="fl-first-win-example">{t('firstWin.example')}</p>
 
       <fieldset className="fl-settings-fieldset">
-        <legend>{t('firstWin.qLayout')}</legend>
+        <legend>{t('firstWin.qLayoutShort')}</legend>
         <label className="fl-first-win-choice">
           <input
             type="radio"
@@ -51,7 +47,7 @@ export function FirstWinView({ busy, onSave, onSkip }: FirstWinViewProps) {
       </fieldset>
 
       <fieldset className="fl-settings-fieldset">
-        <legend>{t('firstWin.qEnglish')}</legend>
+        <legend>{t('firstWin.qEnglishShort')}</legend>
         <label className="fl-first-win-choice">
           <input
             type="radio"
@@ -73,7 +69,7 @@ export function FirstWinView({ busy, onSave, onSkip }: FirstWinViewProps) {
       </fieldset>
 
       <fieldset className="fl-settings-fieldset">
-        <legend>{t('firstWin.qTranslate')}</legend>
+        <legend>{t('firstWin.qTranslateShort')}</legend>
         <label className="fl-first-win-choice">
           <input
             type="radio"
@@ -102,10 +98,6 @@ export function FirstWinView({ busy, onSave, onSkip }: FirstWinViewProps) {
       >
         {t('firstWin.save')}
       </button>
-
-      <p className="fl-first-win-speedbox">
-        {t('firstWin.speedBoxHint', { shortcut: shortcuts.speedBox })}
-      </p>
 
       <button type="button" className="fl-link-btn fl-first-win-skip" onClick={onSkip}>
         {t('firstWin.skip')}

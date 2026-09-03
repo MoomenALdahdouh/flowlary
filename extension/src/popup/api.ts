@@ -30,9 +30,10 @@ export function humanizePopupError(code: string): string {
     case 'no_tab':
       return 'Open a page with an editable field first.'
     case 'account_credentials':
-    case 'account_login_failed':
     case 'account_login_invalid':
       return 'Incorrect email or password.'
+    case 'account_login_failed':
+      return 'Could not sign in. Use flowlary.com or check your connection.'
     case 'auth_failed':
       return 'Please sign in again.'
     case 'account_register_failed':

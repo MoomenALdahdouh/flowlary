@@ -76,7 +76,7 @@ export function DailyBriefCard({
             } else if (brief.recommendedAction.kind === 'view_progress') {
               onOpenProgress()
             } else {
-              window.location.href = '/#writing-lab'
+              window.location.href = '/lab'
             }
           }}
         >

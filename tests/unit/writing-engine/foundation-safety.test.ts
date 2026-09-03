@@ -17,6 +17,7 @@ import {
 } from '../../../extension/src/core/engine/index.ts'
 import { mapLayout, mapLayoutText } from '../../../extension/src/features/layout/layouts/registry.ts'
 import { applyUserWritingPolicy } from '../../../extension/src/core/policy/writingPolicy.ts'
+import { runFieldCycle } from '../../../extension/src/core/writeGate/pipeline.ts'
 
 function textarea(value: string) {
   const ta = document.createElement('textarea')
@@ -207,6 +208,34 @@ describe('foundation safety', () => {
   it('Q. paste remains conservative', () => {
     const typed = mapLayoutText('please send this file today', 'en-US-qwerty', 'ar-101')!
     const { decision } = decide(typed, { inputSource: 'paste' })
+    expect(decision.action).toBe('noop')
+    expect(decision.reasonCodes).toContain('paste_conservative')
+  })
+
+  it('Q2. bulk paste skips the writing pipeline', async () => {
+    const ta = textarea('x'.repeat(1001))
+    const session = new FieldSession(ta)
+    session.noteInputSource('paste', 1001)
+    await expect(runFieldCycle(ta, session)).resolves.toBe('noop')
+    expect(session.isBulkPasteInput()).toBe(true)
+  })
+
+  it('Q3. short paste stays conservative in decide', () => {
+    const typed = mapLayoutText('please send this file today', 'en-US-qwerty', 'ar-101')!
+    const ta = textarea(typed)
+    const session = new FieldSession(ta)
+    session.noteInputSource('paste', typed.length)
+    const context = buildFieldContext({
+      element: ta,
+      session,
+      cycleId: 'fs',
+      composing: false,
+      textLength: typed.length,
+    })
+    const analysis = analyzeFieldText(typed, { caret: typed.length, commitOpenToken: true })
+    const hypotheses = collectHypotheses(typed, typed.length, context, analysis)
+    const candidates = candidatesFromHypotheses(hypotheses, context)
+    const decision = decideWriting(context, analysis, candidates, { observeOnly: false, hypotheses })
     expect(decision.action).toBe('noop')
     expect(decision.reasonCodes).toContain('paste_conservative')
   })

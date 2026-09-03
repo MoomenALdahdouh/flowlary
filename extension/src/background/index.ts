@@ -77,7 +77,19 @@ import {
 import { toUserLayoutProfile } from '../features/layout/profile/index.ts'
 import { ensureHistoryInitialized } from '../storage/history/record.ts'
 import { initializeFlowlaryCache } from '../storage/cache/index.ts'
-import { readAccountSession, loginAccount, registerAccount, logoutAccount, syncServerEntitlement, maybeSyncServerEntitlement, readServerEntitlementCache, importWebAccountSession } from '../config/accountAuth.ts'
+import {
+  readAccountSession,
+  loginAccount,
+  registerAccount,
+  logoutAccount,
+  syncServerEntitlement,
+  maybeSyncServerEntitlement,
+  readServerEntitlementCache,
+  importWebAccountSession,
+  refreshAccountSessionIfNeeded,
+  scheduleAccountSessionRefresh,
+  registerAccountSessionRefreshAlarm,
+} from '../config/accountAuth.ts'
 import { markApiHealthOk, onApiHealthRecovered, probeApiHealth } from '../config/apiHealth.ts'
 import { isCorrectionAiReady } from '../features/correction/readiness.ts'
 import { retireByokIfNeeded } from '../storage/retireByok.ts'
@@ -122,6 +134,8 @@ export async function startupBackground(): Promise<void> {
     startupPromise = (async () => {
       await runStorageMigration()
       await restoreActiveAccountFromSession(flowlaryStorage)
+      await refreshAccountSessionIfNeeded(flowlaryStorage)
+      scheduleAccountSessionRefresh()
       await hydrateStateFromStorage(flowlaryStorage)
       await retireByokIfNeeded(flowlaryStorage)
       await hydrateStateFromStorage(flowlaryStorage)
@@ -810,6 +824,8 @@ export function registerBackgroundListeners(): void {
   })
 
   void startupBackground()
+
+  registerAccountSessionRefreshAlarm(() => refreshAccountSessionIfNeeded(flowlaryStorage))
 
   onApiHealthRecovered(() => {
     void buildStatus({ forceHealthProbe: true }).catch(() => {

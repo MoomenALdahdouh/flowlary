@@ -51,8 +51,16 @@ describe('theme', () => {
     expect(toggleTheme()).toBe('light')
     expect(document.documentElement.getAttribute('data-theme')).toBe('light')
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('light')
-    applyTheme('dark', true)
+    applyTheme('dark', 'dark')
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
+  })
+
+  it('cycles through system preference', () => {
+    localStorage.setItem(THEME_STORAGE_KEY, 'light')
+    expect(toggleTheme()).toBe('dark')
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark')
+    expect(toggleTheme()).toBe(themeFromSystem())
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('system')
   })
 
   it('uses light on-accent text in light mode', async () => {
@@ -94,7 +102,7 @@ describe('theme', () => {
       join(dirname(fileURLToPath(import.meta.url)), '../../../extension/src/features/layout/speedBox.css'),
       'utf8',
     )
-    expect(css).toContain('--fl-accent: #5b8cff')
+    expect(css).toContain('--fl-accent: #14d4ea')
     expect(css).toContain('--fl-surface: #10151f')
     expect(css).toContain('--fl-overlay: rgba(5, 7, 11, 0.72)')
     expect(css).toContain(":host([data-theme='light'])")

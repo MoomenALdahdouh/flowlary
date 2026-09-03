@@ -12,12 +12,12 @@ describe('token diff', () => {
     expect(tokenize('I recieve.')).toEqual(['I', ' ', 'recieve', '.'])
   })
 
-  it('colors only the inserted letter in recive → receive', () => {
+  it('colors the full corrected word in recive → receive', () => {
     const tokens = buildHighlightedTokens('I recive', 'I receive', [
       { type: 'spelling', original: 'recive', corrected: 'receive', start: 2, end: 8 },
     ])
     expect(tokens.map((t) => t.value).join('')).toBe('I receive')
-    expect(markedText(tokens)).toBe('e')
+    expect(markedText(tokens)).toBe('receive')
     expect(tokens.find((t) => t.type !== 'equal')?.changeType).toBe('spelling')
   })
 
@@ -38,7 +38,7 @@ describe('token diff', () => {
     expect(tokens.filter((t) => t.type !== 'equal').length).toBeGreaterThan(2)
   })
 
-  it('colors only the added letters in you → your and emai → email', () => {
+  it('colors full changed words for you → your and emai → email', () => {
     const tokens = buildHighlightedTokens(
       'I recive you emai',
       'I receive your email',
@@ -50,8 +50,23 @@ describe('token diff', () => {
     )
     expect(tokens.map((t) => t.value).join('')).toBe('I receive your email')
     const marked = tokens.filter((t) => t.type !== 'equal')
-    expect(marked.map((t) => t.value)).toEqual(['e', 'r', 'l'])
+    expect(marked.map((t) => t.value)).toEqual(['receive', 'your', 'email'])
     expect(marked.map((t) => t.changeType)).toEqual(['spelling', 'grammar', 'spelling'])
+  })
+
+  it('can still color only character deltas when requested', () => {
+    const tokens = buildHighlightedTokens(
+      'I recive you emai',
+      'I receive your email',
+      [
+        { type: 'spelling', original: 'recive', corrected: 'receive', start: 2, end: 8 },
+        { type: 'grammar', original: 'you', corrected: 'your', start: 9, end: 12 },
+        { type: 'spelling', original: 'emai', corrected: 'email', start: 13, end: 17 },
+      ],
+      'character',
+    )
+    const marked = tokens.filter((t) => t.type !== 'equal')
+    expect(marked.map((t) => t.value)).toEqual(['e', 'r', 'l'])
   })
 
   it('marks a fully replaced word when letters do not overlap', () => {

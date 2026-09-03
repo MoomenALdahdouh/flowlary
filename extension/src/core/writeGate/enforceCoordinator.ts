@@ -54,6 +54,7 @@ export function scheduleEnforceRetry(
 async function runIfEditable(engine: InputEngine, target: Element | null | undefined): Promise<void> {
   if (!target || !isEditableElement(target)) return
   const session = engine.sessions.getOrCreate(target)
+  if (session.isBulkPasteInput()) return
   if (session.isComposing()) return
   if (session.isInCooldown()) {
     scheduleEnforceRetry(engine, target, session.getCooldownUntil() - Date.now() + 16)

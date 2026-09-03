@@ -1,15 +1,15 @@
-import { useLayoutEffect, useRef, useState, type RefObject } from 'react'
+import { startTransition, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 
 const OBSERVER_OPTIONS: IntersectionObserverInit = {
-  rootMargin: '0px 0px -2% 0px',
-  threshold: 0.01,
+  rootMargin: '0px 0px 8% 0px',
+  threshold: 0,
 }
 
 function isNodeVisible(node: HTMLElement): boolean {
   const rect = node.getBoundingClientRect()
   if (rect.width === 0 && rect.height === 0) return false
   const vh = window.innerHeight || document.documentElement.clientHeight
-  return rect.bottom > 0 && rect.top < vh * 0.98
+  return rect.bottom > 0 && rect.top < vh
 }
 
 export function useInView<T extends HTMLElement>(once = true): {
@@ -33,17 +33,25 @@ export function useInView<T extends HTMLElement>(once = true): {
       if (once) return
     }
 
+    let frame = 0
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) {
-        setInView(true)
+        if (frame) window.cancelAnimationFrame(frame)
+        frame = window.requestAnimationFrame(() => {
+          frame = 0
+          startTransition(() => setInView(true))
+        })
         if (once) observer.disconnect()
       } else if (!once) {
-        setInView(false)
+        startTransition(() => setInView(false))
       }
     }, OBSERVER_OPTIONS)
 
     observer.observe(node)
-    return () => observer.disconnect()
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame)
+      observer.disconnect()
+    }
   }, [once])
 
   return { ref, inView }

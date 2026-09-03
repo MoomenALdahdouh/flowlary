@@ -73,12 +73,12 @@ export function FeedbackAdminPage() {
                 [a.unresolved, summary?.unresolved],
                 [a.featureRequests, summary?.featureRequests],
                 [a.bugReports, summary?.bugReports],
-                [a.averageRating, summary?.averageRating ?? '—'],
+                [a.averageRating, summary?.averageRating ?? '-'],
               ] as const
             ).map(([label, value]) => (
               <article key={label} className="fl-surface-1 fb-admin-stat">
                 <p className="muted">{label}</p>
-                <strong>{String(value ?? '—')}</strong>
+                <strong>{String(value ?? '-')}</strong>
               </article>
             ))}
           </div>
@@ -99,8 +99,8 @@ export function FeedbackAdminPage() {
                   </header>
                   <p>{String(item.message ?? item.description ?? '')}</p>
                   <footer className="fb-admin-meta">
-                    <span>{String(item.plan ?? '—')}</span>
-                    <span>{String(item.accountEmailMasked ?? '—')}</span>
+                    <span>{String(item.plan ?? '-')}</span>
+                    <span>{String(item.accountEmailMasked ?? '-')}</span>
                     <Button type="button" variant="ghost" onClick={() => void resolveItem(String(item.id))}>
                       Resolve
                     </Button>

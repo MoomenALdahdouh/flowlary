@@ -47,7 +47,7 @@ import {
 } from './crypto.ts'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const ACCESS_TTL_SEC = 15 * 60
+const ACCESS_TTL_SEC = 60 * 60
 const REFRESH_TTL_MS = 30 * 24 * 60 * 60 * 1000
 const UNLIMITED_TEST_CREDITS = 999_999
 

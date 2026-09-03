@@ -43,36 +43,14 @@ export const DEFAULT_LOCALE = 'en' as const satisfies UiLocaleCode
 export const SUPPORTED_LOCALES = UI_LOCALE_CODES
 export type Locale = UiLocaleCode
 
-export const ENABLED_LOCALES: readonly Locale[] = [...UI_LOCALE_CODES]
+/** Public website UI — Arabic and English only. */
+export const ENABLED_LOCALES: readonly Locale[] = ['en', 'ar']
 
-export const TRANSLATION_LANGUAGES = [
-  'English',
-  'Arabic',
-  'Turkish',
-  'Spanish',
-  'French',
-  'German',
-  'Portuguese',
-  'Italian',
-  'Russian',
-  'Chinese',
-  'Japanese',
-  'Korean',
-] as const
+export const TRANSLATION_LANGUAGES = ['English', 'Arabic'] as const
 
 export const KEYBOARD_LAYOUTS = [
   { id: 'en-US-qwerty', name: 'English (US QWERTY)' },
   { id: 'ar-101', name: 'Arabic 101' },
-  { id: 'ru-standard', name: 'Russian' },
-  { id: 'de-qwertz', name: 'German (QWERTZ)' },
-  { id: 'fr-azerty', name: 'French (AZERTY)' },
-  { id: 'tr-q', name: 'Turkish Q' },
-  { id: 'el-standard', name: 'Greek' },
-  { id: 'es-latam', name: 'Spanish (Latin America)' },
-  { id: 'it-standard', name: 'Italian' },
-  { id: 'pt-abnt', name: 'Portuguese (ABNT)' },
-  { id: 'uk-standard', name: 'Ukrainian' },
-  { id: 'fa-standard', name: 'Persian' },
 ] as const
 
 export const SHORTCUTS = {

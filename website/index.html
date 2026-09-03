@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#f4f7fb" />
+    <meta name="theme-color" content="#f7f8fc" />
     <script>
       (function () {
         try {
@@ -17,7 +17,14 @@
           document.documentElement.setAttribute('data-theme', theme)
           document.documentElement.style.colorScheme = theme
           var meta = document.querySelector('meta[name="theme-color"]')
-          if (meta) meta.setAttribute('content', theme === 'light' ? '#f4f7fb' : '#05070b')
+          if (meta) meta.setAttribute('content', theme === 'light' ? '#f7f8fc' : '#050508')
+          var favicon = document.querySelector('link[rel="icon"]')
+          if (favicon) {
+            favicon.setAttribute(
+              'href',
+              theme === 'light' ? '/favicon-light.svg' : '/favicon-dark.svg',
+            )
+          }
           var locale = localStorage.getItem('flowlary-locale')
           if (locale === 'ar' || locale === 'fa') {
             document.documentElement.lang = locale
@@ -29,8 +36,14 @@
         } catch (e) {}
       })()
     </script>
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="/favicon.svg" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+          href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap"
+          rel="stylesheet"
+        />
+        <link rel="icon" href="/favicon-dark.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/favicon-dark.svg" />
     <!--app-head-->
   </head>
   <body>

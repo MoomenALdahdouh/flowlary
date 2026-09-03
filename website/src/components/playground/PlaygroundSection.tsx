@@ -12,7 +12,13 @@ import type { FeatureMode } from './demoData.ts'
 import { useMessages } from '../../i18n/index.tsx'
 import { playgroundDescription } from './playgroundUtils.ts'
 
-export function PlaygroundSection() {
+export function PlaygroundSection({
+  showIntro = true,
+  embedded = false,
+}: {
+  showIntro?: boolean
+  embedded?: boolean
+}) {
   const t = useMessages()
   const [mode, setMode] = useState<FeatureMode>('correction')
   const [panelKey, setPanelKey] = useState(0)
@@ -39,31 +45,33 @@ export function PlaygroundSection() {
 
   return (
     <section
-      className="hp-playground snow-atmosphere"
+      className={`hp-playground snow-atmosphere${embedded ? ' is-embedded' : ''}`}
       id="try-flowlary"
-      aria-labelledby="hp-playground-title"
+      aria-labelledby={showIntro ? 'hp-playground-title' : 'try-workspace-title'}
     >
       <div className="container">
-        <Reveal>
-          <div className="hp-playground-head">
-            <div>
-              <SectionLabel>{t.home.playgroundKicker}</SectionLabel>
-              <h2 id="hp-playground-title" className="hp-title">
-                {t.home.playgroundTitle}
-                <span className="pg-demo-badge">{t.home.playgroundSimulatedBadge}</span>
-              </h2>
-              <p className="hp-lead hp-lead-narrow">{t.home.playgroundLead}</p>
+        {showIntro ? (
+          <Reveal>
+            <div className="hp-playground-head">
+              <div>
+                <SectionLabel>{t.home.playgroundKicker}</SectionLabel>
+                <h2 id="hp-playground-title" className="hp-title">
+                  {t.home.playgroundTitle}
+                  <span className="pg-demo-badge">{t.home.playgroundSimulatedBadge}</span>
+                </h2>
+                <p className="hp-lead hp-lead-narrow">{t.home.playgroundLead}</p>
+              </div>
+              <Button
+                variant="secondary"
+                onClick={onShowMe}
+                disabled={showMeRunning}
+                ariaLabel={t.playground.showMeAria}
+              >
+                {t.home.playgroundShowMe}
+              </Button>
             </div>
-            <Button
-              variant="secondary"
-              onClick={onShowMe}
-              disabled={showMeRunning}
-              ariaLabel={t.playground.showMeAria}
-            >
-              {t.home.playgroundShowMe}
-            </Button>
-          </div>
-        </Reveal>
+          </Reveal>
+        ) : null}
 
         <ol className="pg-steps" aria-label={t.home.playgroundStepsAria}>
           {t.home.playgroundSteps.map((step, index) => (
@@ -73,6 +81,19 @@ export function PlaygroundSection() {
             </li>
           ))}
         </ol>
+
+        <div className="pg-stage-head">
+          {!showIntro ? (
+            <Button
+              variant="secondary"
+              onClick={onShowMe}
+              disabled={showMeRunning}
+              ariaLabel={t.playground.showMeAria}
+            >
+              {t.home.playgroundShowMe}
+            </Button>
+          ) : null}
+        </div>
 
         <div className="pg-stage">
           <FeatureTabs active={mode} onChange={onModeChange} />

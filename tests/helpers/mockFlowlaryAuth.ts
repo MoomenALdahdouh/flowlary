@@ -15,7 +15,7 @@ export function seedFlowlaryInstallAuth(store: MockChromeStorage): void {
  * Phase 27: managed AI requires an account JWT + mirrored server entitlement.
  * Use this in tests that exercise translation/correction against a mocked API.
  */
-export function seedFlowlaryAccountAuth(store: MockChromeStorage, options?: { plan?: string }): void {
+export function seedFlowlaryAccountAuth(store: MockChromeStorage, options?: { plan?: string; expiresAt?: number }): void {
   seedFlowlaryInstallAuth(store)
   const plan = options?.plan ?? 'trial'
   const isPro = plan === 'pro'
@@ -27,7 +27,10 @@ export function seedFlowlaryAccountAuth(store: MockChromeStorage, options?: { pl
   store.local[STORAGE_KEYS.authSessionId] = { value: 'test-session-id', _v: 1 }
   store.local[STORAGE_KEYS.authAccountId] = { value: accountId, _v: 1 }
   store.local[STORAGE_KEYS.authAccountEmail] = { value: 'test@flowlary.com', _v: 1 }
-  store.local[STORAGE_KEYS.authTokenExpiresAt] = { value: Date.now() + 60 * 60 * 1000, _v: 1 }
+  store.local[STORAGE_KEYS.authTokenExpiresAt] = {
+    value: options?.expiresAt ?? Date.now() + 60 * 60 * 1000,
+    _v: 1,
+  }
   store.local[STORAGE_KEYS.authAccountPlan] = { value: plan, _v: 1 }
   store.local[STORAGE_KEYS.authServerEntitlement] = {
     plan,
