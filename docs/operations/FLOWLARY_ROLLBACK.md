@@ -26,6 +26,15 @@ JSON data lives in `shared/data/` and is **not** rolled back unless a release co
 
 ## Procedure (Flowlary only)
 
+Preferred:
+
+```bash
+/var/www/flowlary/deploy.sh rollback
+/var/www/flowlary/deploy.sh status
+```
+
+See [`FLOWLARY_DEPLOY.md`](./FLOWLARY_DEPLOY.md). Manual equivalent (do not delete release dirs):
+
 ```bash
 # Identify previous release
 ls -lt /var/www/flowlary/releases
@@ -34,7 +43,8 @@ PREV=<previous-sha>
 ln -sfn /var/www/flowlary/releases/$PREV /var/www/flowlary/current
 
 # Restart ONLY Flowlary
-sudo supervisorctl restart flowlary-api
+sudo /usr/local/sbin/flowlary-api-restart
+# or: sudo supervisorctl restart flowlary-api
 
 curl -fsS http://127.0.0.1:9087/health
 curl -fsS http://127.0.0.1:9087/ready

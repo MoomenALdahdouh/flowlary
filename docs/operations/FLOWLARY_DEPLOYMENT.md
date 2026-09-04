@@ -1,6 +1,6 @@
 # Flowlary deployment procedure
 
-**Status:** Plan only. Do not run these commands until approved step by step.
+**Status:** Operational. Use [`FLOWLARY_DEPLOY.md`](./FLOWLARY_DEPLOY.md) and `/var/www/flowlary/deploy.sh`.
 
 This is independent of ZAIXOS deploy scripts under `/var/www/zaixos/*/deploy`.
 
@@ -31,39 +31,15 @@ Do not `git pull` into a hot directory. Always build a new `releases/<sha>` then
 
 ---
 
-## Proposed script: `deploy/production/deploy.sh`
+## Script: `deploy/production/deploy.sh`
 
-Not added to the repo in this pass (avoid an executable that someone might run against the VPS accidentally). When implemented, it must:
+Implemented. Copy to `/var/www/flowlary/deploy.sh` on the VPS. It:
 
-1. Refuse to run unless `FLOWLARY_ROOT=/var/www/flowlary`.
-2. Refuse if cwd is under `/var/www/zaixos`.
-3. Never call `pm2`, `docker`, `supervisorctl restart all`, or `systemctl restart nginx` (reload only).
-4. Never `rm -rf` anything outside `releases/`.
-5. Keep at least the previous release directory.
-
-Conceptual steps:
-
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-ROOT=/var/www/flowlary
-SHA="${1:?git sha or tag}"
-# 1. verify env file exists
-# 2. git fetch in $ROOT/repo
-# 3. git archive or checkout-index into $ROOT/releases/$SHA
-# 4. ln -sfn $ROOT/shared/.env $ROOT/releases/$SHA/backend/.env
-# 5. npm ci
-# 6. npm run typecheck -w @flowlary/shared && npm run test -w @flowlary/backend (subset)
-# 7. npm run build -w @flowlary/website
-# 8. curl -fsS http://127.0.0.1:9087/health  (if already running, skip until switch)
-# 9. ln -sfn $ROOT/releases/$SHA $ROOT/current
-# 10. sudo supervisorctl restart flowlary-api
-# 11. curl -fsS --max-time 10 http://127.0.0.1:9087/health
-# 12. curl -fsS --max-time 10 http://127.0.0.1:9087/ready
-# 13. curl -fsSI https://api.flowlary.com/health
-# 14. curl -fsSI https://flowlary.com
-# 15. on failure: relink previous SHA and restart flowlary-api
-```
+1. Refuses to run unless `FLOWLARY_ROOT=/var/www/flowlary` (tests may set `FLOWLARY_ALLOW_NONPROD_ROOT=1`).
+2. Refuses if the root path is under `/var/www/zaixos`.
+3. Never calls `pm2`, `docker`, `supervisorctl restart all`, or `systemctl restart nginx`.
+4. Never `rm -rf` anything outside `shared/tmp/deploy-*` and pruned `releases/<sha>`.
+5. Keeps the previous release directory for `./deploy.sh rollback`.
 
 ---
 
@@ -86,9 +62,13 @@ Never start at step 7 before step 6.
 
 ## Subsequent deploys
 
-Only steps: fetch SHA → new release → tests → symlink → `supervisorctl restart flowlary-api` → health.
+```bash
+ssh flowlary-deploy@169.58.11.99
+cd /var/www/flowlary
+./deploy.sh
+```
 
-nginx reload **only** if Flowlary vhost files changed.
+nginx reload **only** if Flowlary vhost files changed (this script does not reload nginx).
 
 ---
 

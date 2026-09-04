@@ -87,11 +87,12 @@ Do **not** delete aliases until grep shows zero readers.
 
 | NAME | PURPOSE | DEFAULT | REQ | USED BY | PRODUCTION |
 | --- | --- | --- | --- | --- | --- |
-| `FLOWLARY_RELEASE` | Release vite define | unset | `build:release` | `extension/vite.config.ts` | Sets `VITE_FLOWLARY_RELEASE=1` and production API |
-| `VITE_FLOWLARY_API_URL` | Dev API origin | `https://writing-api.test` | opt | `endpoints.ts` | Ignored in release (hard `https://api.flowlary.com`) |
-| `VITE_FLOWLARY_SITE_URL` | Site origin | `https://flowlary.test` | opt | | Release: `https://flowlary.com` |
-| `VITE_TRANSLATION_API_URL` | Deprecated override | falls back to API | opt | keep until tests drop | |
-| `VITE_LAYOUT_API_URL` | Deprecated override | same | opt | | |
+| `FLOWLARY_API_TARGET` | `local` \| `production` | `local` | rec | `extension/src/config/apiTargets.ts`, `vite.config.ts` | Use `build:ext:local` or `build:ext:production`; do not set via `.env.local` |
+| `FLOWLARY_RELEASE` | Store/release packaging | unset | `build:release` | `extension/vite.config.ts` | Forces production target + production manifest |
+| `VITE_FLOWLARY_API_URL` | Baked by Vite from the target | from target | n/a | `endpoints.ts` | Not read from `.env.local` |
+| `VITE_FLOWLARY_SITE_URL` | Baked by Vite from the target | from target | n/a | | Same |
+| `VITE_TRANSLATION_API_URL` | Deprecated | unused | | | |
+| `VITE_LAYOUT_API_URL` | Deprecated | unused | | | |
 
 ## Website
 

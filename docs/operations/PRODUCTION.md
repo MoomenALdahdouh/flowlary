@@ -1,6 +1,6 @@
 # Production operations
 
-Canonical deploy: [../../deploy/README.md](../../deploy/README.md).
+Canonical VPS deploy: [FLOWLARY_DEPLOY.md](./FLOWLARY_DEPLOY.md). Optional Docker/PM2 samples: [../../deploy/README.md](../../deploy/README.md).
 
 ## Hosts (intended)
 

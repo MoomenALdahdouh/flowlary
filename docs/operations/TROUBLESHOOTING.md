@@ -4,7 +4,7 @@
 | --- | --- | --- |
 | Layout never writes | Policy off, excluded host, paste, composing, structured CE, open token | Popup: Flowlary on, helpStyle auto, site not excepted; editor tier |
 | English never reviews | `aiWritingReviewEnabled` off, mixed non-island, API down, no credits, review cache | Network to API; entitlement; island of 3+ Latin tokens |
-| CORRECT/TRANSLATE E2E fail | No gateway on expected origin | `VITE_FLOWLARY_API_URL` vs `writing-api.test` vs `:8787` |
+| CORRECT/TRANSLATE E2E fail | No gateway on expected origin | Rebuild with `build:ext:local` (needs `dev:api` on `:8787`) or `build:ext:production` |
 | `/ready` 503 | Missing prod secrets or unwritable store | `evaluateReadiness` |
 | Advisor 400 `json_validate_failed` | Groq token budget too small | `GROQ_ADVISOR_MAX_TOKENS` ≥ 512 for gpt-oss-20b |
 | Review never reaches Gemini | No `GEMINI_API_KEY` or timeout after Groq | Independent of `GEMINI_ADVISOR_ENABLED` |

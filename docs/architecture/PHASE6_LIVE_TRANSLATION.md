@@ -2,6 +2,8 @@
 
 Optional live translation while typing. **Default OFF.**
 
+Pro/trial live and shortcut translation use **Groq `gpt-oss-120b` on the source text** (Lingo contract: JSON `translation`, no Google draft). Free remains Google-only. Google is not mixed into a Pro result.
+
 ## Flow
 
 ```

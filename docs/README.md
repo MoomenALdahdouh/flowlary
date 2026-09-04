@@ -32,6 +32,7 @@ If a document in `docs/audit/`, `docs/architecture/PHASE*.md`, root `PHASE*_REPO
 | Editors | [architecture/EDITOR_SUPPORT.md](./architecture/EDITOR_SUPPORT.md) |
 | Safety | [architecture/SAFETY.md](./architecture/SAFETY.md) |
 | Freeze | [architecture/ARCHITECTURE_FREEZE.md](./architecture/ARCHITECTURE_FREEZE.md) |
+| Writing runtime redesign (design only) | [architecture/FLOWLARY_WRITING_RUNTIME_REDESIGN.md](./architecture/FLOWLARY_WRITING_RUNTIME_REDESIGN.md) |
 
 ## Product
 
@@ -50,7 +51,7 @@ If a document in `docs/audit/`, `docs/architecture/PHASE*.md`, root `PHASE*_REPO
 | Providers | [backend/PROVIDERS.md](./backend/PROVIDERS.md) |
 | Auth | [backend/AUTH.md](./backend/AUTH.md) |
 | Billing | [backend/BILLING.md](./backend/BILLING.md) |
-| Deploy | [backend/DEPLOYMENT.md](./backend/DEPLOYMENT.md) · [deploy/README.md](../deploy/README.md) |
+| Deploy | [operations/FLOWLARY_DEPLOY.md](./operations/FLOWLARY_DEPLOY.md) · [backend/DEPLOYMENT.md](./backend/DEPLOYMENT.md) · [deploy/README.md](../deploy/README.md) |
 | Tests | [testing/TEST_STRATEGY.md](./testing/TEST_STRATEGY.md) |
 | E2E | [testing/E2E.md](./testing/E2E.md) |
 | Evaluation | [testing/EVALUATION.md](./testing/EVALUATION.md) |
@@ -58,6 +59,7 @@ If a document in `docs/audit/`, `docs/architecture/PHASE*.md`, root `PHASE*_REPO
 | Environment | [operations/ENVIRONMENT.md](./operations/ENVIRONMENT.md) |
 | Development | [operations/DEVELOPMENT.md](./operations/DEVELOPMENT.md) |
 | Production | [operations/PRODUCTION.md](./operations/PRODUCTION.md) |
+| Website UI rollback | [operations/WEBSITE_UI_RELEASES.md](./operations/WEBSITE_UI_RELEASES.md) |
 | Troubleshooting | [operations/TROUBLESHOOTING.md](./operations/TROUBLESHOOTING.md) |
 
 ## Privacy, security, legal (still live)
