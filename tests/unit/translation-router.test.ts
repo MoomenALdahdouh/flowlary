@@ -59,12 +59,12 @@ describe('translation provider router', () => {
     )
   })
 
-  it('routes pro shortcut and live to google_then_groq', () => {
+  it('routes pro shortcut and live to groq', () => {
     expect(
       resolveTranslationStrategy(baseConfig(), auth({ rateLimitTier: 'pro', clientClaim: 'pro' }), 'shortcut'),
-    ).toBe('google_then_groq')
+    ).toBe('groq')
     expect(resolveTranslationStrategy(baseConfig(), auth({ rateLimitTier: 'pro' }), 'live')).toBe(
-      'google_then_groq',
+      'groq',
     )
   })
 
@@ -108,12 +108,12 @@ describe('translation provider router', () => {
     expect(refine).not.toHaveBeenCalled()
   })
 
-  it('Pro live skips Groq when segment is incomplete', async () => {
-    vi.spyOn(google, 'runGoogleTranslate').mockResolvedValue({
-      translation: 'I swear I might come',
-      model: 'google-translate',
+  it('Pro live translates with Groq even when the segment is incomplete', async () => {
+    vi.spyOn(groqProvider, 'runTranslationProvider').mockResolvedValue({
+      translation: "Honestly, maybe I'll come.",
+      model: 'openai/gpt-oss-120b',
     })
-    const refine = vi.spyOn(groqProvider, 'runTranslationRefinement')
+    const googleSpy = vi.spyOn(google, 'runGoogleTranslate')
 
     const result = await runRoutedTranslation(
       baseConfig(),
@@ -128,18 +128,13 @@ describe('translation provider router', () => {
       { tryReserveGroq: () => true, releaseGroq: () => undefined },
     )
 
-    expect(result.translation).toBe('I swear I might come')
-    expect(result.refinementSkipped).toBe(true)
-    expect(result.refinementSkipReason).toBe('live_incomplete_segment')
-    expect(refine).not.toHaveBeenCalled()
+    expect(result.provider).toBe('groq')
+    expect(result.translation).toBe("Honestly, maybe I'll come.")
+    expect(googleSpy).not.toHaveBeenCalled()
   })
 
-  it('Pro live colloquial complete sentence may refine', async () => {
-    vi.spyOn(google, 'runGoogleTranslate').mockResolvedValue({
-      translation: "I swear I might come, but I don't know why my stomach hurts.",
-      model: 'google-translate',
-    })
-    vi.spyOn(groqProvider, 'runTranslationRefinement').mockResolvedValue({
+  it('Pro live colloquial sentence uses Groq, not Google', async () => {
+    vi.spyOn(groqProvider, 'runTranslationProvider').mockResolvedValue({
       translation:
         "Honestly, maybe I'll come, yeah, but I don't know why my stomach hurts.",
       model: 'openai/gpt-oss-120b',
@@ -158,14 +153,14 @@ describe('translation provider router', () => {
       { tryReserveGroq: () => true, releaseGroq: () => undefined },
     )
 
-    expect(result.refinementSucceeded).toBe(true)
+    expect(result.provider).toBe('groq')
     expect(result.translation).toMatch(/Honestly|maybe/i)
   })
 
-  it('Pro live MSA sentence skips Groq when draft looks natural', async () => {
-    vi.spyOn(google, 'runGoogleTranslate').mockResolvedValue({
-      translation: 'I am going to the university now.',
-      model: 'google-translate',
+  it('Pro live MSA sentence still uses Groq as the translator', async () => {
+    vi.spyOn(groqProvider, 'runTranslationProvider').mockResolvedValue({
+      translation: "I'm going to the university now.",
+      model: 'openai/gpt-oss-120b',
     })
     const refine = vi.spyOn(groqProvider, 'runTranslationRefinement')
 
@@ -182,17 +177,13 @@ describe('translation provider router', () => {
       { tryReserveGroq: () => true, releaseGroq: () => undefined },
     )
 
-    expect(result.translation).toBe('I am going to the university now.')
-    expect(result.refinementSkipped).toBe(true)
+    expect(result.provider).toBe('groq')
+    expect(result.translation).toBe("I'm going to the university now.")
     expect(refine).not.toHaveBeenCalled()
   })
 
-  it('Pro live focus-out may refine colloquial text', async () => {
-    vi.spyOn(google, 'runGoogleTranslate').mockResolvedValue({
-      translation: "I swear I might come, but I don't know why my stomach hurts.",
-      model: 'google-translate',
-    })
-    vi.spyOn(groqProvider, 'runTranslationRefinement').mockResolvedValue({
+  it('Pro live focus-out uses Groq', async () => {
+    vi.spyOn(groqProvider, 'runTranslationProvider').mockResolvedValue({
       translation:
         "Honestly, maybe I'll come, yeah, but I don't know why my stomach hurts.",
       model: 'openai/gpt-oss-120b',
@@ -211,7 +202,8 @@ describe('translation provider router', () => {
       { tryReserveGroq: () => true, releaseGroq: () => undefined },
     )
 
-    expect(result.refinementSucceeded).toBe(true)
+    expect(result.provider).toBe('groq')
+    expect(result.groqBillable).toBe(true)
   })
 
   it('Free Google path does not call Groq or reserve credits', async () => {
@@ -247,12 +239,8 @@ describe('translation provider router', () => {
     expect(refine).not.toHaveBeenCalled()
   })
 
-  it('Pro refinement is billable and returns refined text', async () => {
-    vi.spyOn(google, 'runGoogleTranslate').mockResolvedValue({
-      translation: 'hola',
-      model: 'google-translate',
-    })
-    vi.spyOn(groqProvider, 'runTranslationRefinement').mockResolvedValue({
+  it('Pro Groq translation is billable', async () => {
+    vi.spyOn(groqProvider, 'runTranslationProvider').mockResolvedValue({
       translation: '¡Hola!',
       model: 'openai/gpt-oss-120b',
       inputTokens: 1,
@@ -267,31 +255,22 @@ describe('translation provider router', () => {
       { tryReserveGroq: () => true, releaseGroq: () => undefined },
     )
 
-    expect(result.provider).toBe('google_then_groq')
-    expect(result.refinementSucceeded).toBe(true)
+    expect(result.provider).toBe('groq')
     expect(result.groqBillable).toBe(true)
     expect(result.translation).toBe('¡Hola!')
   })
 
-  it('keeps Google translation when refinement fails', async () => {
-    vi.spyOn(google, 'runGoogleTranslate').mockResolvedValue({
-      translation: 'hola',
-      model: 'google-translate',
-    })
-    vi.spyOn(groqProvider, 'runTranslationRefinement').mockRejectedValue(new Error('rate_limited'))
+  it('falls back is not used — Groq failure surfaces', async () => {
+    vi.spyOn(groqProvider, 'runTranslationProvider').mockRejectedValue(new Error('rate_limited'))
 
-    const result = await runRoutedTranslation(
-      baseConfig(),
-      auth({ rateLimitTier: 'pro' }),
-      { text: 'hello', sourceLanguage: 'en', targetLanguage: 'es', mode: 'shortcut' },
-      { tryReserveGroq: () => true, releaseGroq: () => undefined },
-    )
-
-    expect(result.translation).toBe('hola')
-    expect(result.provider).toBe('google')
-    expect(result.refinementAttempted).toBe(true)
-    expect(result.refinementSucceeded).toBe(false)
-    expect(result.groqBillable).toBe(false)
+    await expect(
+      runRoutedTranslation(
+        baseConfig(),
+        auth({ rateLimitTier: 'pro' }),
+        { text: 'hello', sourceLanguage: 'en', targetLanguage: 'es', mode: 'shortcut' },
+        { tryReserveGroq: () => true, releaseGroq: () => undefined },
+      ),
+    ).rejects.toThrow('rate_limited')
   })
 
   it('serves cache hits without provider calls', async () => {
@@ -315,12 +294,12 @@ describe('translation provider router', () => {
     expect(spy).not.toHaveBeenCalled()
   })
 
-  it('does not leak google cache into google_then_groq strategy', async () => {
+  it('does not leak google cache into groq strategy', async () => {
     vi.spyOn(google, 'runGoogleTranslate').mockResolvedValue({
       translation: 'hola',
       model: 'google-translate',
     })
-    vi.spyOn(groqProvider, 'runTranslationRefinement').mockResolvedValue({
+    vi.spyOn(groqProvider, 'runTranslationProvider').mockResolvedValue({
       translation: '¡Hola!',
       model: 'openai/gpt-oss-120b',
     })

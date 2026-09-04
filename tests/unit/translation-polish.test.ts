@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   buildTranslationRefinementUserMessage,
+  parseGroqTranslationContent,
   predictClientTranslationStrategy,
   TRANSLATION_REFINEMENT_SYSTEM_PROMPT,
+  TRANSLATION_SYSTEM_PROMPT,
 } from '../../packages/shared/src/ai/translation.ts'
 import {
   liveTranslationPolishEligible,
@@ -16,11 +18,25 @@ import {
   shouldAttemptTranslationRefinement,
 } from '../../backend/src/providers/translationRouter.ts'
 
+describe('lingo-style groq translation contract', () => {
+  it('asks for JSON translation and forbids والله as I swear', () => {
+    expect(TRANSLATION_SYSTEM_PROMPT).toMatch(/JSON object/i)
+    expect(TRANSLATION_SYSTEM_PROMPT).toMatch(/never "I swear"/i)
+    expect(TRANSLATION_SYSTEM_PROMPT).toMatch(/منا عارف/)
+  })
+
+  it('parses Groq JSON translation payloads', () => {
+    expect(parseGroqTranslationContent('{"translation":"Honestly, I dunno, maybe I\'ll come."}')).toBe(
+      "Honestly, I dunno, maybe I'll come.",
+    )
+  })
+})
+
 describe('translation refinement prompt', () => {
   it('establishes post-editor contract', () => {
-    expect(TRANSLATION_REFINEMENT_SYSTEM_PROMPT).toMatch(/POST-EDITOR/i)
+    expect(TRANSLATION_REFINEMENT_SYSTEM_PROMPT).toMatch(/post-editor/i)
     expect(TRANSLATION_REFINEMENT_SYSTEM_PROMPT).toMatch(/authoritative/i)
-    expect(TRANSLATION_REFINEMENT_SYSTEM_PROMPT).toMatch(/smallest changes/i)
+    expect(TRANSLATION_REFINEMENT_SYSTEM_PROMPT).toMatch(/natural conversational English/i)
     expect(TRANSLATION_REFINEMENT_SYSTEM_PROMPT).not.toMatch(/والله → honestly/i)
   })
 
@@ -36,13 +52,17 @@ describe('translation refinement prompt', () => {
     expect(message).toContain('GOOGLE DRAFT:')
     expect(message).toContain('والله يمكن اجي')
     expect(message).toContain('I swear I might come')
-    expect(message).toContain('Post-edit the Google draft into natural conversational English')
+    expect(message).toContain('Rewrite the Google draft into natural conversational English')
   })
 })
 
 describe('predictClientTranslationStrategy', () => {
-  it('uses google_then_groq for pro live', () => {
-    expect(predictClientTranslationStrategy({ plan: 'pro', mode: 'live' })).toBe('google_then_groq')
+  it('uses groq for pro live', () => {
+    expect(predictClientTranslationStrategy({ plan: 'pro', mode: 'live' })).toBe('groq')
+  })
+
+  it('uses groq for signed-in unknown plan so Google cache cannot win', () => {
+    expect(predictClientTranslationStrategy({ plan: 'unknown', signedIn: true })).toBe('groq')
   })
 
   it('uses google for free live', () => {

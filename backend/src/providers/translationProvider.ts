@@ -1,7 +1,9 @@
 import {
   AI_MODELS,
   buildTranslationRefinementUserMessage,
+  buildTranslationUserMessage,
   isValidAiResponseLength,
+  parseGroqTranslationContent,
   TRANSLATION_SYSTEM_PROMPT,
   TRANSLATION_REFINEMENT_SYSTEM_PROMPT,
 } from '@flowlary/shared'
@@ -50,29 +52,26 @@ export async function runTranslationProvider(
   const text = input.text.trim()
   if (!text) throw new Error('invalid_request')
 
-  const userPayload = {
+  const userMessage = buildTranslationUserMessage({
     text,
-    source_language: input.sourceLanguage,
-    target_language: input.targetLanguage,
-    mode: input.mode ?? 'shortcut',
-  }
+    sourceLanguage: input.sourceLanguage,
+    targetLanguage: input.targetLanguage,
+    mode: input.mode,
+  })
 
   const result = await callGroqChat(config, {
     model: AI_MODELS.TRANSLATION,
-    temperature: 0.2,
-    maxTokens: 1200,
-    responseFormat: 'text',
+    temperature: 0,
+    maxTokens: 2048,
+    responseFormat: 'json_object',
     messages: [
       { role: 'system', content: TRANSLATION_SYSTEM_PROMPT },
-      {
-        role: 'user',
-        content: JSON.stringify(userPayload),
-      },
+      { role: 'user', content: userMessage },
     ],
     signal,
   })
 
-  const translation = result.content.trim()
+  const translation = parseGroqTranslationContent(result.content)
   if (!isValidAiResponseLength(translation)) {
     throw new Error('invalid_response')
   }

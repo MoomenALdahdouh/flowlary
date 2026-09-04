@@ -58,7 +58,10 @@ export function resolveTranslationStrategy(
     return 'groq'
   }
   const isPro = auth.rateLimitTier === 'pro' || auth.rateLimitTier === 'trial'
-  if (isPro) return 'google_then_groq'
+  if (isPro) {
+    if (!auth.allowed && auth.denyReason === 'usage_exhausted') return 'google'
+    return 'groq'
+  }
   return 'google'
 }
 
@@ -145,7 +148,7 @@ export async function runRoutedTranslation(
     return runGooglePath(config, auth, input, strategy, cacheKey, hooks, signal)
   }
   if (strategy === 'groq') {
-    return runGroqPath(config, input, strategy, cacheKey, hooks, signal, false)
+    return runGroqPath(config, auth, input, strategy, cacheKey, hooks, signal, false)
   }
   return runGoogleThenGroqPath(config, auth, input, strategy, cacheKey, hooks, signal)
 }
@@ -193,12 +196,13 @@ async function runGooglePath(
     if (!(err instanceof GoogleTranslateError)) throw err
     if (!config.translationAllowGroqFallback) throw err
     if (!auth.allowed && auth.authKind !== 'dev') throw err
-    return runGroqPath(config, input, strategy, cacheKey, hooks, signal, true)
+    return runGroqPath(config, auth, input, strategy, cacheKey, hooks, signal, true)
   }
 }
 
 async function runGroqPath(
   config: AppConfig,
+  auth: AuthContext,
   input: TranslationProviderInput,
   strategy: TranslationRouteStrategy,
   cacheKey: string,
@@ -295,7 +299,7 @@ async function runGoogleThenGroqPath(
     if (!(err instanceof GoogleTranslateError)) throw err
     if (!config.translationAllowGroqFallback) throw err
     if (!auth.allowed && auth.authKind !== 'dev') throw err
-    return runGroqPath(config, input, strategy, cacheKey, hooks, signal, true)
+    return runGroqPath(config, auth, input, strategy, cacheKey, hooks, signal, true)
   }
 
   const refineDecision = shouldAttemptTranslationRefinement(input, googleTranslation)
