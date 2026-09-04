@@ -11,6 +11,7 @@ import {
 import type { LayoutId, UserLayoutProfile } from './layouts/types.ts'
 import { setNativeValue } from '../../core/dom/write.ts'
 import { commitWriteTransaction } from '../../core/writeGate/writeGate.ts'
+import { issueImmediateWriteAuthorization } from '../../core/runtime/writeAuthorization.ts'
 import { FieldSession } from '../../core/session/FieldSession.ts'
 import type { WriterTag } from '@flowlary/shared'
 import { requestTranslationRemote } from '../translation/client.ts'
@@ -27,6 +28,14 @@ import {
 import type { LanguageCode } from '../translation/types.ts'
 import { resolveTheme, THEME_STORAGE_KEY } from '@flowlary/shared/theme'
 import { isLocalDevApi } from '../../config/apiHealth.ts'
+import {
+  getSpeedBoxLocale,
+  getSpeedBoxStrings,
+  isSpeedBoxLocaleStorageKey,
+  loadSpeedBoxStrings,
+  speedBoxDir,
+  speedBoxLang,
+} from './speedBoxStrings.ts'
 
 export const SPEED_BOX_HOST_ID = 'flowlary-speed-box'
 
@@ -127,43 +136,7 @@ function layoutDirection(id: string): 'ltr' | 'rtl' {
 }
 
 function speedError(code: string): string {
-  switch (code) {
-    case 'usage_exhausted':
-    case 'entitlement_denied':
-    case 'AI_ENTITLEMENT_DENIED':
-      return "Today's AI checks are used up."
-    case 'account_required':
-      return 'Sign in to use AI.'
-    case 'auth_failed':
-      return 'Sign in again in Flowlary.'
-    case 'consent_required':
-      return 'Enable Flowlary AI in settings.'
-    case 'disabled':
-      return 'Turn this on in Flowlary settings.'
-    case 'same-language':
-      return 'Pick two different languages.'
-    case 'extension_disconnected':
-      return 'Reload the extension, then try again.'
-    case 'too-long':
-    case 'empty':
-      return 'Add some text.'
-    case 'translation_unavailable':
-    case 'network':
-    case 'upstream':
-      return isLocalDevApi()
-        ? 'Local API not running.'
-        : 'Flowlary AI unavailable. Try again.'
-    case 'AI_UNAVAILABLE':
-    case 'AI_PROVIDER_ERROR':
-    case 'AI_TIMEOUT':
-      return 'AI unavailable. Try again.'
-    case 'rate_limited':
-    case 'AI_RATE_LIMITED':
-    case 'rate-limited':
-      return 'Too many requests. Wait a moment.'
-    default:
-      return 'Something went wrong.'
-  }
+  return getSpeedBoxStrings().error(code, isLocalDevApi())
 }
 
 export function speedBoxShortcutHint(platform = navigator.platform): string {
@@ -202,6 +175,9 @@ export function createSpeedBox(options: {
     end: number | null
   } | null = null
   let boxSuggestion: string | null = null
+  let localeCleanup: (() => void) | null = null
+
+  void loadSpeedBoxStrings()
 
   function isFixBoxMode(): boolean {
     return mode === 'fix' && profile().correctionMode === 'box'
@@ -351,13 +327,14 @@ export function createSpeedBox(options: {
   }
 
   function resultHintText(hasResult: boolean): string {
+    const copy = getSpeedBoxStrings()
     if (busy) return '…'
     if (!hasResult) return ''
-    if (mode === 'fix' && isFixBoxMode()) return 'Apply'
-    if (mode === 'translate' && isTranslateBoxMode()) return 'Apply'
-    if (mode === 'layout' && isLayoutBoxMode()) return 'Apply'
-    if (canInsert()) return 'Enter to insert'
-    return 'Click to copy'
+    if (mode === 'fix' && isFixBoxMode()) return copy.apply
+    if (mode === 'translate' && isTranslateBoxMode()) return copy.apply
+    if (mode === 'layout' && isLayoutBoxMode()) return copy.apply
+    if (canInsert()) return copy.enterToInsert
+    return copy.clickToCopy
   }
 
   function writeInput(value: string): void {
@@ -373,7 +350,7 @@ export function createSpeedBox(options: {
     boxSuggestion = null
     applyEl()?.setAttribute('hidden', '')
     clearResult()
-    setStatus('Applied.', 'info')
+    setStatus(getSpeedBoxStrings().applied, 'info')
     queueMicrotask(() => inputEl()?.focus())
   }
 
@@ -482,6 +459,64 @@ export function createSpeedBox(options: {
     fillLanguageSelect(langTargetEl(), langTarget)
   }
 
+  function ensureLocaleSync(): void {
+    void loadSpeedBoxStrings().then(() => {
+      if (host) applyLocaleChrome()
+    })
+    if (localeCleanup || typeof chrome === 'undefined' || !chrome.storage?.onChanged) return
+    const onChange = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
+      if (area !== 'local') return
+      if (!Object.keys(changes).some((key) => isSpeedBoxLocaleStorageKey(key))) return
+      void loadSpeedBoxStrings().then(() => {
+        if (host) applyLocaleChrome()
+      })
+    }
+    chrome.storage.onChanged.addListener(onChange)
+    localeCleanup = () => {
+      chrome.storage.onChanged.removeListener(onChange)
+      localeCleanup = null
+    }
+  }
+
+  function applyLocaleChrome(): void {
+    const copy = getSpeedBoxStrings()
+    const dir = speedBoxDir()
+    const lang = speedBoxLang()
+    if (host) {
+      host.dir = dir
+      host.lang = lang
+      host.setAttribute('data-locale', getSpeedBoxLocale())
+    }
+    const panel = panelEl()
+    if (panel) panel.dir = dir
+    const title = shadow?.querySelector('#fl-speed-title')
+    if (title) title.textContent = copy.title
+    const modes = shadow?.querySelector('[role="tablist"]')
+    if (modes) modes.setAttribute('aria-label', copy.modeAria)
+    setModeLabel('layout', copy.layout)
+    setModeLabel('translate', copy.translate)
+    setModeLabel('fix', copy.fix)
+    sourceEl()?.setAttribute('aria-label', copy.sourceLayout)
+    targetEl()?.setAttribute('aria-label', copy.targetLayout)
+    langSourceEl()?.setAttribute('aria-label', copy.sourceLanguage)
+    langTargetEl()?.setAttribute('aria-label', copy.targetLanguage)
+    shadow?.querySelector('[data-flowlary="speed-swap"]')?.setAttribute('aria-label', copy.swapLayouts)
+    shadow?.querySelector('[data-flowlary="speed-swap-lang"]')?.setAttribute('aria-label', copy.swapLanguages)
+    const input = inputEl()
+    if (input) input.placeholder = copy.placeholder
+    const apply = applyEl()
+    if (apply) apply.textContent = copy.apply
+    const hint = resultHintEl()
+    if (hint && hint.textContent && hint.textContent !== copy.copied) {
+      hint.textContent = resultHintText(Boolean(outputTextEl()?.textContent))
+    }
+  }
+
+  function setModeLabel(modeId: SpeedBoxMode, label: string): void {
+    const node = shadow?.querySelector(`[data-flowlary="speed-mode"][data-mode="${modeId}"] [data-flowlary="speed-mode-label"]`)
+    if (node) node.textContent = label
+  }
+
   function applyModeChrome(): void {
     const panel = panelEl()
     if (panel) panel.dataset.mode = mode
@@ -494,6 +529,7 @@ export function createSpeedBox(options: {
       btn.tabIndex = active ? 0 : -1
     })
     lastMode = mode
+    applyLocaleChrome()
   }
 
   function clearAiTimer(): void {
@@ -527,9 +563,10 @@ export function createSpeedBox(options: {
     const ok = await copyText(text)
     if (!ok) return
     const hint = resultHintEl()
-    if (hint) hint.textContent = 'Copied'
+    const copy = getSpeedBoxStrings()
+    if (hint) hint.textContent = copy.copied
     window.setTimeout(() => {
-      if (resultHintEl()?.textContent === 'Copied') {
+      if (resultHintEl()?.textContent === copy.copied) {
         resultHintEl()!.textContent = resultHintText(true)
       }
     }, 1500)
@@ -553,29 +590,43 @@ export function createSpeedBox(options: {
     const session = options.getSession?.(element) ?? new FieldSession(element)
     const acquired = session.tryAcquireWrite(origin)
     if (!acquired.ok) return
-    const write = commitWriteTransaction(element, from, to, text, {
-      origin,
+    const action =
+      mode === 'translate'
+        ? 'translation'
+        : mode === 'fix'
+          ? 'english_correction'
+          : 'layout_fix'
+    const authorization = issueImmediateWriteAuthorization({
       session,
-      requestId: acquired.requestId,
-      expectedGeneration: acquired.generation,
-      placeCaretAfter: true,
-      allowActiveEdit: true,
-      auto: false,
-      capability,
+      action,
+      range: { start: from, end: to },
+      replacement: text,
+      snapshotFullText: value,
+      purpose: 'manual_box',
       trigger: 'manual_box',
-      tagTranslated: mode === 'translate',
-      action:
-        mode === 'translate'
-          ? 'translation'
-          : mode === 'fix'
-            ? 'english_correction'
-            : 'layout_fix',
     })
-    session.releaseWrite(origin, acquired.requestId)
-    if (write.verdict !== 'written') return
-    const caret = from + text.length
-    restored = { element, start: caret, end: caret }
-    close()
+    try {
+      const write = commitWriteTransaction(element, from, to, text, {
+        origin,
+        session,
+        requestId: acquired.requestId,
+        expectedGeneration: acquired.generation,
+        placeCaretAfter: true,
+        allowActiveEdit: true,
+        auto: false,
+        capability,
+        trigger: 'manual_box',
+        tagTranslated: mode === 'translate',
+        action,
+        authorization,
+      })
+      if (write.verdict !== 'written') return
+      const caret = from + text.length
+      restored = { element, start: caret, end: caret }
+      close()
+    } finally {
+      session.releaseWrite(origin, acquired.requestId)
+    }
   }
 
   function refreshOutput(): void {
@@ -586,7 +637,7 @@ export function createSpeedBox(options: {
     const result = convertManualText(input.value, current.sourceLayout, current.targetLayout)
     if (!result.ok) {
       setResult('')
-      setStatus('Conversion unavailable for this layout pair.')
+      setStatus(getSpeedBoxStrings().conversionUnavailable)
       return
     }
     const converted = result.text
@@ -603,7 +654,7 @@ export function createSpeedBox(options: {
         input.value = converted
       }
       setResult('')
-      setStatus('Converted.', 'info')
+      setStatus(getSpeedBoxStrings().converted, 'info')
       return
     }
     setResult(show ? converted : '', layoutDirection(current.targetLayout))
@@ -687,7 +738,7 @@ export function createSpeedBox(options: {
         }
         writeInput(response.translation)
         setResult('')
-        setStatus('Translated.', 'info')
+        setStatus(getSpeedBoxStrings().translated, 'info')
         return
       }
 
@@ -707,7 +758,7 @@ export function createSpeedBox(options: {
         boxSuggestion = null
         applyEl()?.setAttribute('hidden', '')
         setResult('')
-        setStatus('Looks good.', 'info')
+        setStatus(getSpeedBoxStrings().looksGood, 'info')
         return
       }
       if (isFixBoxMode()) {
@@ -721,7 +772,7 @@ export function createSpeedBox(options: {
       boxSuggestion = null
       applyEl()?.setAttribute('hidden', '')
       setResult('')
-      setStatus('Fixed.', 'info')
+      setStatus(getSpeedBoxStrings().fixed, 'info')
     } catch {
       if (token !== runToken) return
       setResult('')
@@ -764,7 +815,8 @@ export function createSpeedBox(options: {
       if (target instanceof HTMLButtonElement && target.dataset.flowlary === 'speed-mode') {
         event.preventDefault()
         const index = MODES.indexOf(mode)
-        const delta = event.key === 'ArrowRight' ? 1 : -1
+        const rtl = speedBoxDir() === 'rtl'
+        const delta = event.key === 'ArrowRight' ? (rtl ? -1 : 1) : rtl ? 1 : -1
         const next = MODES[(index + delta + MODES.length) % MODES.length]
         if (next) {
           setMode(next)
@@ -817,12 +869,21 @@ export function createSpeedBox(options: {
       <div class="panel" data-flowlary="speed-panel" role="dialog" aria-modal="true" aria-labelledby="fl-speed-title" data-mode="layout">
         <div class="header">
           <p class="title" id="fl-speed-title">Speed Box</p>
-          <p class="shortcut">${speedBoxShortcutHint()} · Esc</p>
+          <p class="shortcut" dir="ltr">${speedBoxShortcutHint()} · Esc</p>
         </div>
         <div class="modes" role="tablist" aria-label="Mode">
-          <button type="button" class="mode is-active" role="tab" data-flowlary="speed-mode" data-mode="layout" aria-selected="true">Layout</button>
-          <button type="button" class="mode" role="tab" data-flowlary="speed-mode" data-mode="translate" aria-selected="false">Translate</button>
-          <button type="button" class="mode" role="tab" data-flowlary="speed-mode" data-mode="fix" aria-selected="false">Fix</button>
+          <button type="button" class="mode is-active" role="tab" data-flowlary="speed-mode" data-mode="layout" aria-selected="true">
+            <svg class="mode-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M4 12h10M4 17h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M16 14.5 20 17l-4 2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span data-flowlary="speed-mode-label">Layout</span>
+          </button>
+          <button type="button" class="mode" role="tab" data-flowlary="speed-mode" data-mode="translate" aria-selected="false">
+            <svg class="mode-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6h9M8.5 6c0 6-4 10-6 12M5 12h6.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M14 20 17 8h1l3 12M15.2 16h5.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span data-flowlary="speed-mode-label">Translate</span>
+          </button>
+          <button type="button" class="mode" role="tab" data-flowlary="speed-mode" data-mode="fix" aria-selected="false">
+            <svg class="mode-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m5 13 4.2 4.2L19 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span data-flowlary="speed-mode-label">Fix</span>
+          </button>
         </div>
         <div class="pair" data-flowlary="speed-pair-layout">
           <select data-flowlary="speed-source" aria-label="Source keyboard layout"></select>
@@ -844,6 +905,8 @@ export function createSpeedBox(options: {
         </div>
         <p class="status" data-flowlary="speed-status" hidden></p>
       </div>`
+    applyLocaleChrome()
+    ensureLocaleSync()
 
     shadow.addEventListener('keydown', (event) => {
       onPanelKeyDown(event as KeyboardEvent)
@@ -975,6 +1038,7 @@ export function createSpeedBox(options: {
       lastMode = 'layout'
       lastLangPair = null
       speedBoxThemeCleanup?.()
+      localeCleanup?.()
       host?.remove()
       host = null
       shadow = null

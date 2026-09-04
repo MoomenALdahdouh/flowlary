@@ -238,12 +238,15 @@ describe('Phase 7 — Correction module integration', () => {
     addSpy.mockRestore()
   })
 
-  it('J — pipeline local English typo remaps hwo', async () => {
+  it('J — local English typo remaps hwo after idle, not via runFieldCycle', async () => {
     const ta = document.createElement('textarea')
     document.body.append(ta)
-    ta.value = 'hello hwo '
-    ta.focus()
+    focusAndType(ta, 'hello hwo ')
     await runFieldCycle(ta, engine.sessions.getOrCreate(ta))
+    expect(ta.value).toBe('hello hwo ')
+    await vi.advanceTimersByTimeAsync(750)
+    await Promise.resolve()
+    await Promise.resolve()
     expect(ta.value).toContain('how')
   })
 })

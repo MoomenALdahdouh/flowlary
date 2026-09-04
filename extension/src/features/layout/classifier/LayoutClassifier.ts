@@ -9,6 +9,8 @@ import type { LayoutCache } from '../cache/LayoutCache.ts'
 import { toCacheRecord } from '../cache/records.ts'
 import type { LayoutMetrics } from '../metrics.ts'
 import { createCoalescer } from '../cache/coalesce.ts'
+import { runWithPhysicalHttp } from '../../../core/runtime/physicalHttp.ts'
+import type { Operation } from '../../../core/runtime/types.ts'
 
 export type ClassifierVerdict = {
   kind: 'VALID' | 'LAYOUT_MISMATCH'
@@ -108,6 +110,7 @@ export class LayoutClassifier {
     profile: UserLayoutProfile,
     context = '',
     signal?: AbortSignal,
+    physical?: { fieldId: string; operation?: Operation; isCurrent?: () => boolean },
   ): Promise<ClassifierResult> {
     const local = this.localHint(word, profile, context)
     if (local) {
@@ -148,9 +151,31 @@ export class LayoutClassifier {
 
     return coalesce.run(key, async () => {
       if (signal?.aborted) return { ok: false, reason: 'aborted' }
-      const remote = await this.classifyRemote!(word, profile, context)
-      if (remote.ok) this.remember(word, profile, remote.verdict, context)
-      return remote
+      const fieldId = physical?.fieldId
+      const dispatch = () => this.classifyRemote!(word, profile, context)
+      const remote = fieldId
+        ? await runWithPhysicalHttp(
+          {
+            fieldId,
+            feature: 'layout',
+            isCurrent: () => {
+              if (signal?.aborted) return false
+              if (physical?.operation && (
+                physical.operation.state === 'superseded'
+                || physical.operation.state === 'aborted'
+                || physical.operation.state === 'failed'
+              )) {
+                return false
+              }
+              return physical?.isCurrent ? physical.isCurrent() : true
+            },
+          },
+          dispatch,
+        )
+        : { dispatched: true as const, value: await dispatch() }
+      if (!remote.dispatched) return { ok: false, reason: 'aborted' }
+      if (remote.value.ok) this.remember(word, profile, remote.value.verdict, context)
+      return remote.value
     })
   }
 

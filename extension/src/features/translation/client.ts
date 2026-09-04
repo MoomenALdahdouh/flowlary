@@ -1,3 +1,5 @@
+import type { PhysicalHttpContext } from '../../core/runtime/physicalHttp.ts'
+import { runWithPhysicalHttp } from '../../core/runtime/physicalHttp.ts'
 import type { LanguageCode, TranslationMode, TranslationOutcome } from './types.ts'
 import type { TranslationRequestContext } from '@flowlary/shared'
 
@@ -8,6 +10,7 @@ export type TranslateTextMessage = {
   targetLanguage: LanguageCode
   mode: TranslationMode
   context?: TranslationRequestContext
+  requestId?: string
 }
 
 export type TranslateTextResponse =
@@ -42,6 +45,21 @@ function mapBackgroundErrorCode(code: string): TranslationOutcome extends { ok: 
   return code as TranslationOutcome extends { ok: false; code: infer C } ? C : 'invalid-response'
 }
 
+let lastTranslationNetworkSignal: AbortSignal | null = null
+
+export function getLastTranslationNetworkSignalForTests(): AbortSignal | null {
+  return lastTranslationNetworkSignal
+}
+
+export async function cancelTranslationRemote(requestId: string): Promise<void> {
+  if (typeof chrome === 'undefined' || !chrome.runtime?.sendMessage) return
+  try {
+    await chrome.runtime.sendMessage({ type: 'CANCEL_TRANSLATE', requestId })
+  } catch {
+    /* ignore */
+  }
+}
+
 export async function requestTranslationRemote(
   text: string,
   sourceLanguage: LanguageCode,
@@ -49,12 +67,42 @@ export async function requestTranslationRemote(
   signal?: AbortSignal,
   mode: TranslationMode = 'shortcut',
   context?: TranslationRequestContext,
+  physical?: PhysicalHttpContext,
 ): Promise<TranslationOutcome> {
+  const send = () => requestTranslationRemoteUncapped(
+    text,
+    sourceLanguage,
+    targetLanguage,
+    signal,
+    mode,
+    context,
+  )
+  if (!physical) return send()
+  const gated = await runWithPhysicalHttp(physical, send)
+  if (!gated.dispatched) return { ok: false, code: 'aborted' }
+  return gated.value
+}
+
+async function requestTranslationRemoteUncapped(
+  text: string,
+  sourceLanguage: LanguageCode,
+  targetLanguage: LanguageCode,
+  signal?: AbortSignal,
+  mode: TranslationMode = 'shortcut',
+  context?: TranslationRequestContext,
+): Promise<TranslationOutcome> {
+  lastTranslationNetworkSignal = signal ?? null
   if (signal?.aborted) return { ok: false, code: 'aborted' }
 
   if (typeof chrome === 'undefined' || !chrome.runtime?.sendMessage) {
     return { ok: false, code: 'translation_unavailable' }
   }
+
+  const requestId = `tr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  const onAbort = () => {
+    void cancelTranslationRemote(requestId)
+  }
+  signal?.addEventListener('abort', onAbort, { once: true })
 
   try {
     const response = (await chrome.runtime.sendMessage({
@@ -64,6 +112,7 @@ export async function requestTranslationRemote(
       targetLanguage,
       mode,
       context,
+      requestId,
     } satisfies TranslateTextMessage)) as TranslateTextResponse | ExtensionErrorResponse | undefined
 
     if (signal?.aborted) return { ok: false, code: 'aborted' }
@@ -94,5 +143,7 @@ export async function requestTranslationRemote(
       return { ok: false, code: 'translation_unavailable' }
     }
     return { ok: false, code: 'translation_unavailable' }
+  } finally {
+    signal?.removeEventListener('abort', onAbort)
   }
 }

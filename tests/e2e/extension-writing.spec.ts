@@ -361,7 +361,10 @@ test.describe('real Chrome extension writing', () => {
     await page.waitForTimeout(400)
     expect(await field.inputValue()).toBe('ؤخةةهىل')
     await field.pressSequentially(' ', { delay: 20 })
-    await expect.poll(async () => field.inputValue(), { timeout: 4_000 }).toMatch(/comming/i)
+    await page.waitForTimeout(1_200)
+    // Isolated token after Space still must not fight the user. Sequence evidence
+    // (mixed/bilingual sentences) can remap this glyph; a lone word must not.
+    expect(await field.inputValue()).toMatch(/ؤخةةهىل/)
     await page.close()
   })
 
@@ -377,8 +380,11 @@ test.describe('real Chrome extension writing', () => {
     const page = await context.newPage()
     await page.goto(`chrome-extension://${extensionId}/src/popup/index.html`)
     await expect(page.getByRole('button', { name: /pause on this site|resume on this site/i })).toHaveCount(0)
-    await expect(page.getByText(/open a regular website/i)).toBeVisible()
-    await expect(page.getByLabel(/ai writing help/i)).toBeVisible()
+    await expect(page.getByText(/open a regular website/i)).toHaveCount(0)
+    await expect(page.getByText(/help in fields/i)).toBeVisible()
+    await expect(page.getByRole('switch', { name: /extension active/i })).toBeVisible()
+    await expect(page.getByText(/ai checks today/i)).toBeVisible()
+    await expect(page.getByRole('button', { name: /layout/i })).toBeVisible()
     await page.close()
   })
 
@@ -498,6 +504,29 @@ test.describe('real Chrome extension writing', () => {
     await page.waitForTimeout(900)
     expect(await field.inputValue()).toContain('اثممخ')
     expect(await field.inputValue()).not.toMatch(LAYOUT_EXPECTED)
+    await page.close()
+  })
+
+  test('ChatGPT-style paste (paste event + insertText) does not show the Typing box', async () => {
+    const page = await openLab(context)
+    const field = page.locator('#plain-textarea')
+    await field.click()
+    await field.evaluate((el) => {
+      const field = el as HTMLTextAreaElement
+      field.focus()
+      field.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true }))
+      field.value = 'اثممخ حمثشسث '
+      field.dispatchEvent(new InputEvent('input', {
+        bubbles: true,
+        data: 'اثممخ حمثشسث ',
+        inputType: 'insertText',
+      }))
+    })
+    await page.waitForTimeout(900)
+    expect(await field.inputValue()).toContain('اثممخ')
+    expect(await field.inputValue()).not.toMatch(LAYOUT_EXPECTED)
+    const boxes = await page.locator('[data-flowlary-suggestion-host]').count()
+    expect(boxes).toBe(0)
     await page.close()
   })
 

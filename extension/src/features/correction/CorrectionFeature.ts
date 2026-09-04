@@ -5,7 +5,6 @@ import { evaluateFieldSafety } from '../../core/safety/index.ts'
 import type { EditableElement } from '../../core/dom/types.ts'
 import { stateManager } from '../../core/state/StateManager.ts'
 import { isEligibleForCorrection } from './language.ts'
-import { runExplicitEnglishAssist } from '../../core/writeGate/pipelineEnglish.ts'
 import { type FieldCorrectionStateEntry } from './applyCorrection.ts'
 import { createCorrectionMetrics, type CorrectionMetrics } from './metrics.ts'
 import { CorrectionScheduler } from './scheduler.ts'
@@ -63,9 +62,6 @@ export function createCorrectionFeature(options: CorrectionModuleOptions): Corre
       if (!stateManager.correction.enabled) {
         return { ok: false, operation: 'CORRECT', error: 'disabled' }
       }
-      if (!stateManager.correction.consentAccepted) {
-        return { ok: false, operation: 'CORRECT', error: 'consent_required' }
-      }
 
       const element = options.engine.sessions.resolveElement(command.field.id)
       if (!element) {
@@ -89,19 +85,32 @@ export function createCorrectionFeature(options: CorrectionModuleOptions): Corre
         return { ok: false, operation: 'CORRECT', error: 'not_english' }
       }
 
-      const outcome = await runExplicitEnglishAssist(editable, session)
-      if (outcome === 'applied') {
+      const active = session.getActiveRequest()
+      const outcome = await scheduler.runFromShortcut(
+        editable,
+        active?.operation === 'CORRECT'
+          ? {
+              requestId: active.requestId,
+              generation: active.generation,
+              signal: active.signal,
+            }
+          : undefined,
+      )
+      if (outcome === 'committed' || outcome === 'pending') {
         return {
           ok: true,
           operation: 'CORRECT',
-          data: { applied: true, mode: stateManager.correction.mode },
+          data: { applied: outcome === 'committed', mode: stateManager.correction.mode },
         }
       }
-      if (outcome === 'stale') {
+      if (outcome === 'stale' || outcome === 'aborted') {
         return { ok: false, operation: 'CORRECT', stale: true }
       }
-      if (outcome === 'blocked') {
+      if (outcome === 'busy') {
         return { ok: false, operation: 'CORRECT', error: 'busy' }
+      }
+      if (outcome === 'blocked') {
+        return { ok: false, operation: 'CORRECT', error: 'consent_required' }
       }
       return { ok: false, operation: 'CORRECT', error: 'noop' }
     },

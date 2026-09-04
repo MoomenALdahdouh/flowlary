@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { STORAGE_KEYS } from '@flowlary/shared'
 import { createSpeedBox } from '../../../extension/src/features/layout/speedBox.ts'
 import type { SpeedBoxProfile } from '../../../extension/src/features/layout/speedBox.ts'
+import { loadSpeedBoxStrings, resetSpeedBoxStringCache } from '../../../extension/src/features/layout/speedBoxStrings.ts'
 import * as writeGate from '../../../extension/src/core/writeGate/writeGate.ts'
 
 function profile(overrides: Partial<SpeedBoxProfile> = {}): SpeedBoxProfile {
@@ -44,6 +46,8 @@ describe('Speed Box modes', () => {
     box?.destroy()
     document.body.innerHTML = ''
     vi.useRealTimers()
+    resetSpeedBoxStringCache()
+    vi.mocked(chrome.storage.local.get).mockResolvedValue({})
   })
 
   it('opens with layout and language selects defaulted from settings', () => {
@@ -209,5 +213,24 @@ describe('Speed Box modes', () => {
     expect(box.isOpen()).toBe(true)
     root().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     expect(box.isOpen()).toBe(false)
+  })
+
+  it('uses Arabic copy and RTL when the UI locale is Arabic', async () => {
+    vi.useRealTimers()
+    vi.mocked(chrome.storage.local.get).mockResolvedValue({
+      [STORAGE_KEYS.uiLocale]: { value: 'ar', _v: 1 },
+    })
+    await loadSpeedBoxStrings()
+    box = createSpeedBox({ getProfile: () => profile() })
+    box.open()
+    expect(host().getAttribute('dir')).toBe('rtl')
+    expect(host().getAttribute('lang')).toBe('ar')
+    expect(root().querySelector('#fl-speed-title')?.textContent).toBe('صندوق السرعة')
+    expect(root().querySelector('[data-mode="fix"] [data-flowlary="speed-mode-label"]')?.textContent).toBe(
+      'تصحيح',
+    )
+    expect((root().querySelector('[data-flowlary="speed-input"]') as HTMLTextAreaElement).placeholder).toBe(
+      'اكتب أو الصق…',
+    )
   })
 })

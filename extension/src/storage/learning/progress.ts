@@ -6,7 +6,9 @@ import {
   LEARNING_CATEGORIES,
   MIN_ERRORS_FOR_TREND,
   MIN_WORDS_FOR_ERROR_RATE,
+  normalizeLearningText,
   PROGRESS_TREND_PERIOD_MS,
+  tightenCorrectionPair,
   WRITING_LEARNING_CATEGORIES,
   type LearningEvent,
   type LearningEventCategory,
@@ -39,6 +41,29 @@ export type ProgressRecentEvent = {
   action: LearningEvent['action']
   timestamp: number
   relativeLabel: string
+}
+
+export type ProgressRange = '7d' | '30d' | 'all'
+
+export type ProgressMistakeItem = {
+  id: string
+  category: LearningEventCategory
+  original: string
+  corrected: string
+  action: LearningEvent['action']
+  timestamp: number
+  relativeLabel: string
+  count: number
+  appliedCount: number
+  normalizedOriginal: string
+  historyWord: string | null
+}
+
+export type ProgressRangeSummary = {
+  errors: number
+  words: number
+  rate: number | null
+  byType: Record<(typeof WRITING_LEARNING_CATEGORIES)[number], number>
 }
 
 export type ProgressDayPoint = {
@@ -86,6 +111,7 @@ export type ProgressMetrics = {
   byTypePercentInput: Record<(typeof INPUT_LEARNING_CATEGORIES)[number], number> | null
   trend: ProgressTrend
   recentEvents: ProgressRecentEvent[]
+  mistakes: ProgressMistakeItem[]
   recurringPatterns: RecurringPattern[]
   practiceSummary: {
     sessionsThisWeek: number
@@ -273,12 +299,103 @@ export function computeTrend(
 }
 
 function relativeTimeLabel(timestamp: number, now = Date.now()): string {
-  const diff = now - timestamp
+  const diff = Math.max(0, now - timestamp)
   const day = 24 * 60 * 60 * 1000
   if (diff < day) return 'today'
-  if (diff < day * 2) return 'yesterday'
+  if (diff < day * 2) return '1d ago'
   const days = Math.floor(diff / day)
-  return `${days} days ago`
+  return `${days}d ago`
+}
+
+function historyWordFromOriginal(original: string): string | null {
+  const tokens = original
+    .trim()
+    .split(/\s+/)
+    .filter((token) => /[A-Za-z]/.test(token))
+  if (tokens.length === 0) return null
+  return tokens.reduce((best, token) => (token.length > best.length ? token : best))
+}
+
+export function computeMistakeFeed(events: LearningEvent[], now = Date.now(), limit = 80): ProgressMistakeItem[] {
+  const unique = uniqueLearningErrorEvents(events)
+  const groups = new Map<string, LearningEvent[]>()
+  for (const event of unique) {
+    if (!WRITING_LEARNING_CATEGORIES.includes(event.category as (typeof WRITING_LEARNING_CATEGORIES)[number])) {
+      continue
+    }
+    const tight = tightenCorrectionPair(event.original, event.corrected)
+    const key = `${event.category}:${normalizeLearningText(tight.original)}`
+    const list = groups.get(key) ?? []
+    list.push({ ...event, original: tight.original, corrected: tight.corrected, normalizedOriginal: normalizeLearningText(tight.original) })
+    groups.set(key, list)
+  }
+
+  const appliedByKey = new Map<string, number>()
+  for (const event of events) {
+    if (event.action !== 'accepted') continue
+    if (!WRITING_LEARNING_CATEGORIES.includes(event.category as (typeof WRITING_LEARNING_CATEGORIES)[number])) {
+      continue
+    }
+    const tight = tightenCorrectionPair(event.original, event.corrected)
+    const key = `${event.category}:${normalizeLearningText(tight.original)}`
+    appliedByKey.set(key, (appliedByKey.get(key) ?? 0) + 1)
+  }
+
+  return [...groups.entries()]
+    .map(([key, list]) => {
+      const latest = list.reduce((a, b) => (a.timestamp >= b.timestamp ? a : b))
+      return {
+        id: key,
+        category: latest.category,
+        original: latest.original,
+        corrected: latest.corrected,
+        action: latest.action,
+        timestamp: latest.timestamp,
+        relativeLabel: relativeTimeLabel(latest.timestamp, now),
+        count: list.length,
+        appliedCount: appliedByKey.get(key) ?? 0,
+        normalizedOriginal: latest.normalizedOriginal,
+        historyWord: historyWordFromOriginal(latest.original),
+      }
+    })
+    .sort((a, b) => b.timestamp - a.timestamp || b.count - a.count)
+    .slice(0, limit)
+}
+
+export function summarizeProgressRange(metrics: ProgressMetrics, range: ProgressRange): ProgressRangeSummary {
+  if (range === 'all') {
+    const spelling = metrics.byType.spelling
+    const grammar = metrics.byType.grammar
+    const wording = metrics.byType.wording
+    return {
+      errors: spelling + grammar + wording,
+      words: metrics.wordsWritten,
+      rate: metrics.errorsPer100Words,
+      byType: { spelling, grammar, wording },
+    }
+  }
+  const days = range === '7d' ? 7 : 30
+  const slice = metrics.charts.daily.slice(-days)
+  const errors = slice.reduce((sum, point) => sum + point.errors, 0)
+  const words = slice.reduce((sum, point) => sum + point.words, 0)
+  const spelling = slice.reduce((sum, point) => sum + point.spelling, 0)
+  const grammar = slice.reduce((sum, point) => sum + point.grammar, 0)
+  const wording = slice.reduce((sum, point) => sum + point.wording, 0)
+  let rate: number | null = null
+  if (words >= MIN_WORDS_FOR_ERROR_RATE) {
+    rate = Math.round((errors / words) * 1000) / 10
+  }
+  return { errors, words, rate, byType: { spelling, grammar, wording } }
+}
+
+export function categoryNeedsPractice(
+  daily: ProgressDayPoint[],
+  type: (typeof WRITING_LEARNING_CATEGORIES)[number],
+): boolean {
+  const last = daily.slice(-7).reduce((sum, point) => sum + point[type], 0)
+  const previous = daily.slice(-14, -7).reduce((sum, point) => sum + point[type], 0)
+  if (last === 0 && previous === 0) return false
+  return last >= previous
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -390,18 +507,16 @@ export function computeProgressMetrics(
     ) as Record<LearningEventCategory, number>
   }
 
-  const recentEvents: ProgressRecentEvent[] = events
-    .filter((event) => event.action !== 'rejected')
-    .slice(0, 8)
-    .map((event) => ({
-      id: event.id,
-      category: event.category,
-      original: event.original,
-      corrected: event.corrected,
-      action: event.action,
-      timestamp: event.timestamp,
-      relativeLabel: relativeTimeLabel(event.timestamp, now),
-    }))
+  const mistakes = computeMistakeFeed(events, now)
+  const recentEvents: ProgressRecentEvent[] = mistakes.slice(0, 8).map((item) => ({
+    id: item.id,
+    category: item.category,
+    original: item.original,
+    corrected: item.corrected,
+    action: item.action,
+    timestamp: item.timestamp,
+    relativeLabel: item.relativeLabel,
+  }))
 
   return {
     state,
@@ -415,6 +530,7 @@ export function computeProgressMetrics(
     byTypePercentInput,
     trend: computeTrend(events, store.samples, wordsWritten, now),
     recentEvents,
+    mistakes,
     recurringPatterns: computeRecurringPatterns(events),
     practiceSummary: computePracticeSummary(sessionStore, now),
     writingErrorCount,

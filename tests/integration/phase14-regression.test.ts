@@ -178,6 +178,7 @@ describe('Phase 14 — regression matrix', () => {
     it('detects translate, layout, speed box with Ctrl/Cmd+Shift', () => {
       expect(detectShortcut(shortcut('Comma'))).toBe('TRANSLATE')
       expect(detectShortcut(shortcut('KeyP'))).toBe('FIX_LAYOUT')
+      expect(detectShortcut(shortcut('KeyE'))).toBe('CORRECT')
       expect(detectShortcut(shortcut('KeyL'))).toBe('SPEED_BOX')
       expect(detectShortcut(shortcut('KeyL', { metaKey: true, ctrlKey: false }))).toBe('SPEED_BOX')
     })

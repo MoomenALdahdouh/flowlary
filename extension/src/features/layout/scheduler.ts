@@ -1,40 +1,17 @@
 import type { InputEngine } from '../../core/input/InputEngine.ts'
-import { evaluateFieldSafety } from '../../core/safety/index.ts'
-import {
-  isInsideMarkdownCode,
-  isSafeToken,
-  lastCompletedToken,
-  MAX_FIELD_CHARS,
-  MAX_FIELD_TOKENS,
-  tokenizeText,
-} from '../../core/safety/index.ts'
-import { readCaret, readFieldText, isEditableElement } from '../../core/dom/read.ts'
-import type { EditableElement } from '../../core/dom/types.ts'
-import { stateManager } from '../../core/state/StateManager.ts'
-import {
-  canCommitMismatch,
-  localClassificationHint,
-  planFieldFixes,
-  type UserLayoutProfile,
-} from './layouts/index.ts'
-import { isExceptedToken } from './profile/exceptions.ts'
-import { applyLayoutFix } from './fixCurrentText.ts'
-import type { LayoutClassifier } from './classifier/LayoutClassifier.ts'
 import type { SpeedBox } from './speedBox.ts'
-import type { LayoutMetrics } from './metrics.ts'
-import { allowAutomaticNetworkAssist } from '../../core/policy/writingPolicy.ts'
-import {
-  fieldKindFromElement,
-  recordWriteTelemetry,
-} from '../../core/observability/writeTelemetry.ts'
 
+/**
+ * Not a scheduler. Automatic Fix Typing is owned by IdleScheduler / WritingRuntime.
+ * This listener only closes Speed Box on Escape.
+ */
 export type LayoutSchedulerOptions = {
   engine: InputEngine
-  classifier: LayoutClassifier
-  metrics: LayoutMetrics
-  getProfile: () => UserLayoutProfile
-  getExceptions: () => readonly string[]
   getSpeedBox: () => SpeedBox
+  classifier?: unknown
+  metrics?: unknown
+  getProfile?: () => unknown
+  getExceptions?: () => unknown
 }
 
 export class LayoutScheduler {
@@ -44,7 +21,6 @@ export class LayoutScheduler {
 
   start(): void {
     if (this.unsubscribe) return
-    // Speed Box escape only. Auto layout writes go through the enforce pipeline.
     this.unsubscribe = this.options.engine.eventBus.subscribe((event) => {
       if (event.type === 'keydown' && event.key === 'Escape') {
         this.options.getSpeedBox().handleEscape()
@@ -55,185 +31,5 @@ export class LayoutScheduler {
   stop(): void {
     this.unsubscribe?.()
     this.unsubscribe = null
-  }
-
-  private shouldRun(element: Element): element is EditableElement {
-    void element
-    return false
-  }
-
-  private evaluate(element: Element | null | undefined, finalizeAll: boolean): void {
-    if (!element || !this.shouldRun(element)) return
-
-    const profile = this.options.getProfile()
-    const personalExceptions = this.options.getExceptions()
-    const session = this.options.engine.sessions.getOrCreate(element)
-    const generation = session.getGeneration()
-
-    this.applyLocalFixes(element, session, profile, personalExceptions, finalizeAll, generation)
-    if (!allowAutomaticNetworkAssist()) {
-      recordWriteTelemetry({
-        capability: 'layout',
-        trigger: 'auto',
-        outcome: 'skipped',
-        reasonCodes: ['shortcuts_only'],
-        fieldKind: fieldKindFromElement(element),
-      })
-      return
-    }
-    void this.evaluateRemote(
-      element,
-      session,
-      profile,
-      personalExceptions,
-      finalizeAll,
-      generation,
-    )
-  }
-
-  private applyLocalFixes(
-    element: EditableElement,
-    session: ReturnType<InputEngine['sessions']['getOrCreate']>,
-    profile: UserLayoutProfile,
-    personalExceptions: readonly string[],
-    finalizeAll: boolean,
-    generation: number,
-  ): void {
-    const text = readFieldText(element)
-    const caret = readCaret(element) ?? text.length
-    const oversized =
-      text.length > MAX_FIELD_CHARS || tokenizeText(text).tokens.length > MAX_FIELD_TOKENS
-
-    let fixes = planFieldFixes(text, profile, {
-      finalizeAll: finalizeAll && !oversized,
-      caret,
-      personalExceptions,
-    })
-
-    if (oversized) {
-      const last = lastCompletedToken(text, caret, !finalizeAll)
-      fixes = last
-        ? planFieldFixes(text, profile, {
-            finalizeAll: true,
-            caret,
-            personalExceptions,
-          }).filter((fix) => fix.start === last.start)
-        : []
-    }
-
-    for (const fix of [...fixes].sort((a, b) => b.start - a.start)) {
-      if (session.getGeneration() !== generation) {
-        this.options.metrics.layout_stale_results += 1
-        return
-      }
-      if (!canCommitMismatch(profile, fix.word, fix.targetLayout, fix.corrected, text)) {
-        continue
-      }
-      if (applyLayoutFix(element, session, fix, generation, undefined, { historyMode: 'automatic' })) {
-        this.options.metrics.layout_local_hits += 1
-      }
-    }
-  }
-
-  private async evaluateRemote(
-    element: EditableElement,
-    session: ReturnType<InputEngine['sessions']['getOrCreate']>,
-    profile: UserLayoutProfile,
-    personalExceptions: readonly string[],
-    finalizeAll: boolean,
-    generation: number,
-  ): Promise<void> {
-    const text = readFieldText(element)
-    const caret = readCaret(element) ?? text.length
-    const oversized =
-      text.length > MAX_FIELD_CHARS || tokenizeText(text).tokens.length > MAX_FIELD_TOKENS
-    const last = lastCompletedToken(text, caret, !finalizeAll)
-
-    const remaining = tokenizeText(text).tokens.flatMap((span) => {
-      if (!span.token) return []
-      if (isExceptedToken(span.token, personalExceptions)) return []
-      if (!isSafeToken(span.token, span.context, span.raw)) return []
-      if (isInsideMarkdownCode(text, span.start)) return []
-      const closed = finalizeAll || /\s/.test(text.slice(span.end, span.end + 1))
-      if (!closed) return []
-      if (oversized && last && span.start !== last.start) return []
-      if (localClassificationHint(span.token, profile, text) !== null) return []
-      return [{ word: span.token, start: span.start, end: span.end }]
-    })
-
-    for (const item of [...remaining].reverse()) {
-      if (session.getGeneration() !== generation) {
-        this.options.metrics.layout_stale_results += 1
-        return
-      }
-
-      const cached = this.options.classifier.decideFromCache(item.word, profile, text)
-      if (cached?.kind === 'LAYOUT_MISMATCH' && cached.targetLayout && cached.corrected) {
-        if (
-          this.options.classifier.canApply(
-            profile,
-            item.word,
-            cached.targetLayout,
-            cached.corrected,
-            text,
-          )
-        ) {
-          applyLayoutFix(
-            element,
-            session,
-            {
-              start: item.start,
-              end: item.end,
-              word: item.word,
-              corrected: cached.corrected,
-              sourceLayout: cached.sourceLayout,
-              targetLayout: cached.targetLayout,
-            },
-            generation,
-            undefined,
-            { historyMode: 'automatic' },
-          )
-        }
-        continue
-      }
-      if (cached?.kind === 'VALID') continue
-
-      const result = await this.options.classifier.classify(item.word, profile, text)
-      if (session.getGeneration() !== generation) {
-        this.options.metrics.layout_stale_results += 1
-        return
-      }
-      if (!result.ok || result.verdict.kind !== 'LAYOUT_MISMATCH' || !result.verdict.targetLayout) {
-        continue
-      }
-      const corrected = result.verdict.corrected
-      if (
-        !corrected ||
-        !this.options.classifier.canApply(
-          profile,
-          item.word,
-          result.verdict.targetLayout,
-          corrected,
-          text,
-        )
-      ) {
-        continue
-      }
-      applyLayoutFix(
-        element,
-        session,
-        {
-          start: item.start,
-          end: item.end,
-          word: item.word,
-          corrected,
-          sourceLayout: result.verdict.sourceLayout,
-          targetLayout: result.verdict.targetLayout,
-        },
-        generation,
-        undefined,
-        { historyMode: 'automatic' },
-      )
-    }
   }
 }

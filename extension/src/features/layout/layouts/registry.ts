@@ -10,7 +10,7 @@ import type {
   LayoutId,
   PhysicalKeyId,
 } from './types.ts'
-import { LAYOUT_IDS } from './types.ts'
+import { LAYOUT_IDS, PRODUCT_LAYOUT_IDS } from './types.ts'
 
 const LAYOUTS: Record<LayoutId, KeyboardLayout> = {
   'en-US-qwerty': enUsQwerty,
@@ -69,6 +69,10 @@ export function getLayout(layoutId: string): KeyboardLayout | undefined {
 
 export function getSupportedLayouts(): KeyboardLayout[] {
   return IMPLEMENTED_IDS.map((id) => LAYOUTS[id])
+}
+
+export function getProductLayouts(): KeyboardLayout[] {
+  return PRODUCT_LAYOUT_IDS.map((id) => LAYOUTS[id])
 }
 
 export function getLayoutsForLanguage(language: string): KeyboardLayout[] {

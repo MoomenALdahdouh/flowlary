@@ -7,6 +7,7 @@ export {
   getLayout,
   getLayoutsForLanguage,
   getSupportedLayouts,
+  getProductLayouts,
   isSupportedLayout,
   isValidClassification,
   layoutCharSet,

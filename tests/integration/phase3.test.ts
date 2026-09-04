@@ -315,6 +315,7 @@ describe('Phase 3 — InputEngine + CommandRouter wiring', () => {
   it('detects physical shortcut codes', () => {
     expect(detectShortcut(shortcutEvent('Comma'))).toBe('TRANSLATE')
     expect(detectShortcut(shortcutEvent('KeyP'))).toBe('FIX_LAYOUT')
+    expect(detectShortcut(shortcutEvent('KeyE'))).toBe('CORRECT')
     expect(detectShortcut(shortcutEvent('KeyL'))).toBe('SPEED_BOX')
     expect(detectShortcut(shortcutEvent('KeyP', { metaKey: true, ctrlKey: false }))).toBe(
       'FIX_LAYOUT',

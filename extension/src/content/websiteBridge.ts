@@ -5,6 +5,9 @@
  * Uses window.postMessage — CustomEvents do not cross Chrome's isolated worlds.
  */
 
+import { isProductionApiTarget } from '../config/endpoints.ts'
+import { isWebsiteBridgeOriginAllowed } from './websiteBridgeOrigin.ts'
+
 const WEB_SOURCE = 'flowlary-website'
 const EXT_SOURCE = 'flowlary-extension'
 
@@ -25,19 +28,7 @@ type OpenDashboardPayload = {
 }
 
 function isAllowedOrigin(origin: string): boolean {
-  try {
-    const host = new URL(origin).hostname
-    if (host === 'flowlary.com' || host.endsWith('.flowlary.com')) return true
-    if (!import.meta.env.DEV) return false
-    return (
-      host === 'flowlary.test' ||
-      host.endsWith('.flowlary.test') ||
-      host === 'localhost' ||
-      host === '127.0.0.1'
-    )
-  } catch {
-    return false
-  }
+  return isWebsiteBridgeOriginAllowed(origin, !isProductionApiTarget)
 }
 
 function announceReady(): void {
@@ -115,3 +106,6 @@ window.addEventListener('message', (event: MessageEvent) => {
 })
 
 announceReady()
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', announceReady, { once: true })
+}

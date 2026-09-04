@@ -71,6 +71,9 @@ export const LAYOUT_IDS = [
 
 export type LayoutId = (typeof LAYOUT_IDS)[number]
 
+/** Keyboard layouts offered in settings and Speed Box. Conversion maps for other IDs stay implemented. */
+export const PRODUCT_LAYOUT_IDS = ['en-US-qwerty', 'ar-101'] as const satisfies readonly LayoutId[]
+
 export type LayoutMetadata = {
   direction: 'ltr' | 'rtl'
   hasAltGr: boolean

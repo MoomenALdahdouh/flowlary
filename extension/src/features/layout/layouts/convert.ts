@@ -1,5 +1,5 @@
-import { getSupportedLayouts, isSupportedLayout, mapLayoutText } from './registry.ts'
-import type { LayoutId, UserLayoutProfile } from './types.ts'
+import { isSupportedLayout, mapLayoutText } from './registry.ts'
+import { PRODUCT_LAYOUT_IDS, type LayoutId, type UserLayoutProfile } from './types.ts'
 
 export type ConverterPair = {
   sourceLayout: LayoutId
@@ -23,9 +23,9 @@ export function converterChoices(
   return choices
 }
 
-/** Every implemented keyboard. Convert is not limited to auto-correct layouts. */
+/** English and Arabic keyboards only — product language pair. */
 export function allConverterLayouts(): LayoutId[] {
-  return converterChoices(getSupportedLayouts().map((layout) => layout.id))
+  return converterChoices([...PRODUCT_LAYOUT_IDS])
 }
 
 export function defaultConverterPair(

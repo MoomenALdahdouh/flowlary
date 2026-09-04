@@ -106,7 +106,7 @@ export function normalizeTranslation(raw: unknown): TranslationSettings {
         ? DEFAULT_SOURCE_LANGUAGE
         : DEFAULT_TARGET_LANGUAGE
   }
-  const liveEnabled = mode === 'box' ? false : value.liveEnabled === true
+  const liveEnabled = value.liveEnabled === true
   return {
     mode,
     liveEnabled,

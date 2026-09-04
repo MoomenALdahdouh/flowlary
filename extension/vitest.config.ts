@@ -1,10 +1,18 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
+import { FLOWLARY_API_TARGETS } from './src/config/apiTargets.ts'
 
 const shared = new URL('../packages/shared/src', import.meta.url).pathname
+const local = FLOWLARY_API_TARGETS.local
 
 export default defineConfig({
   plugins: [react()],
+  define: {
+    'import.meta.env.VITE_FLOWLARY_RELEASE': JSON.stringify('0'),
+    'import.meta.env.VITE_FLOWLARY_API_TARGET': JSON.stringify('local'),
+    'import.meta.env.VITE_FLOWLARY_API_URL': JSON.stringify(local.apiUrl),
+    'import.meta.env.VITE_FLOWLARY_SITE_URL': JSON.stringify(local.siteUrl),
+  },
   resolve: {
     alias: {
       '@': new URL('./src', import.meta.url).pathname,

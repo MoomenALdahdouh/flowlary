@@ -8,11 +8,9 @@ import type { FieldSession } from '../../core/session/FieldSession.ts'
 import { stateManager } from '../../core/state/StateManager.ts'
 import { extractWritingContext } from './segment.ts'
 import {
-  canMergeCorrection,
-  isResultStillRelevant,
   mergeCorrectionIntoField,
 } from './mergeCorrection.ts'
-import { isEligibleForCorrection } from './language.ts'
+import { isEligibleForCorrection, shouldShowEnglishAssistant } from './language.ts'
 import { requestCorrectionRemote } from './client.ts'
 import { isCorrectionAiReady } from './readiness.ts'
 import { allowAutomaticNetworkAssist } from '../../core/policy/writingPolicy.ts'
@@ -35,7 +33,24 @@ import {
 import type { CorrectionMetrics } from './metrics.ts'
 import type { CorrectionCard } from './ui/CorrectionCard.ts'
 import type { CorrectionSuggestionBinding } from './ui/types.ts'
+import { presentLocalBoxSuggestion } from './localSuggestion.ts'
 import type { IntelligentDebouncer } from './debounce.ts'
+import type { Operation } from '../../core/runtime/types.ts'
+import { authorizationForOperationWrite } from '../../core/runtime/writeAuthorization.ts'
+import {
+  clearCommitInFlight,
+  flushDeferredAutomaticCommits,
+  prepareAutomaticWrite,
+} from '../../core/runtime/arbitration.ts'
+import { isOperationCurrent } from '../../core/runtime/validity.ts'
+import { mergeAbortSignals } from '../../core/runtime/abortSignals.ts'
+import {
+  createBoxSuggestion,
+  evaluateBoxApplyAuthorization,
+  writeAuthorizationFromBox,
+} from '../../core/runtime/suggestion.ts'
+import { markOperationFailed } from '../../core/runtime/Operation.ts'
+import { hashWritingSample } from '@flowlary/shared'
 
 export type FieldCorrectionState = {
   lastSentText: string
@@ -50,6 +65,61 @@ export type FieldCorrectionStateEntry = FieldCorrectionState & {
   debouncer: IntelligentDebouncer
 }
 
+function ensureEnglishOperation(
+  session: FieldSession,
+  fullText: string,
+  operation: Operation | undefined,
+): Operation {
+  if (operation) return operation
+  return session.operations.begin({
+    fieldId: session.field.id,
+    revision: session.getRevision(),
+    feature: 'english',
+    purpose: 'auto-analysis',
+    trigger: 'auto',
+    snapshotFullText: fullText,
+  })
+}
+
+function toCorrectionBoxBinding(input: {
+  session: FieldSession
+  fullText: string
+  segment: string
+  remoteRequestId: string
+  debouncerGeneration: number
+  response: CorrectionResponse
+  operation?: Operation
+}): CorrectionSuggestionBinding {
+  const operation = ensureEnglishOperation(input.session, input.fullText, input.operation)
+  const start = Math.max(0, input.fullText.lastIndexOf(input.segment))
+  const range = { start, end: start + input.segment.length }
+  const box = createBoxSuggestion({
+    operation,
+    range,
+    replacement: input.response.correctedText,
+    action: 'english_correction',
+    textOrigin: 'original_en',
+    state: 'ready',
+  })
+  return {
+    remoteRequestId: input.remoteRequestId,
+    debouncerGeneration: input.debouncerGeneration,
+    fieldGeneration: box.revision,
+    segment: input.segment,
+    requestedFullText: box.snapshotFullText,
+    response: input.response,
+    operationId: box.operationId,
+    revision: box.revision,
+    fieldId: box.fieldId,
+    snapshotFullText: box.snapshotFullText,
+    snapshotHash: box.snapshotHash || hashWritingSample(box.snapshotFullText),
+    range: box.range,
+    rangeText: box.rangeText,
+    replacement: box.replacement,
+    boxState: 'ready',
+  }
+}
+
 export type ApplyCorrectionOptions = {
   metrics: CorrectionMetrics
   fieldState: FieldCorrectionState
@@ -61,6 +131,7 @@ export type ApplyCorrectionOptions = {
     generation: number
     signal: AbortSignal
   }
+  operation?: Operation
 }
 
 export async function runCorrectionRequest(
@@ -93,13 +164,10 @@ export async function runCorrectionRequest(
     return 'blocked'
   }
 
-  if (debouncerGeneration !== options.currentDebouncerGeneration()) {
-    options.metrics.correction_stale_results += 1
-    invalidateCardSuggestion(options, 'stale')
+  if (session.isComposing()) return 'blocked'
+  if (options.operation && !isOperationCurrent(options.operation, session.getRevision())) {
     return 'stale'
   }
-
-  if (session.isComposing()) return 'blocked'
 
   const hostname = typeof location !== 'undefined' ? location.hostname : undefined
   const safety = evaluateFieldSafety(element, {
@@ -115,7 +183,10 @@ export async function runCorrectionRequest(
 
   const segment = extractWritingContext(fullText)
   if (!segment.trim()) return 'noop'
-  if (!isEligibleForCorrection(segment)) return 'noop'
+  if (!isEligibleForCorrection(segment)) {
+    if (presentLocalBoxSuggestion(element, session, fullText, options)) return 'pending'
+    return 'noop'
+  }
 
   if (segment === options.fieldState.lastCorrectedFor) return 'noop'
   if (segment === options.fieldState.lastSentText && options.fieldState.pendingRequestId) {
@@ -126,6 +197,7 @@ export async function runCorrectionRequest(
   const card = options.getCard(element)
 
   if (!isCorrectionAiReady(stateManager.correction)) {
+    if (presentLocalBoxSuggestion(element, session, fullText, options)) return 'pending'
     card.setError(mapError('consent_required'))
     return 'blocked'
   }
@@ -152,13 +224,19 @@ export async function runCorrectionRequest(
     options.metrics.correction_blocked += 1
     return 'busy'
   }
+  if (options.operation && !isOperationCurrent(options.operation, session.getRevision())) {
+    if (!reuseOrchestratorLock) session.releaseWrite('CORRECT', acquired.requestId)
+    return 'stale'
+  }
 
-  const { requestId, signal } = acquired
+  const { requestId } = acquired
+  const signal = mergeAbortSignals([acquired.signal, options.operation?.abort.signal])
   const releaseAfterRequest = !reuseOrchestratorLock
   const remoteRequestId = `${Date.now()}-${requestId}`
   options.fieldState.lastSentText = segment
   options.fieldState.pendingRequestId = remoteRequestId
   options.fieldState.lastCorrectionRequestAt = Date.now()
+  session.noteEnglishNetwork(options.fieldState.lastCorrectionRequestAt)
   options.metrics.correction_requests += 1
   options.metrics.correction_ai_calls += 1
 
@@ -177,12 +255,22 @@ export async function runCorrectionRequest(
       session.field.kind,
       previousText,
       signal,
+      undefined,
+      {
+        fieldId: session.field.id,
+        feature: 'english',
+        isCurrent: () => {
+          if (signal.aborted) return false
+          if (!options.operation) return true
+          return isOperationCurrent(options.operation, session.getRevision())
+        },
+      },
     )
 
-    if (signal.aborted) {
+    if (signal.aborted || (options.operation && !isOperationCurrent(options.operation, session.getRevision()))) {
       options.metrics.correction_stale_results += 1
       invalidateCardSuggestion(options, 'stale')
-      return 'aborted'
+      return options.operation?.state === 'aborted' ? 'aborted' : 'stale'
     }
 
     if (!element.isConnected) {
@@ -192,11 +280,26 @@ export async function runCorrectionRequest(
     }
 
     const currentText = readFieldText(element)
+    const snapshot = options.operation?.snapshotFullText ?? fullText
+    if (currentText !== snapshot) {
+      options.metrics.correction_stale_results += 1
+      invalidateCardSuggestion(options, 'stale')
+      return 'stale'
+    }
 
     if (!result.ok) {
       options.metrics.correction_errors += 1
       if (result.error === 'rate_limited') {
         noteAssistRateLimited()
+      }
+      const quotaLike =
+        result.error === 'usage_exhausted' ||
+        result.error === 'entitlement_denied' ||
+        result.error === 'consent_required' ||
+        result.error === 'account_required'
+      if (!quotaLike && mode === 'box' && presentLocalBoxSuggestion(element, session, snapshot, options)) {
+        options.fieldState.pendingRequestId = null
+        return 'error'
       }
       if (result.error !== 'aborted' && (mode === 'box' || stateManager.correction.highlights)) {
         card.setError(mapError(result.error))
@@ -205,21 +308,6 @@ export async function runCorrectionRequest(
       }
       options.fieldState.pendingRequestId = null
       return 'error'
-    }
-
-    if (debouncerGeneration !== options.currentDebouncerGeneration()) {
-      options.metrics.correction_stale_results += 1
-      invalidateCardSuggestion(options, 'stale')
-      return 'stale'
-    }
-
-    if (
-      !isResultStillRelevant(currentText, fullText, segment, mode) ||
-      !canMergeCorrection(currentText, segment)
-    ) {
-      options.metrics.correction_stale_results += 1
-      invalidateCardSuggestion(options, 'stale')
-      return 'stale'
     }
 
     delivery = { currentText, data: result.data }
@@ -234,6 +322,10 @@ export async function runCorrectionRequest(
   }
 
   if (!delivery) return 'error'
+  if (options.operation && !isOperationCurrent(options.operation, session.getRevision())) {
+    invalidateCardSuggestion(options, 'stale')
+    return 'stale'
+  }
 
   return deliverCorrectionResult(
     element,
@@ -259,8 +351,12 @@ async function deliverCorrectionResult(
   data: CorrectionResponse,
   options: ApplyCorrectionOptions,
 ): Promise<'committed' | 'noop' | 'pending' | 'stale'> {
+  if (options.operation && !isOperationCurrent(options.operation, session.getRevision())) {
+    return 'stale'
+  }
   const correctedSegment = data.correctedText
   if (!correctedSegment || correctedSegment === segment) {
+    if (presentLocalBoxSuggestion(element, session, currentText, options)) return 'pending'
     options.getCard(element).hide()
     return 'noop'
   }
@@ -268,14 +364,15 @@ async function deliverCorrectionResult(
   const mode = stateManager.correction.mode
 
   if (mode === 'box') {
-    const binding: CorrectionSuggestionBinding = {
+    const binding = toCorrectionBoxBinding({
+      session,
+      fullText: requestedFullText,
+      segment,
       remoteRequestId,
       debouncerGeneration,
-      fieldGeneration: session.getGeneration(),
-      segment,
-      requestedFullText,
       response: { ...data, originalText: segment },
-    }
+      operation: options.operation,
+    })
     hideEnglishPipelineSuggestion(session.field.id)
     options.getCard(element).setReady(binding)
     options.metrics.correction_card_shown += 1
@@ -284,14 +381,15 @@ async function deliverCorrectionResult(
   }
 
   if (stateManager.correction.highlights && data.changes.length > 0) {
-    const binding: CorrectionSuggestionBinding = {
+    const binding = toCorrectionBoxBinding({
+      session,
+      fullText: requestedFullText,
+      segment,
       remoteRequestId,
       debouncerGeneration,
-      fieldGeneration: session.getGeneration(),
-      segment,
-      requestedFullText,
       response: { ...data, originalText: segment },
-    }
+      operation: options.operation,
+    })
     hideEnglishPipelineSuggestion(session.field.id)
     options.getCard(element).setReady(binding)
     options.metrics.correction_card_shown += 1
@@ -299,17 +397,14 @@ async function deliverCorrectionResult(
 
     await new Promise((resolve) => setTimeout(resolve, DIRECT_HIGHLIGHT_PREVIEW_MS))
 
-    if (debouncerGeneration !== options.currentDebouncerGeneration()) {
+    if (options.operation && !isOperationCurrent(options.operation, session.getRevision())) {
       options.metrics.correction_stale_results += 1
       options.getCard(element).hide()
       return 'stale'
     }
 
     const liveText = readFieldText(element)
-    if (
-      !isResultStillRelevant(liveText, requestedFullText, segment, mode) ||
-      !canMergeCorrection(liveText, segment)
-    ) {
+    if (liveText !== (options.operation?.snapshotFullText ?? requestedFullText)) {
       options.metrics.correction_stale_results += 1
       options.getCard(element).hide()
       return 'stale'
@@ -351,23 +446,63 @@ export async function acceptCorrectionSuggestion(
     return 'blocked'
   }
 
-  if (binding.debouncerGeneration !== options.currentDebouncerGeneration()) {
-    options.metrics.correction_card_stale += 1
-    options.getCard(element).hide()
-    return 'stale'
+  const alreadyApplied =
+    extractWritingContext(liveText) === binding.response.correctedText ||
+    liveText === binding.response.correctedText
+  if (alreadyApplied) {
+    options.getCard(element).retainAfterApply(liveText, session.getGeneration())
+    return 'committed'
   }
 
-  if (session.getGeneration() !== binding.fieldGeneration) {
-    options.metrics.correction_card_stale += 1
-    options.getCard(element).hide()
-    return 'stale'
-  }
-
-  const mode = stateManager.correction.mode
   if (
-    !isResultStillRelevant(liveText, binding.requestedFullText, binding.segment, mode) ||
-    !canMergeCorrection(liveText, binding.segment)
+    !binding.operationId
+    || binding.revision == null
+    || !binding.fieldId
+    || binding.snapshotFullText == null
+    || !binding.range
+    || binding.rangeText == null
+    || binding.replacement == null
+    || (binding.boxState ?? 'ready') !== 'ready'
   ) {
+    options.metrics.correction_card_stale += 1
+    options.getCard(element).hide()
+    return 'stale'
+  }
+
+  const suggestion = {
+    operationId: binding.operationId,
+    revision: binding.revision,
+    fieldId: binding.fieldId,
+    snapshotFullText: binding.snapshotFullText,
+    snapshotHash: binding.snapshotHash ?? '',
+    range: binding.range,
+    rangeText: binding.rangeText,
+    replacement: binding.replacement,
+    action: 'english_correction' as const,
+    state: 'ready' as const,
+    textOrigin: 'original_en' as const,
+  }
+  const operation = session.operations.get(binding.operationId)
+  const authorized = evaluateBoxApplyAuthorization({
+    suggestion,
+    session,
+    element,
+    operation,
+  })
+  if (!authorized.ok) {
+    if (authorized.reason === 'snapshot_mismatch' && operation) {
+      markOperationFailed(operation)
+    }
+    options.metrics.correction_card_stale += 1
+    options.getCard(element).hide()
+    return 'stale'
+  }
+
+  binding.boxState = 'applying'
+
+  const ticket = writeAuthorizationFromBox({ suggestion, operation })
+  if (!ticket.ok) {
+    binding.boxState = 'stale'
     options.metrics.correction_card_stale += 1
     options.getCard(element).hide()
     return 'stale'
@@ -379,8 +514,15 @@ export async function acceptCorrectionSuggestion(
     binding.segment,
     binding.response.correctedText,
     options,
-    { response: binding.response, batchId: binding.remoteRequestId },
+    {
+      response: binding.response,
+      batchId: binding.remoteRequestId,
+      authorization: ticket.authorization,
+    },
   )
+  if (result !== 'committed') {
+    binding.boxState = 'stale'
+  }
   if (result === 'committed') {
     options.metrics.correction_card_accepted += 1
   }
@@ -411,14 +553,59 @@ export async function commitMergedCorrection(
     response?: CorrectionResponse
     batchId?: string
     auto?: boolean
+    authorization?: import('../../core/runtime/writeAuthorization.ts').WriteAuthorization
   },
 ): Promise<'committed' | 'stale' | 'busy'> {
   const liveText = readFieldText(element)
-  const merged = mergeCorrectionIntoField(liveText, segment, correctedSegment)
+  if (options.operation && !isOperationCurrent(options.operation, session.getRevision())) {
+    options.metrics.correction_stale_results += 1
+    options.getCard(element).hide()
+    return 'stale'
+  }
+  const snapshot = options.operation?.snapshotFullText ?? liveText
+  if (options.operation && liveText !== snapshot) {
+    options.metrics.correction_stale_results += 1
+    options.getCard(element).hide()
+    return 'stale'
+  }
+  const authorizedWrite = meta?.authorization
+  const merged = authorizedWrite
+    ? authorizedWrite.replacement
+    : mergeCorrectionIntoField(snapshot, segment, correctedSegment)
   if (!merged) {
     options.metrics.correction_stale_results += 1
     options.getCard(element).hide()
     return 'stale'
+  }
+
+  const start = authorizedWrite ? authorizedWrite.range.start : 0
+  const end = authorizedWrite ? authorizedWrite.range.end : liveText.length
+
+  let autoAuthorization = authorizedWrite
+  if (!autoAuthorization && meta?.auto === true) {
+    const operation = options.operation ?? session.operations.begin({
+      fieldId: session.field.id,
+      revision: session.getRevision(),
+      feature: 'english',
+      purpose: 'auto-analysis',
+      trigger: 'auto',
+      snapshotFullText: snapshot,
+    })
+    const prepared = prepareAutomaticWrite({
+      session,
+      operation,
+      feature: 'english',
+      action: 'english_correction',
+      effect: 'direct',
+      range: { start, end },
+      replacement: merged,
+      resume: () => {
+        void commitMergedCorrection(element, session, segment, correctedSegment, options, meta)
+      },
+    })
+    if (prepared.decision.verdict === 'DEFER') return 'busy'
+    if (prepared.decision.verdict !== 'ALLOW' || !prepared.authorization) return 'stale'
+    autoAuthorization = prepared.authorization
   }
 
   let requestId = meta?.requestId
@@ -427,40 +614,65 @@ export async function commitMergedCorrection(
 
   if (requestId === undefined || generation === undefined) {
     const acquired = session.tryAcquireWrite('CORRECT')
-    if (!acquired.ok) return 'busy'
+    if (!acquired.ok) {
+      if (meta?.auto === true) clearCommitInFlight(session)
+      return 'busy'
+    }
     requestId = acquired.requestId
     generation = acquired.generation
     releaseAfter = true
   }
 
-  const write = commitWriteTransaction(element, 0, liveText.length, merged, {
-    origin: 'CORRECT',
-    session,
-    requestId: requestId!,
-    expectedGeneration: generation!,
-    cycleGeneration: generation!,
-    placeCaretAfter: false,
-    allowActiveEdit: true,
-    auto: meta?.auto === true,
-    capability: 'correction',
-    trigger: meta?.auto === true ? 'auto' : 'shortcut',
-    textOrigin: 'original_en',
-    action: 'english_correction',
-  })
+  try {
+    const authorization = autoAuthorization ?? authorizationForOperationWrite({
+      session,
+      operation: options.operation,
+      action: 'english_correction',
+      range: { start, end },
+      replacement: merged,
+      snapshotFullText: options.operation?.snapshotFullText ?? snapshot,
+      purpose: meta?.auto === true ? 'auto-analysis' : 'shortcut',
+      trigger: meta?.auto === true ? 'auto' : 'shortcut',
+    })
 
-  if (releaseAfter) {
-    session.releaseWrite('CORRECT', requestId!)
+    const write = commitWriteTransaction(element, start, end, merged, {
+      origin: 'CORRECT',
+      session,
+      requestId: requestId!,
+      expectedGeneration: generation!,
+      cycleGeneration: generation!,
+      placeCaretAfter: false,
+      allowActiveEdit: true,
+      auto: meta?.auto === true,
+      capability: 'correction',
+      trigger: meta?.auto === true ? 'auto' : 'shortcut',
+      textOrigin: 'original_en',
+      action: 'english_correction',
+      authorization,
+    })
+
+    if (write.verdict !== 'written') {
+      options.metrics.correction_stale_results += 1
+      options.getCard(element).hide()
+      return 'stale'
+    }
+  } finally {
+    if (releaseAfter) {
+      session.releaseWrite('CORRECT', requestId!)
+    }
+    if (meta?.auto === true) {
+      clearCommitInFlight(session)
+      flushDeferredAutomaticCommits(session)
+    }
   }
 
-  if (write.verdict !== 'written') {
-    options.metrics.correction_stale_results += 1
-    options.getCard(element).hide()
-    return 'stale'
-  }
-
-  options.fieldState.lastCorrectedFor = extractWritingContext(merged)
+  options.fieldState.lastCorrectedFor = extractWritingContext(readFieldText(element))
   options.fieldState.lastSentText = options.fieldState.lastCorrectedFor
-  options.getCard(element).hide()
+  if (stateManager.correction.mode === 'box') {
+    options.getCard(element).retainAfterApply(readFieldText(element), session.getGeneration())
+  } else {
+    options.getCard(element).hide()
+  }
   options.metrics.correction_commits += 1
   if (meta?.response && meta.batchId) {
     recordCorrectionAccepted(meta.batchId, segment, meta.response)
@@ -486,21 +698,13 @@ export function invalidateCardIfStale(
   const binding = card.getBinding()
   if (!binding) return
 
-  const mode = stateManager.correction.mode
-  if (
-    binding.debouncerGeneration !== options.currentDebouncerGeneration() ||
-    fullText !== binding.requestedFullText ||
-    !isResultStillRelevant(fullText, binding.requestedFullText, binding.segment, mode) ||
-    !canMergeCorrection(fullText, binding.segment)
-  ) {
+  if (!binding.operationId || binding.revision == null || binding.snapshotFullText == null) {
     invalidateCardSuggestion(options, 'stale')
-  } else if (mode === 'box' && extractWritingContext(fullText) && shouldSyncPlainRow(fullText, binding)) {
-    card.ensureVisible(fullText)
+    return
   }
-}
-
-function shouldSyncPlainRow(fullText: string, binding: CorrectionSuggestionBinding): boolean {
-  return !binding.response.correctedText || fullText.trim() !== binding.response.correctedText.trim()
+  if (binding.revision !== session.getRevision() || binding.snapshotFullText !== fullText) {
+    invalidateCardSuggestion(options, 'stale')
+  }
 }
 
 function invalidateCardSuggestion(
@@ -569,5 +773,10 @@ export function syncCardVisibility(
     card.hide()
     options.fieldState.lastSentText = ''
     options.fieldState.lastCorrectedFor = ''
+    return
+  }
+
+  if (shouldShowEnglishAssistant(text)) {
+    card.ensureVisible(text)
   }
 }

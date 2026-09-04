@@ -1,6 +1,7 @@
 import type { EditableElement } from '../../core/dom/types.ts'
 import { readCaret, readFieldText, readSelectionRange } from '../../core/dom/read.ts'
 import { commitWriteTransaction } from '../../core/writeGate/writeGate.ts'
+import { issueImmediateWriteAuthorization } from '../../core/runtime/writeAuthorization.ts'
 import type { FieldSession } from '../../core/session/FieldSession.ts'
 import {
   canCommitMismatch,
@@ -173,88 +174,102 @@ export function applyLayoutFix(
     acquiredLocal = true
   }
 
-  const result = commitWriteTransaction(element, fix.start, fix.end, fix.corrected, {
-    origin: 'FIX_LAYOUT',
-    session,
-    requestId: lockId,
-    expectedGeneration: lockGeneration,
-    cycleGeneration: lockGeneration,
-    placeCaretAfter: options.placeCaretAfter,
-    auto: automatic,
-    capability: 'layout',
-    trigger: automatic ? 'auto' : 'shortcut',
-    textOrigin: 'layout_mismatch_suspected',
-    action: 'layout_fix',
-  })
-
-  if (acquiredLocal) {
-    session.releaseWrite('FIX_LAYOUT', lockId)
-  }
-
-  recordWriteTelemetry({
-    capability: 'layout',
-    trigger: automatic ? 'auto' : 'shortcut',
-    outcome:
-      result.verdict === 'written'
-        ? 'applied'
-        : result.verdict === 'stale'
-          ? 'stale'
-          : 'blocked',
-    reasonCodes:
-      result.verdict === 'written'
-        ? ['written']
-        : [
-            result.reason === 'unsupported_editor'
-              ? 'unsupported_editor_auto_write'
-              : result.reason === 'mutex'
-                ? 'mutex_busy'
-                : result.reason === 'stale-generation'
-                  ? 'stale_generation'
-                  : result.reason === 'stale-request'
-                    ? 'stale_request'
-                    : result.reason === 'composing'
-                      ? 'composing'
-                      : result.reason === 'shortcuts_only'
-                        ? 'shortcuts_only'
-                        : result.reason === 'aborted'
-                          ? 'aborted'
-                          : 'text_mismatch',
-          ],
-    fieldKind: fieldKindFromElement(element),
-    composing: session.isComposing(),
-    rangeLength: fix.end - fix.start,
-  })
-
-  if (automatic && !allowsAutomaticFieldWrite(element) && result.verdict !== 'written') {
-    return false
-  }
-
-  if (result.verdict === 'written' && options.historyMode) {
-    void recordHistory({
-      operation: 'FIX_LAYOUT',
-      element,
-      sourceText: fix.word,
-      resultText: fix.corrected,
-      mode: options.historyMode,
-      metadata: {
-        sourceLayout: fix.sourceLayout,
-        targetLayout: fix.targetLayout,
-      },
+  try {
+    const snapshot = readFieldText(element)
+    const authorization = issueImmediateWriteAuthorization({
+      session,
+      action: 'layout_fix',
+      range: { start: fix.start, end: fix.end },
+      replacement: fix.corrected,
+      snapshotFullText: snapshot,
+      purpose: automatic ? 'auto-analysis' : 'shortcut',
+      trigger: automatic ? 'auto' : 'shortcut',
     })
-    if (
-      options.historyMode === 'manual' &&
-      options.sampleText &&
-      options.learningBatchId
-    ) {
-      recordLayoutLearningAccepted(
-        options.learningBatchId,
-        options.sampleText,
-        fix.word,
-        fix.corrected,
-      )
+
+    const result = commitWriteTransaction(element, fix.start, fix.end, fix.corrected, {
+      origin: 'FIX_LAYOUT',
+      session,
+      requestId: lockId,
+      expectedGeneration: lockGeneration,
+      cycleGeneration: lockGeneration,
+      placeCaretAfter: options.placeCaretAfter,
+      auto: automatic,
+      capability: 'layout',
+      trigger: automatic ? 'auto' : 'shortcut',
+      textOrigin: 'layout_mismatch_suspected',
+      action: 'layout_fix',
+      authorization,
+    })
+
+    recordWriteTelemetry({
+      capability: 'layout',
+      trigger: automatic ? 'auto' : 'shortcut',
+      outcome:
+        result.verdict === 'written'
+          ? 'applied'
+          : result.verdict === 'stale'
+            ? 'stale'
+            : 'blocked',
+      reasonCodes:
+        result.verdict === 'written'
+          ? ['written']
+          : [
+              result.reason === 'unsupported_editor'
+                ? 'unsupported_editor_auto_write'
+                : result.reason === 'mutex'
+                  ? 'mutex_busy'
+                  : result.reason === 'stale-generation'
+                    ? 'stale_generation'
+                    : result.reason === 'stale-request'
+                      ? 'stale_request'
+                      : result.reason === 'composing'
+                        ? 'composing'
+                        : result.reason === 'shortcuts_only'
+                          ? 'shortcuts_only'
+                          : result.reason === 'aborted'
+                            ? 'aborted'
+                            : 'text_mismatch',
+            ],
+      fieldKind: fieldKindFromElement(element),
+      composing: session.isComposing(),
+      rangeLength: fix.end - fix.start,
+    })
+
+    if (automatic && !allowsAutomaticFieldWrite(element) && result.verdict !== 'written') {
+      return false
+    }
+
+    if (result.verdict === 'written' && options.historyMode) {
+      void recordHistory({
+        operation: 'FIX_LAYOUT',
+        element,
+        sourceText: fix.word,
+        resultText: fix.corrected,
+        mode: options.historyMode,
+        metadata: {
+          sourceLayout: fix.sourceLayout,
+          targetLayout: fix.targetLayout,
+        },
+      })
+      if (
+        options.historyMode === 'manual' &&
+        options.sampleText &&
+        options.learningBatchId
+      ) {
+        recordLayoutLearningAccepted(
+          options.learningBatchId,
+          options.sampleText,
+          fix.word,
+          fix.corrected,
+        )
+      }
+    }
+    return result.verdict === 'written'
+  } finally {
+    if (acquiredLocal) {
+      session.releaseWrite('FIX_LAYOUT', lockId)
     }
   }
-  return result.verdict === 'written'
 }
 
 export type FixCurrentTextOptions = {
@@ -349,7 +364,13 @@ export async function fixCurrentText(
       return { applied, stale: true }
     }
 
-    const result = await classifier.classify(span.token, profile, text, signal)
+    const result = await classifier.classify(span.token, profile, text, signal, {
+      fieldId: session.field.id,
+      isCurrent: () =>
+        !signal.aborted
+        && session.getGeneration() === generation
+        && shortcutSessionStillValid(shortcutSession, profile, element),
+    })
     if (!result.ok) continue
     if (result.verdict.kind !== 'LAYOUT_MISMATCH' || !result.verdict.targetLayout) continue
 

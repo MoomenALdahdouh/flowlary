@@ -18,6 +18,8 @@ import {
   recordWriteTelemetry,
 } from '../../core/observability/writeTelemetry.ts'
 import { executeTranslation } from './executor.ts'
+import type { Operation } from '../../core/runtime/types.ts'
+import { isOperationCurrent } from '../../core/runtime/validity.ts'
 
 export type FieldLiveState = {
   lastRequestedKey: string | null
@@ -49,8 +51,10 @@ export type LiveTranslateOptions = {
   engine: TranslationEngine
   metrics: TranslationMetrics
   fieldState: FieldLiveState
+  operation?: Operation
 }
 
+/** Compatibility entry for tests and TranslationEngine callers. Automatic live translation is IdleScheduler → pipeline. */
 export async function runLiveTranslation(
   element: EditableElement,
   session: FieldSession,
@@ -110,6 +114,12 @@ export async function runLiveTranslation(
   }
 
   if (session.isComposing()) return 'blocked'
+  if (options.operation && !isOperationCurrent(options.operation, session.getRevision())) {
+    return 'stale'
+  }
+  if (options.operation && options.operation.snapshotFullText !== text) {
+    return 'stale'
+  }
   if (text.length > MAX_TRANSLATION_CHARS) return 'blocked'
 
   const caret = readCaret(element) ?? text.length
@@ -153,10 +163,18 @@ export async function runLiveTranslation(
     auto: true,
     acquireMutex: true,
     recordHistoryEntry: true,
+    operation: options.operation,
     translate: (slice, src, tgt, signal) =>
       options.engine.translate(
         { text: slice, sourceLanguage: src, targetLanguage: tgt, mode: 'live' },
         signal,
+        {
+          fieldId: session.field.id,
+          feature: 'translate',
+          isCurrent: () =>
+            !signal?.aborted
+            && (!options.operation || isOperationCurrent(options.operation, session.getRevision())),
+        },
       ),
   })
 

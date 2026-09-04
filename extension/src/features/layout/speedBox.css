@@ -7,25 +7,29 @@
   color-scheme: dark;
   pointer-events: none;
 
-  --fl-surface: #10151f;
-  --fl-surface-2: #151b27;
-  --fl-border: rgba(236, 242, 255, 0.08);
-  --fl-border-strong: rgba(236, 242, 255, 0.14);
-  --fl-border-accent: rgba(91, 140, 255, 0.42);
-  --fl-text: #f3f6fb;
-  --fl-muted: #9aa6bb;
-  --fl-faint: #8b97ac;
+  --fl-surface: #131c31;
+  --fl-surface-2: #1a2438;
+  --fl-border: rgba(148, 163, 184, 0.16);
+  --fl-border-strong: rgba(148, 163, 184, 0.24);
+  --fl-border-accent: rgba(56, 189, 248, 0.42);
+  --fl-text: #f1f5f9;
+  --fl-muted: #94a3b8;
+  --fl-faint: #64748b;
   --fl-accent: #14d4ea;
   --fl-success-soft: rgba(61, 186, 134, 0.14);
   --fl-danger: #e06b73;
-  --fl-overlay: rgba(5, 7, 11, 0.72);
-  --fl-input-bg: #0a0e15;
+  --fl-overlay: rgba(11, 17, 32, 0.56);
+  --fl-input-bg: rgba(11, 17, 32, 0.55);
   --fl-radius: 12px;
-  --fl-radius-lg: 18px;
-  --fl-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
-  --fl-font: 'Inter', 'Segoe UI Variable Text', 'SF Pro Text', ui-sans-serif, system-ui, sans-serif;
+  --fl-radius-lg: 20px;
+  --fl-shadow:
+    0 24px 56px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --fl-font: 'Inter', 'IBM Plex Sans Arabic', 'Segoe UI Variable Text', 'SF Pro Text', ui-sans-serif, system-ui, sans-serif;
   --fl-focus: 2px solid var(--fl-accent);
   --fl-mode: var(--fl-accent);
+  --fl-glass: rgba(19, 28, 49, 0.72);
+  --fl-glass-blur: blur(18px) saturate(140%);
 
   font-family: var(--fl-font);
 }
@@ -44,9 +48,13 @@
   --fl-accent: #0891b2;
   --fl-success-soft: rgba(29, 143, 98, 0.12);
   --fl-danger: #c13d4a;
-  --fl-overlay: rgba(10, 22, 40, 0.42);
-  --fl-input-bg: #f4f8fd;
-  --fl-shadow: 0 24px 64px rgba(15, 35, 70, 0.12);
+  --fl-overlay: rgba(10, 22, 40, 0.28);
+  --fl-input-bg: rgba(244, 248, 253, 0.72);
+  --fl-shadow:
+    0 24px 56px rgba(15, 35, 70, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88);
+  --fl-glass: rgba(255, 255, 255, 0.78);
+  --fl-glass-blur: blur(18px) saturate(140%);
 }
 
 :host([hidden]) {
@@ -60,10 +68,16 @@
   box-sizing: border-box;
 }
 
+:host([dir='rtl']) {
+  --fl-font: 'IBM Plex Sans Arabic', 'Noto Naskh Arabic', Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
 .backdrop {
   position: absolute;
   inset: 0;
   background: var(--fl-overlay);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   pointer-events: auto;
 }
 
@@ -75,21 +89,32 @@
   width: min(400px, calc(100vw - 24px));
   transform: translate(-50%, -50%);
   display: grid;
-  gap: 8px;
-  padding: 12px;
+  gap: 10px;
+  padding: 14px;
   border-radius: var(--fl-radius-lg);
   color: var(--fl-text);
-  background: var(--fl-surface);
+  background: var(--fl-glass);
   border: 1px solid var(--fl-border-strong);
   box-shadow: var(--fl-shadow);
+  -webkit-backdrop-filter: var(--fl-glass-blur);
+  backdrop-filter: var(--fl-glass-blur);
 }
 
-.panel[data-mode='translate'] {
-  --fl-mode: #8b7cf6;
+@media (prefers-reduced-motion: no-preference) {
+  .panel {
+    animation: fl-speed-in 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
 }
 
-.panel[data-mode='fix'] {
-  --fl-mode: #3dba86;
+@keyframes fl-speed-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 12px)) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
 }
 
 .header {
@@ -97,6 +122,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  min-height: 22px;
 }
 
 .title {
@@ -120,6 +146,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 4px;
+  min-height: 36px;
   padding: 3px;
   border-radius: var(--fl-radius);
   background: var(--fl-input-bg);
@@ -128,6 +155,10 @@
 
 .mode {
   appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   min-height: 30px;
   margin: 0;
   padding: 0 6px;
@@ -139,6 +170,12 @@
   font-size: 12px;
   font-weight: 650;
   cursor: pointer;
+}
+
+.mode-icon {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
 }
 
 .mode:hover {
@@ -198,11 +235,16 @@ select:focus {
 textarea,
 button {
   font: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
 }
 
 textarea {
   width: 100%;
-  min-height: 64px;
+  min-height: 72px;
   max-height: 160px;
   padding: 8px 10px;
   border-radius: var(--fl-radius);
@@ -327,4 +369,16 @@ textarea:focus-visible,
 .panel.is-busy select {
   pointer-events: none;
   opacity: 0.72;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .backdrop,
+  .panel {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .panel {
+    background: var(--fl-surface);
+  }
 }

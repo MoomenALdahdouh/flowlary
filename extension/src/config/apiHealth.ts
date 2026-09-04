@@ -1,4 +1,4 @@
-import { FLOWLARY_API_BASE, LOCAL_DEV_API_BASE } from './endpoints.ts'
+import { FLOWLARY_API_BASE, isProductionApiTarget } from './endpoints.ts'
 
 export type ApiHealth = 'ok' | 'offline' | 'unknown'
 
@@ -14,19 +14,12 @@ let recoveryTimer: ReturnType<typeof setInterval> | null = null
 let recoveryListener: (() => void) | null = null
 
 export function isLocalDevApi(): boolean {
-  if (import.meta.env.VITE_FLOWLARY_RELEASE === '1') return false
-  const base = FLOWLARY_API_BASE.replace(/\/$/, '')
-  if (base === LOCAL_DEV_API_BASE) return true
-  return (
-    base.includes('writing-api.test') ||
-    base.includes('localhost:8787') ||
-    base.includes('127.0.0.1:8787')
-  )
+  return !isProductionApiTarget
 }
 
 export function localDevApiHint(): string | null {
   if (!isLocalDevApi()) return null
-  return 'Local API: https://writing-api.test (keep npm run dev:api running)'
+  return `Local API: ${FLOWLARY_API_BASE} (keep npm run dev:api running)`
 }
 
 function probeTimeoutSignal(): AbortSignal {

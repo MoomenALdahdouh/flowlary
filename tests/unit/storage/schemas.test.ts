@@ -36,7 +36,13 @@ describe('storage schemas', () => {
   it('keeps live translation off unless explicitly enabled', () => {
     expect(normalizeTranslation({ liveEnabled: 'true' }).liveEnabled).toBe(false)
     expect(normalizeTranslation({ liveEnabled: true }).liveEnabled).toBe(true)
-    expect(normalizeTranslation({ mode: 'box', liveEnabled: true }).liveEnabled).toBe(false)
+    expect(normalizeTranslation({ mode: 'box', liveEnabled: true }).liveEnabled).toBe(true)
+  })
+
+  it('maps unsupported translation languages to English and Arabic', () => {
+    const normalized = normalizeTranslation({ sourceLanguage: 'ja', targetLanguage: 'fr' })
+    expect(normalized.sourceLanguage).toBe('ar')
+    expect(normalized.targetLanguage).toBe('en')
   })
 })
 

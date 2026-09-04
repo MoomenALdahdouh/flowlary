@@ -3,29 +3,31 @@ import { predictClientTranslationStrategy } from '@flowlary/shared'
 import { getFlowlaryCache } from '../../storage/cache/index.ts'
 import type { InputEngine } from '../../core/input/InputEngine.ts'
 import { readFieldText, readSelectionRange } from '../../core/dom/read.ts'
-import { commitWriteTransaction } from '../../core/writeGate/writeGate.ts'
 import type { EditableElement } from '../../core/dom/types.ts'
 import { stateManager } from '../../core/state/StateManager.ts'
-import { flowlaryStorage, getEntitlement, resolveEntitlementStatus } from '../../storage/index.ts'
+import { flowlaryStorage } from '../../storage/index.ts'
+import { getEntitlementService } from '../../entitlement/service.ts'
 import { TranslationEngine } from './engine.ts'
 import { requestTranslationRemote } from './client.ts'
 import { createTranslationCache } from './cache.ts'
 import { resolveTranslateTarget, targetLooksProtected } from './selection.ts'
 import { executeTranslation } from './executor.ts'
 import type { TranslationOutcome, TranslationRequest } from './types.ts'
+import { markOperationRunning } from '../../core/runtime/Operation.ts'
+import { isOperationCurrent } from '../../core/runtime/validity.ts'
+import type { PhysicalHttpContext } from '../../core/runtime/physicalHttp.ts'
 import {
   DEFAULT_SOURCE_LANGUAGE,
   DEFAULT_TARGET_LANGUAGE,
-  SUPPORTED_LANGUAGES,
   normalizeLanguage,
 } from './languages.ts'
 import { createTranslationMetrics, type TranslationMetrics } from './metrics.ts'
 import { TranslationScheduler } from './scheduler.ts'
-import { InlineSuggestionCard } from '../shared/InlineSuggestionCard.ts'
 
 export type TranslationProviderFn = (
   request: TranslationRequest,
   signal?: AbortSignal,
+  physical?: PhysicalHttpContext,
 ) => Promise<TranslationOutcome>
 
 export type TranslationModuleOptions = {
@@ -49,13 +51,13 @@ export function createTranslationFeature(options: TranslationModuleOptions): Tra
   const metrics = createTranslationMetrics()
 
   const engine = new TranslationEngine({
-    async translate(request, signal) {
-      const entitlementStatus = resolveEntitlementStatus(await getEntitlement(flowlaryStorage))
-      const plan =
-        entitlementStatus === 'pro' || entitlementStatus === 'trial' ? entitlementStatus : 'free'
+    async translate(request, signal, physical) {
+      const snapshot = await getEntitlementService(flowlaryStorage).getSnapshot()
+      const plan = snapshot.tier
       const translationStrategy = predictClientTranslationStrategy({
         plan,
         mode: request.mode,
+        signedIn: snapshot.signedIn,
       })
 
       const cached = translationCache.get(
@@ -83,13 +85,15 @@ export function createTranslationFeature(options: TranslationModuleOptions): Tra
       }
 
       const remote = options.provider
-        ? await options.provider(request, signal)
+        ? await options.provider(request, signal, physical)
         : await requestTranslationRemote(
             request.text,
             request.sourceLanguage,
             request.targetLanguage,
             signal,
             request.mode,
+            undefined,
+            physical,
           )
 
       if (remote.ok) {
@@ -112,52 +116,6 @@ export function createTranslationFeature(options: TranslationModuleOptions): Tra
   })
 
   let started = false
-  const cards = new WeakMap<EditableElement, InlineSuggestionCard>()
-
-  function languageDirection(code: string): 'ltr' | 'rtl' {
-    return SUPPORTED_LANGUAGES.find((item) => item.code === code)?.direction ?? 'ltr'
-  }
-
-  function ensureCard(element: EditableElement): InlineSuggestionCard {
-    let card = cards.get(element)
-    if (!card) {
-      card = new InlineSuggestionCard({
-        label: 'Translation',
-        onApply: (binding) => {
-          const session = options.engine.sessions.getOrCreate(binding.element)
-          const acquired = session.tryAcquireWrite('TRANSLATE')
-          if (!acquired.ok) {
-            card?.hide()
-            return
-          }
-          commitWriteTransaction(
-            binding.element as EditableElement,
-            binding.start,
-            binding.end,
-            binding.suggestion,
-            {
-              origin: 'TRANSLATE',
-              session,
-              requestId: acquired.requestId,
-              expectedGeneration: acquired.generation,
-              cycleGeneration: acquired.generation,
-              placeCaretAfter: true,
-              allowActiveEdit: true,
-              capability: 'translation',
-              trigger: 'suggestion_accept',
-              tagTranslated: true,
-            },
-          )
-          session.releaseWrite('TRANSLATE', acquired.requestId)
-          card?.hide()
-        },
-        onDismiss: () => {},
-      })
-      cards.set(element, card)
-    }
-    card.attach(element)
-    return card
-  }
 
   function setLiveEnabled(enabled: boolean): void {
     stateManager.translation.liveEnabled = enabled
@@ -213,11 +171,6 @@ export function createTranslationFeature(options: TranslationModuleOptions): Tra
       const generation = command.generation ?? session.getGeneration()
       const requestId = command.requestId ?? session.getRequestSequence()
       const signal = session.getActiveRequest()?.signal
-
-      if (session.isComposing()) {
-        return { ok: false, operation: 'TRANSLATE', error: 'composing' }
-      }
-
       const text = readFieldText(editable)
       const selection =
         command.rangeStart != null && command.rangeEnd != null
@@ -236,36 +189,15 @@ export function createTranslationFeature(options: TranslationModuleOptions): Tra
         return { ok: false, operation: 'TRANSLATE', error: 'protected' }
       }
 
-      if (stateManager.translation.mode === 'box') {
-        const outcome = await engine.translate(
-          {
-            text: target.text,
-            sourceLanguage,
-            targetLanguage,
-            mode: 'shortcut',
-          },
-          signal,
-        )
-        if (signal?.aborted) {
-          return { ok: false, operation: 'TRANSLATE', aborted: true }
-        }
-        if (!outcome.ok) {
-          return { ok: false, operation: 'TRANSLATE', error: outcome.code }
-        }
-        if (outcome.translation === target.text) {
-          return { ok: false, operation: 'TRANSLATE', error: 'noop' }
-        }
-        ensureCard(editable).show(
-          {
-            element: editable,
-            start: target.start,
-            end: target.end,
-            suggestion: outcome.translation,
-          },
-          languageDirection(targetLanguage),
-        )
-        return { ok: true, operation: 'TRANSLATE', data: { applied: false, mode: 'box' } }
-      }
+      const operation = session.operations.begin({
+        fieldId: session.field.id,
+        revision: session.getRevision(),
+        feature: 'translate',
+        purpose: 'shortcut',
+        trigger: 'shortcut',
+        snapshotFullText: text,
+      })
+      if (operation.state === 'pending') markOperationRunning(operation)
 
       const result = await executeTranslation({
         element: editable,
@@ -281,11 +213,18 @@ export function createTranslationFeature(options: TranslationModuleOptions): Tra
         expectedGeneration: generation,
         cycleGeneration: generation,
         signal,
+        operation,
         recordHistoryEntry: true,
         translate: (text, src, tgt, abortSignal) =>
           engine.translate(
             { text, sourceLanguage: src, targetLanguage: tgt, mode: 'shortcut' },
             abortSignal,
+            {
+              fieldId: session.field.id,
+              feature: 'translate',
+              isCurrent: () =>
+                !abortSignal?.aborted && isOperationCurrent(operation, session.getRevision()),
+            },
           ),
       })
 

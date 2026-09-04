@@ -246,13 +246,8 @@ describe('local heuristics', () => {
     expect(layoutsFromLanguages(['en-US', 'ar-SA', 'ru-RU'])).toEqual([
       'en-US-qwerty',
       'ar-101',
-      'ru-standard',
     ])
-    expect(layoutsFromLanguages(['fr-FR', 'de-DE'])).toEqual([
-      'fr-azerty',
-      'de-qwertz',
-      'en-US-qwerty',
-    ])
+    expect(layoutsFromLanguages(['fr-FR', 'de-DE'])).toEqual(['en-US-qwerty'])
   })
 
   it('fixes the live mixed sentence fragments locally', () => {

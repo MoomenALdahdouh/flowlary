@@ -121,7 +121,7 @@ describe('Phase 10 — migration scenarios', () => {
     await runStorageMigration()
     await claimMigratedData()
     const translation = await getTranslationSettings(flowlaryStorage)
-    expect(translation.sourceLanguage).toBe('fr')
+    expect(translation.sourceLanguage).toBe('ar')
     expect(translation.targetLanguage).toBe('en')
     expect(translation.liveEnabled).toBe(true)
 
@@ -165,7 +165,7 @@ describe('Phase 10 — migration scenarios', () => {
     const profile = await getLayoutProfile(flowlaryStorage)
     expect(correction).not.toHaveProperty('groqApiKey')
     expect(correction).not.toHaveProperty('aiProvider')
-    expect(translation.sourceLanguage).toBe('de')
+    expect(translation.sourceLanguage).toBe('ar')
     expect(profile.personalExceptions).toContain('npm')
   })
 
@@ -188,7 +188,7 @@ describe('Phase 10 — migration scenarios', () => {
     await runStorageMigration()
     await claimMigratedData()
     const translation = await getTranslationSettings(flowlaryStorage)
-    expect(translation.sourceLanguage).toBe('es')
+    expect(translation.sourceLanguage).toBe('ar')
     const state = await getMigrationState(flowlaryStorage)
     expect(state.failedSteps).toEqual([])
     expect(state.status).toBe('COMPLETE')
@@ -199,7 +199,7 @@ describe('Phase 10 — migration scenarios', () => {
       _v: 1,
       liveEnabled: false,
       shortcutEnabled: true,
-      sourceLanguage: 'ja',
+      sourceLanguage: 'ar',
       targetLanguage: 'en',
     }
     mockStore.local[LEGACY_LINGO.profile] = { sourceLanguage: 'fr', targetLanguage: 'en' }
@@ -207,7 +207,7 @@ describe('Phase 10 — migration scenarios', () => {
     await runStorageMigration()
     await claimMigratedData()
     const translation = await getTranslationSettings(flowlaryStorage)
-    expect(translation.sourceLanguage).toBe('ja')
+    expect(translation.sourceLanguage).toBe('ar')
   })
 
   it('H — malformed legacy data does not crash migration', async () => {

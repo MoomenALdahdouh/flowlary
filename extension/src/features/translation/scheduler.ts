@@ -1,16 +1,12 @@
 import type { InputEngine } from '../../core/input/InputEngine.ts'
-import { isEditableElement } from '../../core/dom/read.ts'
-import type { EditableElement } from '../../core/dom/types.ts'
 import type { TranslationEngine } from './engine.ts'
-import {
-  runLiveTranslation,
-  type FieldLiveState,
-} from './liveTranslate.ts'
+import type { FieldLiveState } from './liveTranslate.ts'
 import type { TranslationMetrics } from './metrics.ts'
-import { LIVE_PAUSE_MS } from './pauseGate.ts'
 
-export { LIVE_PAUSE_MS }
-
+/**
+ * Not a scheduler. Automatic Arabic → English is owned by IdleScheduler / WritingRuntime.
+ * Kept as a shell so TranslationFeature start/stop and live-disable still have a home.
+ */
 export type TranslationSchedulerOptions = {
   engine: InputEngine
   translationEngine: TranslationEngine
@@ -18,26 +14,20 @@ export type TranslationSchedulerOptions = {
 }
 
 export class TranslationScheduler {
-  private unsubscribe: (() => void) | null = null
-  private liveTimer: ReturnType<typeof setTimeout> | null = null
-  private pendingElement: EditableElement | null = null
   private fieldStates = new Map<string, FieldLiveState>()
 
-  constructor(private options: TranslationSchedulerOptions) {}
+  constructor(_options: TranslationSchedulerOptions) {}
 
   start(): void {
-    // Retired as an EventBus writer. Live translation runs in the enforce pipeline.
+    // Automatic live translation is IdleScheduler → Translation Operation → pipeline.
   }
 
   stop(): void {
-    this.unsubscribe?.()
-    this.unsubscribe = null
-    this.cancelPending()
+    this.onLiveDisabled()
   }
 
-  /** Cancel timer and abort in-flight live translation when live mode is disabled. */
+  /** Abort in-flight live translation when live mode is disabled. */
   onLiveDisabled(): void {
-    this.cancelPending()
     this.fieldStates.clear()
   }
 
@@ -53,45 +43,6 @@ export class TranslationScheduler {
     }
     return state
   }
-
-  private isLiveEnabled(): boolean {
-    return false
-  }
-
-  private cancelPending(): void {
-    if (this.liveTimer !== null) {
-      clearTimeout(this.liveTimer)
-      this.liveTimer = null
-    }
-    if (this.pendingElement) {
-      const session = this.options.engine.sessions.get(this.pendingElement)
-      session?.abortActiveRequest()
-      this.pendingElement = null
-    }
-  }
-
-  private schedule(element: Element): void {
-    if (!isEditableElement(element)) return
-    if (!this.isLiveEnabled()) return
-
-    if (this.liveTimer !== null) {
-      clearTimeout(this.liveTimer)
-    }
-
-    this.pendingElement = element
-    this.liveTimer = setTimeout(() => {
-      this.liveTimer = null
-      const target = this.pendingElement
-      this.pendingElement = null
-      if (!target || !target.isConnected || !this.isLiveEnabled()) return
-
-      this.options.metrics.translation_live_debounced += 1
-      const session = this.options.engine.sessions.getOrCreate(target)
-      void runLiveTranslation(target, session, {
-        engine: this.options.translationEngine,
-        metrics: this.options.metrics,
-        fieldState: this.getFieldState(session.field.id),
-      })
-    }, LIVE_PAUSE_MS)
-  }
 }
+
+export { LIVE_PAUSE_MS } from './pauseGate.ts'

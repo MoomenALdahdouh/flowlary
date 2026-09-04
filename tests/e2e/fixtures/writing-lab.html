@@ -33,5 +33,48 @@
 
     <label for="ce-rich">Nested composer (suggestion/shortcut only)</label>
     <div id="ce-rich" contenteditable="true"><div><span><br></span></div></div>
+
+    <label for="react-controlled">React-like controlled input</label>
+    <input id="react-controlled" type="text" />
+
+    <label>Dynamically replaced textarea</label>
+    <div id="dynamic-host"><textarea id="dynamic-editor" rows="3"></textarea></div>
+    <button type="button" id="replace-editor">Replace editor</button>
+
+    <label>ProseMirror-like structured composer</label>
+    <div id="pm" class="ProseMirror" contenteditable="true" role="textbox">
+      <p><span><br></span></p>
+    </div>
+
+    <label>Same-origin iframe composer</label>
+    <iframe
+      id="compose-frame"
+      title="compose iframe"
+      style="width:100%;height:6rem;border:1px solid #ccc"
+      src="/frame"
+    ></iframe>
+
+    <script>
+      (function () {
+        const reactInput = document.getElementById('react-controlled')
+        const proto = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')
+        let model = ''
+        if (reactInput && proto && proto.get && proto.set) {
+          reactInput.addEventListener('input', function () {
+            model = proto.get.call(reactInput)
+          })
+          setInterval(function () {
+            if (proto.get.call(reactInput) !== model) proto.set.call(reactInput, model)
+          }, 32)
+        }
+        const replace = document.getElementById('replace-editor')
+        const host = document.getElementById('dynamic-host')
+        if (replace && host) {
+          replace.addEventListener('click', function () {
+            host.innerHTML = '<textarea id="dynamic-editor" rows="3"></textarea>'
+          })
+        }
+      })()
+    </script>
   </body>
 </html>

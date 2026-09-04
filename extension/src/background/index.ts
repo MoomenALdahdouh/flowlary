@@ -18,11 +18,11 @@ import {
 import type { ExtensionResponse, ExtensionStatus } from '../messaging/types.ts'
 import { isTrustedExtensionSender } from '../messaging/sender.ts'
 import { validateExtensionRequest } from '../messaging/validate.ts'
-import { commandFromChromeCommand, sendCommandToActiveTab } from './commands.ts'
+import { commandFromChromeCommand, rememberCommandTarget, sendCommandToActiveTab } from './commands.ts'
 import { handleCheckWord } from './classify.ts'
 import { cancelRankHypotheses, handleRankHypotheses } from './rankHypotheses.ts'
 import { cancelReviewWriting, handleReviewWriting } from './reviewWriting.ts'
-import { handleTranslateText } from './translate.ts'
+import { handleTranslateText, cancelTranslateRequest } from './translate.ts'
 import { cancelCorrectRequest, handleCorrectText } from './correct.ts'
 import { handleLocalizeExplanation } from './explainLocalize.ts'
 import {
@@ -468,6 +468,10 @@ export async function handleMessage(
     case 'TRANSLATE_TEXT':
       return handleTranslateText(validated.value)
 
+    case 'CANCEL_TRANSLATE':
+      cancelTranslateRequest(validated.value.requestId)
+      return { ok: true }
+
     case 'ACTIVATE_LICENSE':
       return { ok: false, error: 'not_implemented' }
 
@@ -794,6 +798,16 @@ export function registerBackgroundListeners(): void {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (!isTrustedExtensionSender(sender)) {
       sendResponse({ ok: false, error: 'untrusted_sender' } satisfies ExtensionResponse)
+      return false
+    }
+    if (
+      message
+      && typeof message === 'object'
+      && 'type' in message
+      && (message as { type?: string }).type === 'NOTE_COMMAND_TARGET'
+    ) {
+      rememberCommandTarget(sender)
+      sendResponse({ ok: true } satisfies ExtensionResponse)
       return false
     }
     void handleMessage(message)

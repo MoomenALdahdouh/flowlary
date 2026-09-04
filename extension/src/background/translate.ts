@@ -14,7 +14,7 @@ import {
   getTranslateCoalescer,
 } from '../storage/cache/index.ts'
 import { getEntitlementService } from '../entitlement/service.ts'
-import { flowlaryStorage, getEntitlement, hydrateStateFromStorage, resolveEntitlementStatus, restoreActiveAccountFromSession } from '../storage/index.ts'
+import { flowlaryStorage, hydrateStateFromStorage, restoreActiveAccountFromSession } from '../storage/index.ts'
 import { FLOWLARY_API_BASE } from '../config/endpoints.ts'
 import { prepareManagedAiRequest } from '../config/auth.ts'
 import { maybeSyncServerEntitlement } from '../config/accountAuth.ts'
@@ -29,6 +29,7 @@ export type TranslateTextRequest = {
   targetLanguage: LanguageCode
   mode: TranslationMode
   context?: TranslationRequestContext
+  requestId?: string
 }
 
 export type TranslateTextResponse =
@@ -48,8 +49,35 @@ function mapHttpFailure(status: number, code?: string): string {
   return 'upstream'
 }
 
+const inflight = new Map<string, AbortController>()
+let lastTranslateFetchSignal: AbortSignal | null = null
+
+export function getLastTranslateFetchSignalForTests(): AbortSignal | null {
+  return lastTranslateFetchSignal
+}
+
+export function cancelTranslateRequest(requestId: string): void {
+  inflight.get(requestId)?.abort()
+  inflight.delete(requestId)
+}
+
 export async function handleTranslateText(
   message: TranslateTextRequest,
+): Promise<TranslateTextResponse> {
+  const requestId = message.requestId ?? `tr-${Date.now()}`
+  const controller = new AbortController()
+  inflight.set(requestId, controller)
+  lastTranslateFetchSignal = controller.signal
+  try {
+    return await runTranslate(message, controller.signal)
+  } finally {
+    if (inflight.get(requestId) === controller) inflight.delete(requestId)
+  }
+}
+
+async function runTranslate(
+  message: TranslateTextRequest,
+  signal: AbortSignal,
 ): Promise<TranslateTextResponse> {
   await restoreActiveAccountFromSession(flowlaryStorage)
   if (!isCorrectionAiReady(stateManager.correction)) {
@@ -81,14 +109,14 @@ export async function handleTranslateText(
     }
   }
 
-  const plan = resolveEntitlementStatus(await getEntitlement(flowlaryStorage))
+  await maybeSyncServerEntitlement(flowlaryStorage)
+  const snapshot = await getEntitlementService(flowlaryStorage).getSnapshot()
+  const plan = snapshot.tier
   const translationStrategy = predictClientTranslationStrategy({
     plan,
     mode: message.mode,
+    signedIn: snapshot.signedIn,
   })
-  // #region agent log
-  fetch('http://127.0.0.1:7879/ingest/9d16d7be-6afb-4b03-8147-7577c1b418b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0ba0e0'},body:JSON.stringify({sessionId:'0ba0e0',runId:'pre-fix',hypothesisId:'B',location:'background/translate.ts:strategy',message:'translate request strategy',data:{plan,translationStrategy,mode:message.mode,apiBase:FLOWLARY_API_BASE,segment_complete:message.context?.segment_complete===true,focus_out_completion:message.context?.focus_out_completion===true,textLen:message.text.length},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
 
   const accountSnapshot = activeAccountContext.snapshot()
   const cache = getFlowlaryCache()
@@ -103,6 +131,7 @@ export async function handleTranslateText(
   })
   const cached = await cache.getWithL2<string>(cacheKey)
   if (cached) {
+    if (signal.aborted) return { type: 'TRANSLATE_TEXT_ERROR', ok: false, code: 'aborted' }
     getCacheMetrics().ai_requests_avoided += 1
     return {
       type: 'TRANSLATE_TEXT_RESULT',
@@ -117,6 +146,7 @@ export async function handleTranslateText(
   return coalescer.run(cacheKey, async () => {
     const again = await cache.getWithL2<string>(cacheKey)
     if (again) {
+      if (signal.aborted) return { type: 'TRANSLATE_TEXT_ERROR', ok: false, code: 'aborted' }
       getCacheMetrics().ai_requests_avoided += 1
       return {
         type: 'TRANSLATE_TEXT_RESULT',
@@ -129,11 +159,13 @@ export async function handleTranslateText(
 
     getCacheMetrics().ai_requests_translate += 1
     try {
+      if (signal.aborted) return { type: 'TRANSLATE_TEXT_ERROR', ok: false, code: 'aborted' }
       await maybeSyncServerEntitlement(flowlaryStorage)
       const headers = await prepareManagedAiRequest(flowlaryStorage)
       const response = await fetch(`${FLOWLARY_API_BASE}/api/ai/translation`, {
         method: 'POST',
         headers,
+        signal,
         body: JSON.stringify({
           text: message.text,
           source_language: message.sourceLanguage,
@@ -160,7 +192,12 @@ export async function handleTranslateText(
         }
       }
 
-      const body = (await response.json()) as { translation?: unknown; ok?: boolean }
+      const body = (await response.json()) as {
+        translation?: unknown
+        ok?: boolean
+        provider?: string
+        strategy?: string
+      }
       const translation =
         typeof body.translation === 'string'
           ? body.translation
@@ -176,6 +213,9 @@ export async function handleTranslateText(
       if (!activeAccountContext.matches(accountSnapshot)) {
         return { type: 'TRANSLATE_TEXT_ERROR', ok: false, code: 'account_changed' }
       }
+      if (signal.aborted) {
+        return { type: 'TRANSLATE_TEXT_ERROR', ok: false, code: 'aborted' }
+      }
       cache.setWithL2(cacheKey, normalized, 'TRANSLATE', CACHE_TTL_MS.TRANSLATE)
       return {
         type: 'TRANSLATE_TEXT_RESULT',
@@ -185,6 +225,9 @@ export async function handleTranslateText(
         targetLanguage: message.targetLanguage,
       }
     } catch (err) {
+      if (signal.aborted || (err instanceof DOMException && err.name === 'AbortError')) {
+        return { type: 'TRANSLATE_TEXT_ERROR', ok: false, code: 'aborted' }
+      }
       if (err instanceof Error) {
         if (err.message === 'account_required') {
           return { type: 'TRANSLATE_TEXT_ERROR', ok: false, code: 'account_required' }
@@ -200,4 +243,7 @@ export async function handleTranslateText(
 
 export function resetTranslateHandlerForTests(): void {
   getTranslateCoalescer().reset()
+  for (const controller of inflight.values()) controller.abort()
+  inflight.clear()
+  lastTranslateFetchSignal = null
 }

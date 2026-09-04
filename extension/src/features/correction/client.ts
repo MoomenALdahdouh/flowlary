@@ -1,3 +1,5 @@
+import type { PhysicalHttpContext } from '../../core/runtime/physicalHttp.ts'
+import { runWithPhysicalHttp } from '../../core/runtime/physicalHttp.ts'
 import type { CorrectionResponse } from '@flowlary/shared'
 
 export type CorrectTextMessage = {
@@ -31,12 +33,43 @@ export async function requestCorrectionRemote(
   previousText: string | undefined,
   signal?: AbortSignal,
   mode?: string,
+  physical?: PhysicalHttpContext,
+): Promise<CorrectTextResponse> {
+  const send = () => requestCorrectionRemoteUncapped(
+    requestId,
+    text,
+    fieldType,
+    previousText,
+    signal,
+    mode,
+  )
+  if (!physical) return send()
+  const gated = await runWithPhysicalHttp(physical, send)
+  if (!gated.dispatched) {
+    return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'aborted', aborted: true }
+  }
+  return gated.value
+}
+
+async function requestCorrectionRemoteUncapped(
+  requestId: string,
+  text: string,
+  fieldType: string | undefined,
+  previousText: string | undefined,
+  signal?: AbortSignal,
+  mode?: string,
 ): Promise<CorrectTextResponse> {
   if (signal?.aborted) {
     return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'aborted', aborted: true }
   }
 
+  const onAbort = () => {
+    void cancelCorrectionRemote(requestId)
+  }
+  signal?.addEventListener('abort', onAbort, { once: true })
+
   if (typeof chrome === 'undefined' || !chrome.runtime?.sendMessage) {
+    signal?.removeEventListener('abort', onAbort)
     return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'network' }
   }
 
@@ -61,6 +94,8 @@ export async function requestCorrectionRemote(
       return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'extension_disconnected' }
     }
     return { type: 'CORRECT_TEXT_RESULT', ok: false, requestId, error: 'network' }
+  } finally {
+    signal?.removeEventListener('abort', onAbort)
   }
 }
 

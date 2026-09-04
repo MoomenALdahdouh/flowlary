@@ -177,7 +177,7 @@ describe('manual conversion — selectors', () => {
       sourceLayout: 'en-US-qwerty' as const,
       enabledLayouts: ['en-US-qwerty' as const],
     }
-    expect(allConverterLayouts()).toContain('ar-101')
+    expect(allConverterLayouts()).toEqual(['en-US-qwerty', 'ar-101'])
     expect(
       resolveConverterPair(profile, {
         sourceLayout: 'en-US-qwerty',

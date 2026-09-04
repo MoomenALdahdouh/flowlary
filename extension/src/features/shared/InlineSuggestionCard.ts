@@ -1,5 +1,6 @@
 import { readHostSurface } from '../correction/ui/hostStyleAdapter.ts'
 import { resolveCardActionStrings } from './cardStrings.ts'
+import type { ChangeType } from '@flowlary/shared'
 
 export type InlineSuggestionBinding = {
   element: HTMLElement
@@ -12,6 +13,7 @@ export type InlineSuggestionCardOptions = {
   label: string
   onApply: (binding: InlineSuggestionBinding) => void
   onDismiss: () => void
+  extraHostAttribute?: string
 }
 
 type CardVisualState = 'hidden' | 'loading' | 'ready' | 'applied'
@@ -27,6 +29,7 @@ export class InlineSuggestionCard {
   private labelEl: HTMLElement
   private hintEl: HTMLElement
   private contentEl: HTMLElement
+  private legendEl: HTMLElement
   private target: HTMLElement | null = null
   private binding: InlineSuggestionBinding | null = null
   private visualState: CardVisualState = 'hidden'
@@ -36,10 +39,13 @@ export class InlineSuggestionCard {
   private scrollTargets: EventTarget[] = []
   private appliedTimer: ReturnType<typeof setTimeout> | null = null
   private readonly cardStrings = resolveCardActionStrings()
+  private label: string
 
   constructor(private readonly options: InlineSuggestionCardOptions) {
+    this.label = options.label
     this.host = document.createElement('div')
     this.host.setAttribute(HOST_ATTR, 'true')
+    if (options.extraHostAttribute) this.host.setAttribute(options.extraHostAttribute, 'true')
     this.host.setAttribute('aria-live', 'polite')
     this.applyHostBaseStyle()
     this.shadow = this.host.attachShadow({ mode: 'open' })
@@ -112,9 +118,12 @@ export class InlineSuggestionCard {
           transform: translateY(0) scale(0.995);
           background: var(--flowlary-bg-active, #f8fafc);
         }
-        .card.applied {
-          border-color: var(--flowlary-success-border, rgba(22, 163, 74, 0.35));
-          background: var(--flowlary-success-bg, rgba(240, 253, 244, 0.96));
+        .card.error {
+          cursor: default;
+        }
+        .card.error .content {
+          color: #b42318;
+          font-size: 0.92em;
         }
         .card:focus-visible {
           outline: 2px solid color-mix(in srgb, var(--flowlary-fg, #111827) 35%, transparent);
@@ -162,14 +171,74 @@ export class InlineSuggestionCard {
           position: relative;
           min-height: 20px;
         }
-        .content {
-          white-space: pre-wrap;
-          word-break: break-word;
-          font: inherit;
-          line-height: 1.5;
+        .mark {
+          border-radius: 2px;
+          padding: 0;
+          font-weight: 650;
+          box-decoration-break: clone;
+          -webkit-box-decoration-break: clone;
         }
-        .card.loading .content {
+        .spelling {
+          color: var(--fl-teach-spelling, #be123c);
+          background: var(--fl-teach-spelling-soft, rgba(244, 63, 94, 0.12));
+        }
+        .grammar {
+          color: var(--fl-teach-grammar, #a16207);
+          background: var(--fl-teach-grammar-soft, rgba(202, 138, 4, 0.16));
+        }
+        .wording {
+          color: var(--fl-teach-wording, #3730a3);
+          background: var(--fl-teach-wording-soft, rgba(99, 102, 241, 0.12));
+        }
+        .layout {
+          color: var(--fl-teach-layout, #b8860b);
+          background: var(--fl-teach-layout-soft, rgba(184, 134, 11, 0.12));
+        }
+        .card.loading .content,
+        .card.loading .legend {
           visibility: hidden;
+        }
+        .legend {
+          display: none;
+          flex-wrap: wrap;
+          gap: 6px;
+          margin: 0;
+          padding: 0;
+        }
+        .legend.visible {
+          display: flex;
+        }
+        .chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 2px 7px;
+          border-radius: 999px;
+          font: 600 10px/1.2 system-ui, -apple-system, sans-serif;
+          letter-spacing: 0.02em;
+        }
+        .chip::before {
+          content: '';
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: currentColor;
+        }
+        .chip.spelling {
+          color: var(--fl-teach-spelling, #be123c);
+          background: var(--fl-teach-spelling-soft, rgba(244, 63, 94, 0.12));
+        }
+        .chip.grammar {
+          color: var(--fl-teach-grammar, #a16207);
+          background: var(--fl-teach-grammar-soft, rgba(202, 138, 4, 0.16));
+        }
+        .chip.wording {
+          color: var(--fl-teach-wording, #3730a3);
+          background: var(--fl-teach-wording-soft, rgba(99, 102, 241, 0.12));
+        }
+        .chip.layout {
+          color: var(--fl-teach-layout, #b8860b);
+          background: var(--fl-teach-layout-soft, rgba(184, 134, 11, 0.12));
         }
         .shimmer {
           display: none;
@@ -232,6 +301,7 @@ export class InlineSuggestionCard {
             <div class="shimmer-line"></div>
             <div class="shimmer-line short"></div>
           </div>
+          <div class="legend" hidden></div>
         </div>
       </div>
     `
@@ -239,7 +309,8 @@ export class InlineSuggestionCard {
     this.labelEl = this.shadow.querySelector('.label') as HTMLElement
     this.hintEl = this.shadow.querySelector('.hint') as HTMLElement
     this.contentEl = this.shadow.querySelector('.content') as HTMLElement
-    this.labelEl.textContent = options.label
+    this.legendEl = this.shadow.querySelector('.legend') as HTMLElement
+    this.labelEl.textContent = this.label
     this.hintEl.textContent = this.cardStrings.clickToAccept
 
     this.cardEl.addEventListener('pointerdown', (event) => {
@@ -268,14 +339,39 @@ export class InlineSuggestionCard {
 
   attach(target: HTMLElement): void {
     this.target = target
+    if (this.visualState !== 'hidden') {
+      this.ensureMounted()
+      this.bindLayoutListeners()
+      this.syncLayout()
+    }
+  }
+
+  setLabel(label: string): void {
+    this.label = label
+    this.labelEl.textContent = label
+  }
+
+  contains(node: EventTarget | null): boolean {
+    if (!(node instanceof Node)) return false
+    if (this.host === node || this.host.contains(node)) return true
+    return this.shadow.contains(node)
+  }
+
+  isVisible(): boolean {
+    return this.visualState !== 'hidden' && this.host.isConnected
+  }
+
+  refresh(): void {
+    if (this.visualState === 'hidden' || !this.target) return
     this.ensureMounted()
-    this.bindLayoutListeners()
+    this.syncLayout()
   }
 
   showLoading(target: HTMLElement, dir: 'ltr' | 'rtl' | 'auto' = 'auto'): void {
     this.binding = null
     this.target = target
     this.contentEl.textContent = ''
+    this.setTeachLegend([])
     this.contentEl.dir = dir
     this.setVisualState('loading')
     this.hintEl.textContent = this.cardStrings.analyzing
@@ -284,14 +380,38 @@ export class InlineSuggestionCard {
     this.bindLayoutListeners()
   }
 
-  show(binding: InlineSuggestionBinding, dir: 'ltr' | 'rtl' | 'auto' = 'auto'): void {
+  show(
+    binding: InlineSuggestionBinding,
+    dir: 'ltr' | 'rtl' | 'auto' = 'auto',
+    content?: Node,
+    teachTypes: ChangeType[] = [],
+  ): void {
     this.binding = binding
     this.target = binding.element
-    this.contentEl.textContent = binding.suggestion
+    this.contentEl.replaceChildren()
+    if (content) this.contentEl.appendChild(content)
+    else this.contentEl.textContent = binding.suggestion
     this.contentEl.dir = dir
     this.hintEl.textContent = this.cardStrings.clickToAccept
+    this.cardEl.style.cursor = ''
+    this.cardEl.classList.remove('error')
+    this.setTeachLegend(teachTypes)
     this.setVisualState('ready')
     this.playEnterAnimation()
+    this.ensureMounted()
+    this.syncLayout()
+    this.bindLayoutListeners()
+  }
+
+  showError(target: HTMLElement, message: string): void {
+    this.binding = null
+    this.target = target
+    this.contentEl.textContent = message
+    this.hintEl.textContent = ''
+    this.setVisualState('ready')
+    this.cardEl.classList.remove('ready')
+    this.cardEl.classList.add('error')
+    this.cardEl.style.cursor = 'default'
     this.ensureMounted()
     this.syncLayout()
     this.bindLayoutListeners()
@@ -306,13 +426,34 @@ export class InlineSuggestionCard {
     this.target = null
     this.visualState = 'hidden'
     this.cardEl.hidden = true
-    this.cardEl.classList.remove('entering', 'loading', 'ready', 'applied')
+    this.cardEl.classList.remove('entering', 'loading', 'ready', 'applied', 'error')
+    this.setTeachLegend([])
     this.host.style.display = 'none'
+    this.host.style.pointerEvents = 'none'
     this.host.remove()
     this.unbindLayoutListeners()
   }
 
+  setTeachLegend(types: ChangeType[]): void {
+    const unique = [...new Set(types.filter((type) => type === 'spelling' || type === 'grammar' || type === 'wording' || type === 'layout'))]
+    this.legendEl.replaceChildren()
+    if (unique.length === 0) {
+      this.legendEl.hidden = true
+      this.legendEl.classList.remove('visible')
+      return
+    }
+    this.legendEl.hidden = false
+    this.legendEl.classList.add('visible')
+    for (const type of unique) {
+      const chip = document.createElement('span')
+      chip.className = `chip ${type}`
+      chip.textContent = this.cardStrings[type]
+      this.legendEl.appendChild(chip)
+    }
+  }
+
   private applyIfReady(): void {
+    if (this.cardEl.classList.contains('error')) return
     if (this.visualState !== 'ready' || !this.binding) return
     this.options.onApply(this.binding)
     this.markApplied()
@@ -323,7 +464,7 @@ export class InlineSuggestionCard {
     this.options.onDismiss()
   }
 
-  private markApplied(): void {
+  markApplied(): void {
     this.setVisualState('applied')
     this.hintEl.textContent = this.cardStrings.applied
     if (this.appliedTimer) clearTimeout(this.appliedTimer)
@@ -339,13 +480,15 @@ export class InlineSuggestionCard {
     this.visualState = state
     this.cardEl.hidden = false
     this.host.style.display = 'block'
-    this.cardEl.classList.remove('loading', 'ready', 'applied')
+    this.host.style.pointerEvents = 'auto'
+    this.cardEl.classList.remove('loading', 'ready', 'applied', 'error')
     this.cardEl.classList.add(state)
+    this.cardEl.style.cursor = state === 'ready' ? '' : ''
     this.cardEl.setAttribute(
       'aria-label',
       state === 'loading'
-        ? `${this.options.label} suggestion loading`
-        : `${this.options.label} suggestion`,
+        ? `${this.label} suggestion loading`
+        : `${this.label} suggestion`,
     )
   }
 

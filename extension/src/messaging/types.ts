@@ -260,7 +260,9 @@ export type TranslateTextMessage = {
   targetLanguage: string
   mode: 'shortcut' | 'live'
   context?: import('@flowlary/shared').TranslationRequestContext
+  requestId?: string
 }
+export type CancelTranslateMessage = { type: 'CANCEL_TRANSLATE'; requestId: string }
 export type GetHistoryMessage = { type: 'GET_HISTORY' }
 export type DeleteHistoryEntryMessage = { type: 'DELETE_HISTORY_ENTRY'; id: string }
 export type ClearHistoryMessage = { type: 'CLEAR_HISTORY' }
@@ -380,6 +382,7 @@ export type ExtensionRequest =
   | ReviewWritingMessage
   | CancelReviewWritingMessage
   | TranslateTextMessage
+  | CancelTranslateMessage
   | CorrectTextMessage
   | LocalizeExplanationMessage
   | CancelCorrectMessage

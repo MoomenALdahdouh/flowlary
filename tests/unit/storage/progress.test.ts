@@ -11,6 +11,7 @@ import {
   countUniqueLearningErrors,
   computeProgressMetrics,
   computeRecurringPatterns,
+  computeMistakeFeed,
   computeTrend,
   sumUniqueWordsInPeriod,
 } from '../../../extension/src/storage/learning/progress.ts'
@@ -259,5 +260,68 @@ describe('progress metrics', () => {
     expect(today?.spelling).toBe(1)
     expect(today?.grammar).toBe(1)
     expect(metrics.charts.skills.find((skill) => skill.type === 'spelling')?.count).toBe(1)
+  })
+
+  it('groups repeating mistakes with applied weight', () => {
+    const now = Date.now()
+    const events = [
+      baseEvent({
+        id: '1',
+        batchId: 'b1',
+        original: 'hwo',
+        corrected: 'how',
+        normalizedOriginal: 'hwo',
+        normalizedCorrected: 'how',
+        timestamp: now,
+      }),
+      baseEvent({
+        id: '2',
+        batchId: 'b2',
+        original: 'hwo',
+        corrected: 'how',
+        normalizedOriginal: 'hwo',
+        normalizedCorrected: 'how',
+        timestamp: now - 1000,
+        action: 'detected',
+      }),
+      baseEvent({
+        id: '3',
+        batchId: 'b3',
+        original: 'add',
+        corrected: 'to add',
+        category: 'grammar',
+        normalizedOriginal: 'add',
+        normalizedCorrected: 'to add',
+        timestamp: now - 2000,
+        action: 'detected',
+      }),
+    ]
+    const items = computeMistakeFeed(events, now)
+    expect(items).toHaveLength(2)
+    const spelling = items.find((item) => item.normalizedOriginal === 'hwo')
+    expect(spelling?.count).toBe(2)
+    expect(spelling?.appliedCount).toBe(1)
+    expect(spelling?.historyWord).toBe('hwo')
+    expect(spelling?.relativeLabel).toBe('today')
+  })
+
+  it('displays the misspelled word when a whole sentence was stored', () => {
+    const now = Date.now()
+    const original = 'hell how are you are you okay if you nee help I can hel yuo'
+    const corrected = 'hell how are you are you okay if you nee help I can hel you'
+    const events = [
+      baseEvent({
+        id: 'long',
+        batchId: 'b9',
+        original,
+        corrected,
+        normalizedOriginal: original.toLowerCase(),
+        normalizedCorrected: corrected.toLowerCase(),
+        timestamp: now,
+      }),
+    ]
+    const items = computeMistakeFeed(events, now)
+    expect(items[0]?.original).toBe('yuo')
+    expect(items[0]?.corrected).toBe('you')
   })
 })

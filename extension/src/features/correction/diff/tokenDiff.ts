@@ -155,18 +155,59 @@ function findChangeType(tokenValue: string, changes: CorrectionChange[]): Change
   return undefined
 }
 
-export type HighlightGranularity = 'full' | 'character'
+export type HighlightGranularity = 'auto' | 'full' | 'character'
+
+function letterBag(value: string): string {
+  return Array.from(value.toLowerCase())
+    .filter((char) => /[a-z]/.test(char))
+    .sort()
+    .join('')
+}
+
+/** Same letters in a different order (yuo → you, recieve → receive). */
+function isLetterTransposition(original: string, corrected: string): boolean {
+  const a = letterBag(original)
+  const b = letterBag(corrected)
+  return a.length >= 3 && a === b && original.toLowerCase() !== corrected.toLowerCase()
+}
+
+function markedLength(tokens: DiffToken[]): number {
+  return tokens.filter((token) => token.type !== 'equal').reduce((sum, token) => sum + token.value.length, 0)
+}
 
 /**
- * Suggestion highlights: colors every corrected word or character span that
- * differs from the original, using the change type for system teach colors.
- * Default `full` marks entire changed tokens; `character` marks only the delta.
+ * Teach highlighting: mark only the letters that changed, unless the whole word
+ * is the lesson (transposition, or most of the word is different).
+ */
+function highlightReplace(
+  original: string,
+  corrected: string,
+  changeType: ChangeType,
+  granularity: HighlightGranularity,
+): DiffToken[] {
+  if (granularity === 'full') {
+    return [{ value: corrected, type: 'insert', changeType }]
+  }
+  const chars = diffCharacters(original, corrected, changeType)
+  if (granularity === 'character') return chars
+  if (isLetterTransposition(original, corrected)) {
+    return [{ value: corrected, type: 'insert', changeType }]
+  }
+  if (corrected.length > 0 && markedLength(chars) / corrected.length >= 0.5) {
+    return [{ value: corrected, type: 'insert', changeType }]
+  }
+  return chars
+}
+
+/**
+ * Suggestion highlights with EWA-style teach colors: only the wrong characters
+ * by default. Whole-word marks are used for transpositions and full replacements.
  */
 export function buildHighlightedTokens(
   original: string,
   corrected: string,
   changes: CorrectionChange[],
-  granularity: HighlightGranularity = 'full',
+  granularity: HighlightGranularity = 'auto',
 ): DiffToken[] {
   const base = diffTokens(original, corrected)
   const out: DiffToken[] = []
@@ -176,16 +217,14 @@ export function buildHighlightedTokens(
       continue
     }
     const changeType =
-      findChangeType(token.value, changes) ??
-      findChangeType(token.originalValue ?? '', changes) ??
-      token.changeType ??
-      'wording'
+      /^[^\sA-Za-z0-9]+$/.test(token.value) || (token.originalValue != null && token.value.toLowerCase() === token.originalValue.toLowerCase())
+        ? 'grammar'
+        : findChangeType(token.value, changes) ??
+          findChangeType(token.originalValue ?? '', changes) ??
+          token.changeType ??
+          'wording'
     if (token.type === 'replace' && token.originalValue != null) {
-      if (granularity === 'character') {
-        out.push(...diffCharacters(token.originalValue, token.value, changeType))
-      } else {
-        out.push({ value: token.value, type: 'insert', changeType })
-      }
+      out.push(...highlightReplace(token.originalValue, token.value, changeType, granularity))
       continue
     }
     out.push({ ...token, changeType })

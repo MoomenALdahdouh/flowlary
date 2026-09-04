@@ -221,7 +221,10 @@ describe('whole-field English correction coordination', () => {
       metrics: createCorrectionMetrics(),
       fieldState,
       currentDebouncerGeneration: () => debouncer.currentGeneration(),
-      getCard: () => card,
+      getCard: (el) => {
+        card.mount(el)
+        return card
+      },
     })
 
     expect(result).toBe('blocked')

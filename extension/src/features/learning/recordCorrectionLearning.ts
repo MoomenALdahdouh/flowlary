@@ -1,5 +1,5 @@
 import type { CorrectionChange, CorrectionResponse, LearningEventSource } from '@flowlary/shared'
-import { countWords } from '@flowlary/shared'
+import { countWords, tightenCorrectionPair } from '@flowlary/shared'
 import { flowlaryStorage } from '../../storage/index.ts'
 import { recordLearningEvents, type LearningEventInput } from '../../storage/learning/events/index.ts'
 
@@ -15,16 +15,19 @@ function toInputs(
   source: LearningEventSource = 'writing',
 ): LearningEventInput[] {
   const sampleWordCount = countWords(segment)
-  return validChanges(segment, changes).map((change) => ({
-    batchId,
-    sampleText: segment,
-    sampleWordCount,
-    category: change.type,
-    original: change.original,
-    corrected: change.corrected,
-    action,
-    source,
-  }))
+  return validChanges(segment, changes).map((change) => {
+    const tight = tightenCorrectionPair(change.original, change.corrected)
+    return {
+      batchId,
+      sampleText: segment,
+      sampleWordCount,
+      category: change.type,
+      original: tight.original,
+      corrected: tight.corrected,
+      action,
+      source,
+    }
+  })
 }
 
 function record(

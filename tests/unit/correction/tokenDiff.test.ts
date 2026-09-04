@@ -12,12 +12,12 @@ describe('token diff', () => {
     expect(tokenize('I recieve.')).toEqual(['I', ' ', 'recieve', '.'])
   })
 
-  it('colors the full corrected word in recive → receive', () => {
+  it('colors only the inserted letter in recive → receive', () => {
     const tokens = buildHighlightedTokens('I recive', 'I receive', [
       { type: 'spelling', original: 'recive', corrected: 'receive', start: 2, end: 8 },
     ])
     expect(tokens.map((t) => t.value).join('')).toBe('I receive')
-    expect(markedText(tokens)).toBe('receive')
+    expect(markedText(tokens)).toBe('e')
     expect(tokens.find((t) => t.type !== 'equal')?.changeType).toBe('spelling')
   })
 
@@ -38,7 +38,7 @@ describe('token diff', () => {
     expect(tokens.filter((t) => t.type !== 'equal').length).toBeGreaterThan(2)
   })
 
-  it('colors full changed words for you → your and emai → email', () => {
+  it('colors only the added letters in you → your and emai → email', () => {
     const tokens = buildHighlightedTokens(
       'I recive you emai',
       'I receive your email',
@@ -50,8 +50,18 @@ describe('token diff', () => {
     )
     expect(tokens.map((t) => t.value).join('')).toBe('I receive your email')
     const marked = tokens.filter((t) => t.type !== 'equal')
-    expect(marked.map((t) => t.value)).toEqual(['receive', 'your', 'email'])
+    expect(marked.map((t) => t.value)).toEqual(['e', 'r', 'l'])
     expect(marked.map((t) => t.changeType)).toEqual(['spelling', 'grammar', 'spelling'])
+  })
+
+  it('colors the missing o in hell → hello and the whole transposed you', () => {
+    const tokens = buildHighlightedTokens('hell how are yuo', 'hello how are you', [
+      { type: 'spelling', original: 'hell', corrected: 'hello', start: 0, end: 4 },
+      { type: 'spelling', original: 'yuo', corrected: 'you', start: 13, end: 16 },
+    ])
+    const marked = tokens.filter((t) => t.type !== 'equal')
+    expect(marked.map((t) => t.value)).toEqual(['o', 'you'])
+    expect(marked.every((t) => t.changeType === 'spelling')).toBe(true)
   })
 
   it('can still color only character deltas when requested', () => {
@@ -73,6 +83,21 @@ describe('token diff', () => {
     const tokens = diffCharacters('go', 'went', 'grammar')
     expect(tokens.map((t) => t.value).join('')).toBe('went')
     expect(markedText(tokens)).toBe('went')
+  })
+
+  it('colors spelling words and grammar punctuation separately', () => {
+    const original = 'hell hwo are yuo'
+    const corrected = 'Hello, how are you?'
+    const changes = [
+      { type: 'spelling' as const, original: 'hell', corrected: 'Hello', start: 0, end: 4 },
+      { type: 'spelling' as const, original: 'hwo', corrected: 'how', start: 5, end: 8 },
+      { type: 'spelling' as const, original: 'yuo', corrected: 'you', start: 13, end: 16 },
+      { type: 'grammar' as const, original: '', corrected: '?', start: 16, end: 16 },
+    ]
+    const tokens = buildHighlightedTokens(original, corrected, changes)
+    const marked = tokens.filter((t) => t.type !== 'equal')
+    expect(marked.some((t) => t.changeType === 'spelling')).toBe(true)
+    expect(marked.some((t) => t.changeType === 'grammar' && /[?,]/.test(t.value))).toBe(true)
   })
 
   it('marks an inserted word such as a missing to', () => {

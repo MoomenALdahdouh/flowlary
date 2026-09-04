@@ -14,6 +14,7 @@ import type {
   CancelCorrectMessage,
   CancelRankHypothesesMessage,
   CancelReviewWritingMessage,
+  CancelTranslateMessage,
   CheckWordMessage,
   RankHypothesesMessage,
   ReviewWritingMessage,
@@ -61,6 +62,7 @@ const ALLOWED_MESSAGE_TYPES = new Set<string>([
   'REVIEW_WRITING',
   'CANCEL_REVIEW_WRITING',
   'TRANSLATE_TEXT',
+  'CANCEL_TRANSLATE',
   'CORRECT_TEXT',
   'LOCALIZE_EXPLANATION',
   'CANCEL_CORRECT',
@@ -172,6 +174,8 @@ export function validateExtensionRequest(raw: unknown): ValidationResult<Extensi
       return validateCancelReviewWriting(raw)
     case 'TRANSLATE_TEXT':
       return validateTranslateText(raw)
+    case 'CANCEL_TRANSLATE':
+      return validateCancelTranslate(raw)
     case 'CORRECT_TEXT':
       return validateCorrectText(raw)
     case 'LOCALIZE_EXPLANATION':
@@ -541,6 +545,9 @@ function validateTranslateText(raw: Record<string, unknown>): ValidationResult<T
     targetLanguage: normalizeLanguage(raw.targetLanguage, 'ar'),
     mode: raw.mode as TranslateTextMessage['mode'],
   }
+  if (typeof raw.requestId === 'string' && isBoundedString(raw.requestId, SECURITY_LIMITS.MAX_REQUEST_ID_LENGTH)) {
+    message.requestId = raw.requestId.trim()
+  }
   if (raw.context && typeof raw.context === 'object' && raw.context !== null) {
     const ctx = raw.context as Record<string, unknown>
     const next: NonNullable<TranslateTextMessage['context']> = {
@@ -601,6 +608,13 @@ function validateLocalizeExplanation(
     message.ruleVersion = raw.ruleVersion.trim()
   }
   return ok(message)
+}
+
+function validateCancelTranslate(raw: Record<string, unknown>): ValidationResult<CancelTranslateMessage> {
+  if (!isBoundedString(raw.requestId, SECURITY_LIMITS.MAX_REQUEST_ID_LENGTH)) {
+    return fail('invalid_request_id')
+  }
+  return ok({ type: 'CANCEL_TRANSLATE', requestId: raw.requestId.trim() })
 }
 
 function validateCancelCorrect(raw: Record<string, unknown>): ValidationResult<CancelCorrectMessage> {

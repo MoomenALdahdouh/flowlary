@@ -7,6 +7,8 @@ import {
   hashCorrectionContext,
   normalizeCacheText,
   enrichCorrectionResponseWithExplanations,
+  finalizeCorrectionResponse,
+  applyLocalEnglishRepair,
   type CorrectionResponse,
   type CorrectRequestContext,
 } from '@flowlary/shared'
@@ -17,7 +19,7 @@ import {
 } from '../storage/cache/index.ts'
 import { stateManager } from '../core/state/StateManager.ts'
 import { getEntitlementService } from '../entitlement/service.ts'
-import { flowlaryStorage } from '../storage/index.ts'
+import { flowlaryStorage, hydrateStateFromStorage, restoreActiveAccountFromSession } from '../storage/index.ts'
 import { FLOWLARY_API_BASE } from '../config/endpoints.ts'
 import { prepareManagedAiRequest } from '../config/auth.ts'
 import { markApiHealthOk } from '../config/apiHealth.ts'
@@ -143,7 +145,8 @@ function correctionCacheKey(
 
 function deliverCorrectionResponse(data: CorrectionResponse): CorrectionResponse {
   try {
-    return enrichCorrectionResponseWithExplanations(data)
+    const refined = finalizeCorrectionResponse(data.originalText, data, applyLocalEnglishRepair)
+    return enrichCorrectionResponseWithExplanations(refined)
   } catch {
     return data
   }
@@ -151,6 +154,10 @@ function deliverCorrectionResponse(data: CorrectionResponse): CorrectionResponse
 
 export async function handleCorrectText(message: CorrectTextMessage): Promise<CorrectTextResponse> {
   const { requestId, text, fieldType, previousText, mode } = message
+  await restoreActiveAccountFromSession(flowlaryStorage)
+  if (!isCorrectionAiReady(stateManager.correction)) {
+    await hydrateStateFromStorage(flowlaryStorage)
+  }
   const settings = stateManager.correction
 
   if (!isCorrectionAiReady(settings)) {

@@ -12,6 +12,7 @@ describe('LayoutFeature', () => {
     document.body.innerHTML = ''
     stateManager.settings.enabled = true
     stateManager.layout.directShortcutEnabled = true
+    stateManager.layout.mode = 'direct'
     stateManager.layout.sourceLayout = 'en-US-qwerty'
     stateManager.layout.targetLayouts = ['ar-101']
     engine = new InputEngine()
@@ -42,6 +43,27 @@ describe('LayoutFeature', () => {
       requestId: acquire.requestId,
     })
 
+    expect(result.ok).toBe(true)
+    expect(ta.value).toBe('مرحبا')
+    session.releaseWrite('FIX_LAYOUT', acquire.requestId)
+  })
+
+  it('FIX_LAYOUT shortcut still writes when apply-how is Box', async () => {
+    stateManager.layout.mode = 'box'
+    const ta = document.createElement('textarea')
+    ta.value = 'lvpfh'
+    document.body.append(ta)
+    const session = engine.sessions.getOrCreate(ta)
+    const acquire = session.tryAcquireWrite('FIX_LAYOUT')
+    expect(acquire.ok).toBe(true)
+    if (!acquire.ok) return
+    const result = await layout.execute({
+      type: 'FIX_LAYOUT',
+      field: session.field,
+      text: ta.value,
+      generation: acquire.generation,
+      requestId: acquire.requestId,
+    })
     expect(result.ok).toBe(true)
     expect(ta.value).toBe('مرحبا')
     session.releaseWrite('FIX_LAYOUT', acquire.requestId)

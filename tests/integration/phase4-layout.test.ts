@@ -7,6 +7,9 @@ import { createStubCorrectionFeature, createStubTranslationFeature } from '@flow
 import { stateManager } from '../../extension/src/core/state/StateManager.ts'
 import { OWNED_DOCUMENT_EVENTS } from '../../extension/src/core/events/EventBus.ts'
 import { detectShortcut } from '../../extension/src/core/input/shortcuts.ts'
+import { applyUserWritingPolicy } from '../../extension/src/core/policy/writingPolicy.ts'
+import { setInternalEngineMode } from '../../extension/src/core/engine/flag.ts'
+import { runFieldCycle } from '../../extension/src/core/writeGate/pipeline.ts'
 import { writeReplacement } from '../../extension/src/core/dom/editor.ts'
 import { bumpUserGeneration } from '../../extension/src/core/dom/generation.ts'
 
@@ -30,9 +33,10 @@ describe('Phase 4 — Layout module integration', () => {
 
   beforeEach(() => {
     document.body.innerHTML = ''
-    stateManager.settings.enabled = true
-    stateManager.settings.pausedUntil = null
+    stateManager.settings.helpStyle = 'auto'
+    stateManager.settings.fixWrongTyping = true
     stateManager.layout.autoEnabled = true
+    stateManager.layout.mode = 'direct'
     stateManager.layout.directShortcutEnabled = true
     stateManager.layout.manualConversionEnabled = true
     stateManager.layout.sourceLayout = 'en-US-qwerty'
@@ -190,12 +194,12 @@ describe('Phase 4 — Layout module integration', () => {
 
   it('15 — layout write preserves caret after token replace', async () => {
     const ta = document.createElement('textarea')
-    ta.value = 'aa lvpfh bb'
+    ta.value = 'hello lvpfh world'
     document.body.append(ta)
     ta.focus()
-    ta.setSelectionRange(9, 9)
+    ta.setSelectionRange(11, 11)
     await orchestrator.dispatch('FIX_LAYOUT', { target: ta })
-    expect(ta.value).toContain('مرحبا')
+    expect(ta.value).toBe('hello مرحبا world')
     expect(ta.selectionStart).toBeGreaterThan(0)
   })
 
@@ -230,19 +234,23 @@ describe('Phase 4 — Layout module integration', () => {
   it('detects shortcuts without collision', () => {
     expect(detectShortcut(shortcutEvent('Comma'))).toBe('TRANSLATE')
     expect(detectShortcut(shortcutEvent('KeyP'))).toBe('FIX_LAYOUT')
+    expect(detectShortcut(shortcutEvent('KeyE'))).toBe('CORRECT')
     expect(detectShortcut(shortcutEvent('KeyL'))).toBe('SPEED_BOX')
   })
 
-  it('auto layout on space uses InputEngine pipeline only', async () => {
+  it('auto pipeline does not dispatch feature commands from typing', async () => {
+    applyUserWritingPolicy({
+      helpStyle: 'auto',
+      fixWrongTyping: true,
+      improveEnglish: false,
+      arabicToEnglishMode: false,
+    })
+    setInternalEngineMode('enforce')
     const ta = document.createElement('textarea')
     ta.value = 'lvpfh '
     document.body.append(ta)
     ta.focus()
-    ta.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
-    ta.dispatchEvent(
-      new KeyboardEvent('keyup', { bubbles: true, cancelable: true, key: ' ', code: 'Space' }),
-    )
-    await vi.waitFor(() => expect(ta.value.trim()).toBe('مرحبا'))
+    await runFieldCycle(ta, engine.sessions.getOrCreate(ta))
     expect(orchestrator.autoCommandsFromInput).toBe(0)
   })
 })

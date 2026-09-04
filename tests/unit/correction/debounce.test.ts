@@ -44,4 +44,17 @@ describe('correction debounce', () => {
     expect(calls).toEqual([{ text: 'two', gen: 2 }])
     vi.useRealTimers()
   })
+
+  it('does not bump generation when the same text is scheduled again before firing', async () => {
+    vi.useFakeTimers()
+    const calls: string[] = []
+    const d = new IntelligentDebouncer((text) => {
+      calls.push(text)
+    })
+    expect(d.schedule('same')).toBe(1)
+    expect(d.schedule('same')).toBe(1)
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(calls).toEqual(['same'])
+    vi.useRealTimers()
+  })
 })

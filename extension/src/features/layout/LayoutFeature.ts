@@ -15,14 +15,6 @@ import {
   LayoutClassifier,
 } from './classifier/LayoutClassifier.ts'
 import { fixCurrentText } from './fixCurrentText.ts'
-import { resolveFixTarget } from './fixCurrentText.ts'
-import { readFieldText, readSelectionRange } from '../../core/dom/read.ts'
-import { commitWriteTransaction } from '../../core/writeGate/writeGate.ts'
-import {
-  convertManualText,
-  defaultConverterPair,
-} from './layouts/convert.ts'
-import { InlineSuggestionCard } from '../shared/InlineSuggestionCard.ts'
 import { createLayoutMetrics } from './metrics.ts'
 import { LayoutScheduler } from './scheduler.ts'
 import { createSpeedBox, type SpeedBox } from './speedBox.ts'
@@ -89,54 +81,10 @@ export function createLayoutFeature(options: LayoutModuleOptions): LayoutModule 
 
   const scheduler = new LayoutScheduler({
     engine: options.engine,
-    classifier,
-    metrics,
-    getProfile,
-    getExceptions: () => profileState.personalExceptions,
     getSpeedBox: () => speedBox,
   })
 
   let started = false
-  const cards = new WeakMap<import('../../core/dom/types.ts').EditableElement, InlineSuggestionCard>()
-
-  function ensureCard(element: import('../../core/dom/types.ts').EditableElement): InlineSuggestionCard {
-    let card = cards.get(element)
-    if (!card) {
-      card = new InlineSuggestionCard({
-        label: 'Layout',
-        onApply: (binding) => {
-          const session = options.engine.sessions.getOrCreate(binding.element)
-          const acquired = session.tryAcquireWrite('FIX_LAYOUT')
-          if (!acquired.ok) {
-            card?.hide()
-            return
-          }
-          commitWriteTransaction(
-            binding.element as import('../../core/dom/types.ts').EditableElement,
-            binding.start,
-            binding.end,
-            binding.suggestion,
-            {
-              origin: 'FIX_LAYOUT',
-              session,
-              requestId: acquired.requestId,
-              expectedGeneration: acquired.generation,
-              cycleGeneration: acquired.generation,
-              placeCaretAfter: true,
-              capability: 'layout',
-              trigger: 'suggestion_accept',
-            },
-          )
-          session.releaseWrite('FIX_LAYOUT', acquired.requestId)
-          card?.hide()
-        },
-        onDismiss: () => {},
-      })
-      cards.set(element, card)
-    }
-    card.attach(element)
-    return card
-  }
 
   const feature: LayoutModule = {
     metrics,
@@ -157,6 +105,7 @@ export function createLayoutFeature(options: LayoutModuleOptions): LayoutModule 
     start() {
       if (started) return
       started = true
+      // Escape → Speed Box only. Automatic Fix Typing is IdleScheduler → Operation → pipeline.
       scheduler.start()
     },
 
@@ -182,33 +131,6 @@ export function createLayoutFeature(options: LayoutModuleOptions): LayoutModule 
       const requestId = command.requestId ?? session.getRequestSequence()
       const active = session.getActiveRequest()
       const signal = active?.signal ?? new AbortController().signal
-
-      if (stateManager.layout.mode === 'box') {
-        const text = readFieldText(editable)
-        const selection = command.rangeStart != null && command.rangeEnd != null
-          ? { start: command.rangeStart, end: command.rangeEnd }
-          : readSelectionRange(editable)
-        if (!selection) {
-          return { ok: false, operation: 'FIX_LAYOUT', error: 'no_target' }
-        }
-        const target = resolveFixTarget(text, selection.start, selection.end)
-        if (!target) {
-          return { ok: false, operation: 'FIX_LAYOUT', error: 'empty_text' }
-        }
-        const profile = getProfile()
-        const pair = defaultConverterPair(profile)
-        const converted = convertManualText(target.text, pair.sourceLayout, pair.targetLayout)
-        if (!converted.ok || converted.text === target.text) {
-          return { ok: false, operation: 'FIX_LAYOUT', error: 'noop' }
-        }
-        ensureCard(editable).show({
-          element: editable,
-          start: target.start,
-          end: target.end,
-          suggestion: converted.text,
-        })
-        return { ok: true, operation: 'FIX_LAYOUT', data: { applied: false, mode: 'box' } }
-      }
 
       const result = await fixCurrentText({
         element: editable,

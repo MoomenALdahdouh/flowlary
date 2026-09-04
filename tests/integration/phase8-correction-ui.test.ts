@@ -14,6 +14,10 @@ import { applyUserWritingPolicy } from '../../extension/src/core/policy/writingP
 import { setInternalEngineMode } from '../../extension/src/core/engine/flag.ts'
 import { runFieldCycle } from '../../extension/src/core/writeGate/pipeline.ts'
 import {
+  startEnforceCoordinator,
+  stopEnforceCoordinator,
+} from '../../extension/src/core/writeGate/enforceCoordinator.ts'
+import {
   resetPipelineEnglishForTests,
   setPipelineEnglishDebounceMsForTests,
 } from '../../extension/src/core/writeGate/pipelineEnglish.ts'
@@ -64,6 +68,7 @@ describe('Phase 8 — CorrectionCard + direct-edit integration', () => {
     vi.stubGlobal('ResizeObserver', ResizeObserverStub)
     vi.useFakeTimers()
     document.body.innerHTML = ''
+    document.querySelectorAll('[data-flowlary-suggestion-host]').forEach((node) => node.remove())
     correctCalls = 0
     mockCorrect.mockReset()
 
@@ -118,6 +123,7 @@ describe('Phase 8 — CorrectionCard + direct-edit integration', () => {
     })
 
     engine.start()
+    startEnforceCoordinator(engine)
     correction.start()
     layout.start()
     translation.start()
@@ -125,6 +131,7 @@ describe('Phase 8 — CorrectionCard + direct-edit integration', () => {
   })
 
   afterEach(() => {
+    stopEnforceCoordinator()
     resetPipelineEnglishForTests()
     resetPipelineSuggestionsForTests()
     orchestrator.stop()
@@ -134,12 +141,10 @@ describe('Phase 8 — CorrectionCard + direct-edit integration', () => {
     vi.useRealTimers()
   })
 
-  it('A — pipeline suggestion card appears for remote English', async () => {
+  it('A — box suggestion card appears for remote English', async () => {
     const ta = document.createElement('textarea')
     document.body.append(ta)
-    ta.value = 'I dont know what to write today'
-    ta.focus()
-    await runFieldCycle(ta, engine.sessions.getOrCreate(ta))
+    focusAndType(ta, 'I dont know what to write today')
     await flushDebounce()
     await vi.waitFor(() => expect(document.querySelector(`[${SUGGEST_HOST}]`)).toBeTruthy())
   })
@@ -147,9 +152,7 @@ describe('Phase 8 — CorrectionCard + direct-edit integration', () => {
   it('B — accept writes corrected text', async () => {
     const ta = document.createElement('textarea')
     document.body.append(ta)
-    ta.value = 'I dont know what to write today'
-    ta.focus()
-    await runFieldCycle(ta, engine.sessions.getOrCreate(ta))
+    focusAndType(ta, 'I dont know what to write today')
     await flushDebounce()
     await vi.waitFor(() => document.querySelector(`[${SUGGEST_HOST}]`))
 
@@ -159,16 +162,14 @@ describe('Phase 8 — CorrectionCard + direct-edit integration', () => {
     await Promise.resolve()
 
     expect(ta.value).toContain("don't")
-    expect(document.querySelector(`[${SUGGEST_HOST}]`)).toBeNull()
+    expect(document.querySelector(`[${SUGGEST_HOST}]`)).toBeTruthy()
   })
 
   it('C — dismiss leaves text unchanged', async () => {
     const ta = document.createElement('textarea')
     document.body.append(ta)
     const original = 'I dont know what to write today'
-    ta.value = original
-    ta.focus()
-    await runFieldCycle(ta, engine.sessions.getOrCreate(ta))
+    focusAndType(ta, original)
     await flushDebounce()
     await vi.waitFor(() => document.querySelector(`[${SUGGEST_HOST}]`))
 
@@ -176,6 +177,7 @@ describe('Phase 8 — CorrectionCard + direct-edit integration', () => {
     const card = host.shadowRoot!.querySelector('.card') as HTMLElement
     card.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     expect(ta.value).toBe(original)
+    expect(document.querySelector(`[${SUGGEST_HOST}]`)).toBeNull()
   })
 
   it('D — user edit invalidates card', async () => {
@@ -320,15 +322,11 @@ describe('Phase 8 — CorrectionCard + direct-edit integration', () => {
     const ta2 = document.createElement('textarea')
     document.body.append(ta1, ta2)
 
-    ta1.value = 'I dont know what to write today'
-    ta1.focus()
-    await runFieldCycle(ta1, engine.sessions.getOrCreate(ta1))
+    focusAndType(ta1, 'I dont know what to write today')
     await flushDebounce()
     await vi.waitFor(() => document.querySelector(`[${SUGGEST_HOST}]`))
 
-    ta2.value = 'I dont know either way today'
-    ta2.focus()
-    await runFieldCycle(ta2, engine.sessions.getOrCreate(ta2))
+    focusAndType(ta2, 'I dont know either way today')
     await flushDebounce()
     const hosts = document.querySelectorAll(`[${SUGGEST_HOST}]`)
     expect(hosts.length).toBeGreaterThan(0)

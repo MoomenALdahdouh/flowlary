@@ -23,10 +23,15 @@ export function getDebounceDelay(text: string, options: DebounceOptions = {}): n
   return defaultMs
 }
 
+/**
+ * Delay helper used by CorrectionScheduler field state (cancel / generation).
+ * `schedule()` is not the production automatic owner — IdleScheduler is.
+ */
 export class IntelligentDebouncer {
   private timer: ReturnType<typeof setTimeout> | null = null
   private generation = 0
   private options: DebounceOptions
+  private pendingText: string | null = null
 
   constructor(
     private readonly run: (text: string, generation: number) => void,
@@ -39,10 +44,12 @@ export class IntelligentDebouncer {
     this.options = { ...this.options, ...options }
   }
 
-  schedule(text: string): number {
+  schedule(text: string, extraMs = 0): number {
+    if (this.timer && this.pendingText === text) return this.generation
     this.cancel()
+    this.pendingText = text
     const gen = ++this.generation
-    const delay = getDebounceDelay(text, this.options)
+    const delay = getDebounceDelay(text, this.options) + extraMs
     this.timer = setTimeout(() => {
       this.timer = null
       this.run(text, gen)
@@ -55,6 +62,7 @@ export class IntelligentDebouncer {
       clearTimeout(this.timer)
       this.timer = null
     }
+    this.pendingText = null
   }
 
   currentGeneration(): number {
