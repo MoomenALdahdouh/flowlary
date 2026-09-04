@@ -1,7 +1,7 @@
 import { flowlaryFaviconDataUri } from './markSvg.ts'
 
 export const THEME_STORAGE_KEY = 'flowlary-theme'
-export const THEME_DARK = '#050508'
+export const THEME_DARK = '#0b1120'
 export const THEME_LIGHT = '#f7f8fc'
 
 export type Theme = 'light' | 'dark'
@@ -44,6 +44,7 @@ export function resolveTheme(): Theme {
 export function applyTheme(theme: Theme, persistPreference?: ThemePreference): void {
   if (typeof document === 'undefined') return
   document.documentElement.setAttribute('data-theme', theme)
+  document.documentElement.classList.toggle('dark', theme === 'dark')
   document.documentElement.style.colorScheme = theme
   const meta = document.querySelector('meta[name="theme-color"]')
   if (meta) meta.setAttribute('content', theme === 'light' ? THEME_LIGHT : THEME_DARK)

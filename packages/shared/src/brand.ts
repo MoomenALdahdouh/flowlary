@@ -10,6 +10,8 @@ export const FLOWLARY_MARK_COLORS = {
   /** Default / dark accent — brand cyan for toolbar icons and OG mark. */
   accent: '#14d4ea',
   onAccent: '#061018',
+  /** Glyph on the cyan→magenta brand tile (favicon, extension, header logo). */
+  onGradient: '#ffffff',
   light: {
     accent: '#0891b2',
     onAccent: '#ffffff',

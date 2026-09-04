@@ -1,4 +1,4 @@
-/** UI locales aligned with implemented keyboard layout languages. */
+/** Catalog of UI locale codes that have translation files. Product UI uses ENABLED_UI_LOCALE_CODES. */
 export const UI_LOCALE_CODES = [
   'en',
   'ar',
@@ -46,6 +46,26 @@ export const RTL_UI_LOCALE_CODES = new Set<UiLocaleCode>(['ar', 'fa'])
 
 export function isUiLocaleCode(value: unknown): value is UiLocaleCode {
   return typeof value === 'string' && (UI_LOCALE_CODES as readonly string[]).includes(value)
+}
+
+/** Product UI language: English and Arabic only. Extra catalog locales stay for copy fallbacks. */
+export const ENABLED_UI_LOCALE_CODES = ['en', 'ar'] as const
+
+export type EnabledUiLocaleCode = (typeof ENABLED_UI_LOCALE_CODES)[number]
+
+export const ENABLED_UI_LOCALES: readonly UiLocaleMeta[] = UI_LOCALES.filter((item) =>
+  (ENABLED_UI_LOCALE_CODES as readonly string[]).includes(item.code),
+)
+
+export function isEnabledUiLocaleCode(value: unknown): value is EnabledUiLocaleCode {
+  return typeof value === 'string' && (ENABLED_UI_LOCALE_CODES as readonly string[]).includes(value)
+}
+
+export function coerceEnabledUiLocale(
+  value: unknown,
+  fallback: EnabledUiLocaleCode = 'en',
+): EnabledUiLocaleCode {
+  return isEnabledUiLocaleCode(value) ? value : fallback
 }
 
 export function uiLocaleDirection(code: UiLocaleCode): 'ltr' | 'rtl' {

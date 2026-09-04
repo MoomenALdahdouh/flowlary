@@ -8,9 +8,10 @@
           ? 'light'
           : 'dark'
     document.documentElement.setAttribute('data-theme', theme)
+    document.documentElement.classList.toggle('dark', theme === 'dark')
     document.documentElement.style.colorScheme = theme
     var meta = document.querySelector('meta[name="theme-color"]')
-    if (meta) meta.setAttribute('content', theme === 'light' ? '#f4f7fb' : '#05070b')
+    if (meta) meta.setAttribute('content', theme === 'light' ? '#f4f7fb' : '#0b1120')
     var favicon = document.querySelector('link[rel="icon"]')
     if (favicon) {
       favicon.setAttribute(

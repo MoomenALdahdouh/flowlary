@@ -11,6 +11,7 @@ describe('shared brand language', () => {
     expect(FLOWLARY_MARK.radius).toBe(8.5)
     expect(FLOWLARY_MARK_COLORS.accent).toBe('#14d4ea')
     expect(FLOWLARY_MARK_COLORS.onAccent).toBe('#061018')
+    expect(FLOWLARY_MARK_COLORS.onGradient).toBe('#ffffff')
     expect(FLOWLARY_MARK_COLORS.light.onAccent).toBe('#ffffff')
   })
 })

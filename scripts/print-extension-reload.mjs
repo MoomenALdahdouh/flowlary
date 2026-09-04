@@ -1,8 +1,13 @@
 #!/usr/bin/env node
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 
 const dist = join(resolve(import.meta.dirname, '..'), 'extension/dist')
+const apiTarget =
+  process.env.FLOWLARY_RELEASE === '1' || process.env.FLOWLARY_API_TARGET === 'production'
+    ? 'production'
+    : 'local'
+const expectedApiUrl = apiTarget === 'production' ? 'https://api.flowlary.com' : 'http://127.0.0.1:8787'
 
 function collectServiceWorkerChunks() {
   const loaderPath = join(dist, 'service-worker-loader.js')
@@ -31,6 +36,16 @@ function collectServiceWorkerChunks() {
   return files
 }
 
+function walk(dir) {
+  const files = []
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry)
+    if (statSync(full).isDirectory()) files.push(...walk(full))
+    else files.push(full)
+  }
+  return files
+}
+
 function assertServiceWorkerSafe() {
   const chunks = collectServiceWorkerChunks()
   for (const file of chunks) {
@@ -45,26 +60,49 @@ function assertServiceWorkerSafe() {
   }
 }
 
+function assertBakedApiUrl() {
+  const files = walk(dist).filter((file) => /\.(js|json)$/.test(file) && !file.endsWith('.map'))
+  const combined = files.map((file) => readFileSync(file, 'utf8')).join('\n')
+  if (!combined.includes(expectedApiUrl)) {
+    console.error('')
+    console.error(`Build failed: expected baked API ${expectedApiUrl} (target=${apiTarget}) was not in dist.`)
+    console.error('')
+    process.exit(1)
+  }
+  if (combined.includes('writing-api.test')) {
+    console.error('')
+    console.error('Build failed: dist still references writing-api.test.')
+    console.error('')
+    process.exit(1)
+  }
+  if (apiTarget === 'production' && combined.includes('http://127.0.0.1:8787')) {
+    console.error('')
+    console.error('Build failed: production API target still embeds the local gateway URL.')
+    console.error('')
+    process.exit(1)
+  }
+}
+
 const manifest = JSON.parse(readFileSync(join(dist, 'manifest.json'), 'utf8'))
-const isReleaseBuild = process.env.FLOWLARY_RELEASE === '1'
 const hostPermissions = manifest.host_permissions ?? []
 const hasLocalhostApi = hostPermissions.some((entry) =>
   /127\.0\.0\.1:8787|localhost:8787|writing-api\.test/.test(entry),
 )
-if (!isReleaseBuild && !hasLocalhostApi) {
+if (apiTarget === 'local' && !hasLocalhostApi) {
   console.error('')
-  console.error('Build failed: dev extension manifest is missing local API host_permissions.')
-  console.error('Expected writing-api.test and/or 127.0.0.1:8787 in host_permissions.')
+  console.error('Build failed: local extension manifest is missing local API host_permissions.')
+  console.error('Expected 127.0.0.1:8787 in host_permissions.')
   console.error('')
   process.exit(1)
 }
-if (isReleaseBuild && hasLocalhostApi) {
+if (apiTarget === 'production' && hasLocalhostApi) {
   console.error('')
-  console.error('Build failed: release extension manifest must not include local API host_permissions.')
+  console.error('Build failed: production extension manifest must not include local API host_permissions.')
   console.error('')
   process.exit(1)
 }
 assertServiceWorkerSafe()
+assertBakedApiUrl()
 
 const version = manifest.version ?? '?'
 const versionName = manifest.version_name ?? version
@@ -72,6 +110,7 @@ const versionName = manifest.version_name ?? version
 console.log('')
 console.log('Flowlary extension built successfully.')
 console.log(`Version: ${version} (${versionName})`)
+console.log(`API target: ${apiTarget} → ${expectedApiUrl}`)
 console.log('')
 console.log('To see changes in Chrome:')
 console.log('  1. Open chrome://extensions')

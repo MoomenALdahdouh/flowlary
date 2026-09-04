@@ -154,6 +154,7 @@ a.btn-link,
   font-weight: 650;
   text-decoration: underline;
   text-underline-offset: 0.18em;
+  cursor: pointer;
 }
 
 .btn-link:hover:not(:disabled):not([aria-disabled='true']),

@@ -8,20 +8,21 @@
   --fl-snow-highlight: rgba(255, 255, 255, 0.08);
   --fl-snow-rail: rgba(255, 255, 255, 0.05);
 
-  --fl-bg: #050508;
-  --fl-bg-soft: #08080c;
-  --fl-bg-raised: #0c0c12;
-  --fl-surface: #10151f;
-  --fl-surface-2: #151b27;
-  --fl-surface-3: #1b2332;
+  --fl-bg: #0b1120;
+  --fl-bg-soft: #0d1424;
+  --fl-bg-raised: #111827;
+  --fl-surface: #131c31;
+  --fl-surface-2: #1a2438;
+  --fl-surface-3: #1e293b;
   --fl-ink: #061018;
+  --fl-fg: var(--fl-text);
 
   --fl-border: rgba(236, 242, 255, 0.08);
   --fl-border-strong: rgba(236, 242, 255, 0.14);
   --fl-border-accent: rgba(20, 212, 234, 0.42);
 
-  --fl-text: #f3f6fb;
-  --fl-muted: #9aa6bb;
+  --fl-text: #f1f5f9;
+  --fl-muted: #94a3b8;
   --fl-faint: #8b97ac;
   --fl-text-disabled: #6b7689;
 
@@ -112,17 +113,17 @@
 
   --fl-header-bg: var(--fl-snow-glass);
   --fl-header-bg-strong: var(--fl-snow-glass-strong);
-  --fl-overlay: rgba(5, 7, 11, 0.94);
+  --fl-overlay: rgba(11, 17, 32, 0.94);
   --fl-hover-fill: rgba(255, 255, 255, 0.04);
   --fl-hero-glow: rgba(34, 240, 255, 0.06);
   --fl-band: #080b12;
   --fl-band-translate: #070a10;
   --fl-footer-bg: #06080d;
-  --fl-input-bg: #0a0e15;
+  --fl-input-bg: #0b1120;
   --fl-control-bg: rgba(16, 21, 31, 0.7);
   --fl-problem-wash: rgba(16, 21, 31, 0.55);
-  --fl-product-bg: #10151f;
-  --fl-product-surface: #151b27;
+  --fl-product-bg: #131c31;
+  --fl-product-surface: #1a2438;
   --fl-header-shadow: 0 10px 40px rgba(0, 0, 0, 0.28);
   --fl-stage: linear-gradient(180deg, rgba(18, 24, 38, 0.92) 0%, rgba(11, 16, 24, 0.88) 100%);
   --fl-chrome: rgba(255, 255, 255, 0.03);
@@ -214,6 +215,7 @@ html[data-theme='light'] {
   --fl-border-strong: rgba(10, 22, 40, 0.12);
   --fl-border-accent: rgba(8, 145, 178, 0.38);
 
+  --fl-fg: var(--fl-text);
   --fl-text: #0f172a;
   --fl-muted: #64748b;
   --fl-faint: #64748b;
@@ -329,4 +331,18 @@ html[data-theme='light'] {
   --fl-shadow-sm: 0 8px 24px rgba(15, 35, 70, 0.06);
   --fl-shadow: 0 16px 40px rgba(15, 35, 70, 0.08);
   --fl-shadow-glow: 0 0 0 1px var(--fl-border-accent);
+}
+
+button:not(:disabled),
+[type='button']:not(:disabled),
+[type='submit']:not(:disabled),
+[role='button']:not([aria-disabled='true']) {
+  cursor: pointer;
+}
+
+button:disabled,
+[type='button']:disabled,
+[type='submit']:disabled,
+[aria-disabled='true'] {
+  cursor: not-allowed;
 }

@@ -4,11 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "FLOWLARY_API_TARGET=local vite",
     "prebuild": "node ../scripts/generate-extension-icons.mjs",
     "build": "vite build",
     "postbuild": "node ../scripts/print-extension-reload.mjs",
-    "build:release": "FLOWLARY_RELEASE=1 NODE_ENV=production vite build",
+    "build:ext:local": "FLOWLARY_API_TARGET=local npm run build",
+    "build:ext:production": "FLOWLARY_API_TARGET=production npm run build",
+    "build:release": "FLOWLARY_RELEASE=1 FLOWLARY_API_TARGET=production NODE_ENV=production npm run build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
