@@ -25,7 +25,7 @@ Inspect without changing files:
 git show website-ui-classic:website/src/pages/Home.tsx
 ```
 
-Also available: tag `website-2.0` (earlier marketing revamp) and `v1.2.0`.
+Also available: tag `website-ui-bolt` (this look), `website-ui-classic` (previous), `website-2.0`, and `v1.3.0`.
 
 ## Forward
 

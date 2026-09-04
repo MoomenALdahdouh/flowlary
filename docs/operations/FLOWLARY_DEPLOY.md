@@ -41,7 +41,7 @@ cd /var/www/flowlary
 That deploys **`origin/main`** as an exact 40-character SHA.
 
 ```bash
-./deploy.sh v1.2.0
+./deploy.sh v1.3.0
 ./deploy.sh 5cf09e91f6fd0882a49c711c0386741ae516bf12
 ```
 
