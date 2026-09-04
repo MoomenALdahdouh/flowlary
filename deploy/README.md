@@ -1,5 +1,11 @@
 # Flowlary production deployment stack
 
+**VPS (flowlary.com):** use [`production/deploy.sh`](./production/deploy.sh) and [`docs/operations/FLOWLARY_DEPLOY.md`](../docs/operations/FLOWLARY_DEPLOY.md). Releases + `current` symlink + Supervisor `flowlary-api`. Do not use Docker or PM2 on that host.
+
+The Docker / Compose / PM2 files below are **optional** stacks for other environments. They bind ports that collide with the Contabo VPS isolation plan.
+
+---
+
 Self-healing API deployment with health/readiness probes and nginx reverse proxy.
 
 ## Architecture

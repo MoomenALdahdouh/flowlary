@@ -37,6 +37,9 @@ blob-report/
 playwright/.cache/
 tests/e2e/results/
 
+# Local deploy-script test scratch
+tests/unit/deploy/.tmp-*
+
 # Local QA screenshots and JSON stores
 .qa-shots/
 extension/data/
