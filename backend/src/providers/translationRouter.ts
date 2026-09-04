@@ -7,6 +7,10 @@ import {
   runGoogleTranslate,
 } from './googleTranslateProvider.ts'
 import {
+  liveTranslationPolishEligible,
+  needsTranslationPolish,
+} from './needsTranslationPolish.ts'
+import {
   runTranslationProvider,
   runTranslationRefinement,
   type TranslationProviderInput,
@@ -27,6 +31,8 @@ export type RoutedTranslationResult = {
   groqUsed: boolean
   refinementAttempted: boolean
   refinementSucceeded: boolean
+  refinementSkipped: boolean
+  refinementSkipReason?: string
   fallbackUsed: boolean
   /** True when Groq usage should finalize a credit reservation. */
   groqBillable: boolean
@@ -43,7 +49,7 @@ export type TranslationRouteHooks = {
 export function resolveTranslationStrategy(
   config: AppConfig,
   auth: AuthContext,
-  mode?: string,
+  _mode?: string,
 ): TranslationRouteStrategy {
   if (config.translationForceProvider !== 'auto') {
     return config.translationForceProvider
@@ -52,8 +58,37 @@ export function resolveTranslationStrategy(
     return 'groq'
   }
   const isPro = auth.rateLimitTier === 'pro' || auth.rateLimitTier === 'trial'
-  if (isPro && mode !== 'live') return 'google_then_groq'
+  if (isPro) return 'google_then_groq'
   return 'google'
+}
+
+export function shouldAttemptTranslationRefinement(
+  input: TranslationProviderInput,
+  googleTranslation: string,
+): { attempt: boolean; reason: string } {
+  if (input.mode !== 'live') {
+    return { attempt: true, reason: 'manual_pro_refine' }
+  }
+
+  const polish = needsTranslationPolish({
+    sourceText: input.text,
+    draftTranslation: googleTranslation,
+    sourceLanguage: input.sourceLanguage,
+    targetLanguage: input.targetLanguage,
+  })
+
+  const completionEligible = liveTranslationPolishEligible(input.translationContext)
+  if (!completionEligible) {
+    if (!polish.needsPolish) {
+      return { attempt: false, reason: 'live_incomplete_segment' }
+    }
+    return { attempt: true, reason: `live_colloquial:${polish.reason}` }
+  }
+
+  if (!polish.needsPolish) {
+    return { attempt: false, reason: polish.reason }
+  }
+  return { attempt: true, reason: polish.reason }
 }
 
 export function strategyRequiresGroqCredits(strategy: TranslationRouteStrategy): boolean {
@@ -100,6 +135,7 @@ export async function runRoutedTranslation(
       groqUsed: false,
       refinementAttempted: false,
       refinementSucceeded: false,
+      refinementSkipped: false,
       fallbackUsed: false,
       groqBillable: false,
     }
@@ -149,6 +185,7 @@ async function runGooglePath(
       groqUsed: false,
       refinementAttempted: false,
       refinementSucceeded: false,
+      refinementSkipped: false,
       fallbackUsed: false,
       groqBillable: false,
     }
@@ -190,6 +227,7 @@ async function runGroqPath(
       groqUsed: true,
       refinementAttempted: false,
       refinementSucceeded: false,
+      refinementSkipped: false,
       fallbackUsed,
       groqBillable: true,
       inputTokens: groq.inputTokens,
@@ -199,6 +237,34 @@ async function runGroqPath(
   } catch (err) {
     hooks.releaseGroq()
     throw err
+  }
+}
+
+function cacheGoogleOnlyResult(
+  cacheKey: string,
+  googleTranslation: string,
+  googleModel: string,
+  strategy: TranslationRouteStrategy,
+): RoutedTranslationResult {
+  setTranslationCache(cacheKey, {
+    translation: googleTranslation,
+    model: googleModel,
+    strategy,
+    provider: 'google',
+  })
+  return {
+    translation: googleTranslation,
+    model: googleModel,
+    provider: 'google',
+    strategy,
+    cacheHit: false,
+    googleUsed: true,
+    groqUsed: false,
+    refinementAttempted: false,
+    refinementSucceeded: false,
+    refinementSkipped: true,
+    fallbackUsed: false,
+    groqBillable: false,
   }
 }
 
@@ -232,15 +298,9 @@ async function runGoogleThenGroqPath(
     return runGroqPath(config, input, strategy, cacheKey, hooks, signal, true)
   }
 
-  const canRefine = auth.allowed || auth.authKind === 'dev'
-  if (!canRefine || !hooks.tryReserveGroq()) {
-    setTranslationCache(cacheKey, {
-      translation: googleTranslation,
-      model: googleModel,
-      strategy,
-      provider: 'google',
-    })
-    return {
+  const refineDecision = shouldAttemptTranslationRefinement(input, googleTranslation)
+  if (!refineDecision.attempt) {
+    const result: RoutedTranslationResult = {
       translation: googleTranslation,
       model: googleModel,
       provider: 'google',
@@ -250,9 +310,25 @@ async function runGoogleThenGroqPath(
       groqUsed: false,
       refinementAttempted: false,
       refinementSucceeded: false,
+      refinementSkipped: true,
+      refinementSkipReason: refineDecision.reason,
       fallbackUsed: false,
       groqBillable: false,
     }
+    if (refineDecision.reason !== 'live_incomplete_segment') {
+      setTranslationCache(cacheKey, {
+        translation: googleTranslation,
+        model: googleModel,
+        strategy,
+        provider: 'google',
+      })
+    }
+    return result
+  }
+
+  const canRefine = auth.allowed || auth.authKind === 'dev'
+  if (!canRefine || !hooks.tryReserveGroq()) {
+    return cacheGoogleOnlyResult(cacheKey, googleTranslation, googleModel, strategy)
   }
 
   try {
@@ -264,6 +340,7 @@ async function runGoogleThenGroqPath(
         sourceLanguage: input.sourceLanguage,
         targetLanguage: input.targetLanguage,
         mode: input.mode,
+        translationContext: input.translationContext,
       },
       signal,
     )
@@ -283,6 +360,7 @@ async function runGoogleThenGroqPath(
       groqUsed: true,
       refinementAttempted: true,
       refinementSucceeded: true,
+      refinementSkipped: false,
       fallbackUsed: false,
       groqBillable: true,
       inputTokens: refined.inputTokens,
@@ -290,26 +368,13 @@ async function runGoogleThenGroqPath(
       totalTokens: refined.totalTokens,
     }
   } catch {
-    // Never discard a successful Google base translation when refinement fails.
     hooks.releaseGroq()
-    setTranslationCache(cacheKey, {
-      translation: googleTranslation,
-      model: googleModel,
-      strategy,
-      provider: 'google',
-    })
     return {
-      translation: googleTranslation,
-      model: googleModel,
-      provider: 'google',
-      strategy,
-      cacheHit: false,
-      googleUsed: true,
-      groqUsed: true,
+      ...cacheGoogleOnlyResult(cacheKey, googleTranslation, googleModel, strategy),
       refinementAttempted: true,
       refinementSucceeded: false,
-      fallbackUsed: false,
-      groqBillable: false,
+      refinementSkipped: false,
+      groqUsed: true,
     }
   }
 }

@@ -1393,11 +1393,23 @@ export async function handleHttpRequest(
             ? body.mode
             : 'shortcut'
 
+      const ctx =
+        typeof body.context === 'object' && body.context !== null
+          ? (body.context as JsonRecord)
+          : {}
+      const segmentComplete = ctx.segment_complete === true
+      const focusOutCompletion = ctx.focus_out_completion === true
+
       const result = await gateway.translation(meta, {
         text,
         sourceLanguage,
         targetLanguage,
         mode,
+        translationContext: {
+          mode,
+          segment_complete: segmentComplete,
+          focus_out_completion: focusOutCompletion,
+        },
       })
 
       if (url.pathname === '/api/translate') {

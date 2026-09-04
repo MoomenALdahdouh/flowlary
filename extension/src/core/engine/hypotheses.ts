@@ -2,7 +2,8 @@
  * Span-level hypothesis generation. Local evidence only.
  * Replacements come only from mapLayout / approved spelling helpers.
  */
-import { lastCompletedSegment } from '../../features/translation/segments.ts'
+import { liveTranslateSegment } from '../../features/translation/segments.ts'
+import { isInsideMarkdownCode } from '../safety/markdown.ts'
 import { tokenizeText } from '../safety/tokenize.ts'
 import { isEligibleForCorrection, shouldShowEnglishAssistant } from '../../features/correction/language.ts'
 import { endsWithSentenceBoundary } from '../../features/correction/debounce.ts'
@@ -372,9 +373,13 @@ export function collectHypotheses(
     }
   })
 
-  if (context.arabicToEnglishMode) {
-    const sentence = lastCompletedSegment(text, caret, { requireBoundary: true })
-    if (sentence && /[\u0600-\u06FF]/.test(sentence.text)) {
+  if (context.arabicToEnglishMode && context.translationPauseReady) {
+    const sentence = liveTranslateSegment(text, caret, context.translatedRanges)
+    if (
+      sentence
+      && /[\u0600-\u06FF]/.test(sentence.text)
+      && !isInsideMarkdownCode(text, sentence.start)
+    ) {
       const covered = analysis.chunks.filter((chunk) => overlaps(chunk.range, sentence))
       const unknownLatin = covered.some((chunk) =>
         chunk.scripts.latin > 0

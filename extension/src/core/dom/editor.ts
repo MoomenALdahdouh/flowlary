@@ -7,6 +7,7 @@ import {
   readSelectionRange,
   mapOffsetToNode,
   isValueEditable,
+  resolveEditableKind,
 } from './read.ts'
 import { captureReplacementSnapshot, commitReplacement, type CommitOptions } from './write.ts'
 import { verifyFieldSnapshot } from './verify.ts'
@@ -125,7 +126,15 @@ export function writeReplacement(
       return { verdict: 'rejected', reason: 'shortcuts_only' }
     }
     if (!allowsAutomaticFieldWrite(element)) {
-      return { verdict: 'rejected', reason: 'unsupported_editor' }
+      const richTranslation =
+        origin === 'TRANSLATE'
+        && resolveEditableKind(element) === 'contenteditable'
+        && element instanceof HTMLElement
+        && mapOffsetToNode(element, start) !== null
+        && mapOffsetToNode(element, end) !== null
+      if (!richTranslation) {
+        return { verdict: 'rejected', reason: 'unsupported_editor' }
+      }
     }
     if (!session || requestId === undefined) {
       return { verdict: 'rejected', reason: 'mutex' }

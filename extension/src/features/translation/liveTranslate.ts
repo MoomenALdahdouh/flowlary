@@ -1,25 +1,23 @@
 import { evaluateFieldSafety, isInsideMarkdownCode } from '../../core/safety/index.ts'
 import { readCaret, readFieldText } from '../../core/dom/read.ts'
-import { commitWriteTransaction } from '../../core/writeGate/writeGate.ts'
 import { resolveWritingPolicy } from '../../core/policy/writingPolicy.ts'
 import type { EditableElement } from '../../core/dom/types.ts'
 import type { FieldSession } from '../../core/session/FieldSession.ts'
 import { stateManager } from '../../core/state/StateManager.ts'
 import type { TranslationEngine } from './engine.ts'
-import { liveSegmentOnPause } from './segments.ts'
+import { liveTranslateSegment } from './segments.ts'
 import { targetLooksProtected } from './selection.ts'
-import { isStaleTicket } from './stale.ts'
 import type { TranslationMetrics } from './metrics.ts'
-import type { LanguageCode, TranslationTicket } from './types.ts'
+import type { LanguageCode } from './types.ts'
 import { MAX_TRANSLATION_CHARS } from './types.ts'
 import { DEFAULT_SOURCE_LANGUAGE, DEFAULT_TARGET_LANGUAGE, normalizeLanguage } from './languages.ts'
-import { recordHistory } from '../../storage/history/record.ts'
 import { allowsAutomaticFieldWrite } from '../../core/safety/autoWrite.ts'
 import { allowAutomaticNetworkAssist } from '../../core/policy/writingPolicy.ts'
 import {
   fieldKindFromElement,
   recordWriteTelemetry,
 } from '../../core/observability/writeTelemetry.ts'
+import { executeTranslation } from './executor.ts'
 
 export type FieldLiveState = {
   lastRequestedKey: string | null
@@ -115,7 +113,7 @@ export async function runLiveTranslation(
   if (text.length > MAX_TRANSLATION_CHARS) return 'blocked'
 
   const caret = readCaret(element) ?? text.length
-  const segment = liveSegmentOnPause(text, caret)
+  const segment = liveTranslateSegment(text, caret, session.getTranslatedRanges())
   if (!segment || !segment.text.trim()) return 'noop'
 
   if (targetLooksProtected(segment.text)) {
@@ -139,112 +137,49 @@ export async function runLiveTranslation(
   if (requestKey === options.fieldState.lastTranslatedKey) return 'noop'
   if (requestKey === options.fieldState.lastRequestedKey) return 'noop'
 
-  const acquired = session.tryAcquireWrite('TRANSLATE')
-  if (!acquired.ok) {
-    options.metrics.translation_live_blocked += 1
-    return 'busy'
-  }
-
-  const { requestId, generation, signal } = acquired
   options.fieldState.lastRequestedKey = requestKey
   options.metrics.translation_live_requests += 1
 
-  const ticket: TranslationTicket = {
-    elementGeneration: generation,
-    originalText: segment.text,
-    start: segment.start,
-    end: segment.end,
+  const result = await executeTranslation({
+    element,
+    session,
+    range: { start: segment.start, end: segment.end },
+    sourceText: segment.text,
     sourceLanguage,
     targetLanguage,
     mode: 'live',
-  }
+    trigger: 'auto',
+    tokenStrategy: 'block',
+    auto: true,
+    acquireMutex: true,
+    recordHistoryEntry: true,
+    translate: (slice, src, tgt, signal) =>
+      options.engine.translate(
+        { text: slice, sourceLanguage: src, targetLanguage: tgt, mode: 'live' },
+        signal,
+      ),
+  })
 
-  try {
-    const outcome = await options.engine.translate(
-      {
-        text: segment.text,
-        sourceLanguage,
-        targetLanguage,
-        mode: 'live',
-      },
-      signal,
-    )
-
-    if (signal.aborted) {
-      options.metrics.translation_live_aborts += 1
-      return 'aborted'
-    }
-
-    if (!element.isConnected) {
-      options.metrics.translation_live_stale += 1
-      return 'stale'
-    }
-
-    if (!outcome.ok) {
-      options.metrics.translation_live_errors += 1
-      return 'error'
-    }
-
-    if (outcome.translation === segment.text) return 'noop'
-
-    const liveText = readFieldText(element)
-    if (
-      isStaleTicket(ticket, {
-        generation: session.getGeneration(),
-        text: liveText,
-        start: segment.start,
-        end: segment.end,
-        sourceLanguage,
-        targetLanguage,
-      })
-    ) {
-      options.metrics.translation_live_stale += 1
-      return 'stale'
-    }
-
-    const commit = session.canCommit(generation, requestId)
-    if (!commit.ok) {
-      if (commit.reason === 'aborted') options.metrics.translation_live_aborts += 1
-      else options.metrics.translation_live_stale += 1
-      return commit.reason === 'aborted' ? 'aborted' : 'stale'
-    }
-
-    const write = commitWriteTransaction(element, segment.start, segment.end, outcome.translation, {
-      origin: 'TRANSLATE',
-      session,
-      requestId,
-      expectedGeneration: generation,
-      cycleGeneration: generation,
-      placeCaretAfter: true,
-      allowActiveEdit: true,
-      auto: true,
-      capability: 'translation',
-      trigger: 'auto',
-      tagTranslated: true,
-      textOrigin: 'translated_en',
-      action: 'translation',
-    })
-
-    if (write.verdict !== 'written') {
-      options.metrics.translation_live_stale += 1
-      return 'stale'
-    }
-
+  if (result.status === 'committed') {
     options.fieldState.lastTranslatedKey = requestKey
     options.metrics.translation_live_commits += 1
-    void recordHistory({
-      operation: 'TRANSLATE',
-      element,
-      sourceText: segment.text,
-      resultText: outcome.translation,
-      mode: 'live',
-      metadata: { sourceLanguage, targetLanguage },
-    })
     return 'committed'
-  } catch {
+  }
+  if (result.status === 'aborted') {
+    options.metrics.translation_live_aborts += 1
+    return 'aborted'
+  }
+  if (result.status === 'stale') {
+    options.metrics.translation_live_stale += 1
+    return 'stale'
+  }
+  if (result.status === 'busy' || result.status === 'blocked') {
+    options.metrics.translation_live_blocked += 1
+    return result.status === 'busy' ? 'busy' : 'blocked'
+  }
+  if (result.status === 'error') {
     options.metrics.translation_live_errors += 1
     return 'error'
-  } finally {
-    session.releaseWrite('TRANSLATE', requestId)
   }
+  return 'noop'
 }

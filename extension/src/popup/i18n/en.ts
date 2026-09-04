@@ -44,7 +44,6 @@ export const en = {
     kicker: 'Home',
     open: 'Dashboard',
     openShort: 'Full view',
-    overview: 'Home',
     overviewLead: 'Write, then practice what you miss.',
     progressLead: 'Trends from your real writing.',
     practiceLead: 'Short drills from your mistakes.',
@@ -574,6 +573,8 @@ export const en = {
     translationDesc: 'Write Arabic, output English in the same field',
     liveTranslation: 'Arabic → English',
     liveTranslationDesc: 'Write Arabic, output English in the same field',
+    liveTranslationAutoHint:
+      'Translates after you press Space or finish a sentence (. ! ? ؟). Sign in for AI. Layout tools stay free without an account.',
     layout: 'Fix typing',
     layoutDesc: 'Fix text typed with the wrong keyboard',
     layoutMeta: 'Local',

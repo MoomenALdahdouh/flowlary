@@ -1,5 +1,6 @@
 import { WRITING_REVIEW_MAX_SNIPPET, type WritingReviewPacket, type WritingReviewResponse } from '@flowlary/shared'
 import { endsWithSentenceBoundary, endsWithWordBoundary } from '../../features/correction/debounce.ts'
+import { hasPendingWholeFieldCorrection } from '../../features/correction/correctionLiveState.ts'
 import type { FieldContext, SharedAnalysis } from './types.ts'
 import { fieldHasSensitiveTokens, type ReviewIsland } from './reviewIsland.ts'
 
@@ -36,6 +37,8 @@ export function shouldScheduleWritingReview(options: {
 }): boolean {
   const { context, analysis, island, localAppliedLayout, cached } = options
   const now = options.now ?? Date.now()
+  if (context.liveWholeFieldCorrection) return false
+  if (island && hasPendingWholeFieldCorrection(context.fieldId, island.range)) return false
   if (!context.assistantEnabled || context.helpStyle === 'shortcuts_only') return false
   if (!context.correctionEnabled || context.aiWritingReviewEnabled === false) return false
   if (!context.safetyAllowed || context.composing || context.mutexHeld) return false

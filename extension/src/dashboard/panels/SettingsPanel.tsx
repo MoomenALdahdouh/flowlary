@@ -18,6 +18,7 @@ import { t } from '../../popup/i18n/index.ts'
 import { correctionAiLabel } from '../../popup/status.ts'
 import { getShortcutLabels } from '../../popup/shortcuts.ts'
 import { DataFlowDiagram, InfoCard, ShortcutKey } from '../../ui/shared.tsx'
+import { FLOWLARY_SITE_URL } from '../../config/endpoints.ts'
 import { getAccountUrl, openUpgradePage } from '../../config/upgrade.ts'
 import { UsageStatusCard } from '../../ui/UsageStatusCard.tsx'
 import { resolveUsageUxFromStatus } from '../../ui/usageUx.ts'
@@ -136,6 +137,9 @@ export function SettingsPanel({
               }}
             />
           </p>
+          {(status.writingPolicy?.arabicToEnglishMode ?? status.translation.liveEnabled) ? (
+            <p className="fl-settings-desc">{t('features.liveTranslationAutoHint')}</p>
+          ) : null}
           <p className="fl-settings-row">
             <span>{t('features.aiAdvisor')}</span>
             <ToggleSwitch

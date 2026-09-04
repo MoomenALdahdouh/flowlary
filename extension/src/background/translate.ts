@@ -6,6 +6,7 @@ import {
   isValidAiResponseLength,
   normalizeCacheText,
   predictClientTranslationStrategy,
+  type TranslationRequestContext,
 } from '@flowlary/shared'
 import {
   getCacheMetrics,
@@ -13,7 +14,7 @@ import {
   getTranslateCoalescer,
 } from '../storage/cache/index.ts'
 import { getEntitlementService } from '../entitlement/service.ts'
-import { flowlaryStorage, getEntitlement, resolveEntitlementStatus } from '../storage/index.ts'
+import { flowlaryStorage, getEntitlement, hydrateStateFromStorage, resolveEntitlementStatus, restoreActiveAccountFromSession } from '../storage/index.ts'
 import { FLOWLARY_API_BASE } from '../config/endpoints.ts'
 import { prepareManagedAiRequest } from '../config/auth.ts'
 import { maybeSyncServerEntitlement } from '../config/accountAuth.ts'
@@ -27,6 +28,7 @@ export type TranslateTextRequest = {
   sourceLanguage: LanguageCode
   targetLanguage: LanguageCode
   mode: TranslationMode
+  context?: TranslationRequestContext
 }
 
 export type TranslateTextResponse =
@@ -49,6 +51,11 @@ function mapHttpFailure(status: number, code?: string): string {
 export async function handleTranslateText(
   message: TranslateTextRequest,
 ): Promise<TranslateTextResponse> {
+  await restoreActiveAccountFromSession(flowlaryStorage)
+  if (!isCorrectionAiReady(stateManager.correction)) {
+    await hydrateStateFromStorage(flowlaryStorage)
+  }
+
   if (!isCorrectionAiReady(stateManager.correction)) {
     return { type: 'TRANSLATE_TEXT_ERROR', ok: false, code: 'consent_required' }
   }
@@ -79,6 +86,9 @@ export async function handleTranslateText(
     plan,
     mode: message.mode,
   })
+  // #region agent log
+  fetch('http://127.0.0.1:7879/ingest/9d16d7be-6afb-4b03-8147-7577c1b418b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0ba0e0'},body:JSON.stringify({sessionId:'0ba0e0',runId:'pre-fix',hypothesisId:'B',location:'background/translate.ts:strategy',message:'translate request strategy',data:{plan,translationStrategy,mode:message.mode,apiBase:FLOWLARY_API_BASE,segment_complete:message.context?.segment_complete===true,focus_out_completion:message.context?.focus_out_completion===true,textLen:message.text.length},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
 
   const accountSnapshot = activeAccountContext.snapshot()
   const cache = getFlowlaryCache()
@@ -128,7 +138,10 @@ export async function handleTranslateText(
           text: message.text,
           source_language: message.sourceLanguage,
           target_language: message.targetLanguage,
-          context: { mode: message.mode },
+          context: {
+            mode: message.mode,
+            ...(message.context ?? {}),
+          },
         }),
       })
 

@@ -1,0 +1,11 @@
+[
+  { "token": "test@example.com", "context": "", "expect": "email" },
+  { "token": "https://example.com", "context": "", "expect": "url" },
+  { "token": "https", "context": "", "expect": "url" },
+  { "token": "sk-abcdefghijklmnopqrstuvwxyz123456", "context": "", "expect": "api-key" },
+  { "token": "4111 1111 1111 1111", "context": "", "expect": "credit-card" },
+  { "token": "MY_SECRET_TOKEN=abc123", "context": "", "expect": "env-secret" },
+  { "token": "sudo", "context": "", "expect": "shell" },
+  { "token": "foo.bar.Baz", "context": "", "expect": "code-identifier" },
+  { "token": "hello", "context": "", "expect": null }
+]

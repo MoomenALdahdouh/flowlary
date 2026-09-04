@@ -18,6 +18,7 @@ import {
   invalidateStalePipelineSuggestion,
   presentPipelineSuggestion,
 } from './pipelineSuggest.ts'
+import { shouldWholeFieldOwnEnglishCorrection } from '../../features/correction/liveAssist.ts'
 import type { EditableElement } from '../dom/types.ts'
 import type { FieldSession } from '../session/FieldSession.ts'
 import type {
@@ -41,8 +42,41 @@ import {
   reviewFiresImmediately,
   shouldScheduleWritingReview,
 } from '../engine/writingReview.ts'
+import { notifyEnforceEnglishCorrectionApplied } from '../../features/correction/correctionFeedback.ts'
+import { recordSpanCorrectionOutcome } from '../../features/correction/recordSpanCorrectionOutcome.ts'
 
 let cycle = 0
+
+function notifyEnglishSpanApplied(options: {
+  element: EditableElement
+  session: FieldSession
+  fullTextBefore: string
+  range: { start: number; end: number }
+  replacement: string
+  hypotheses: Hypothesis[]
+  winnerHypothesisId?: string | null
+  replacementSource?: 'instant_spell' | 'contextual_spell' | 'review' | 'enforce'
+}): void {
+  const hypothesis = options.hypotheses.find((item) => item.id === options.winnerHypothesisId)
+  const response = recordSpanCorrectionOutcome({
+    element: options.element,
+    fullTextBefore: options.fullTextBefore,
+    range: options.range,
+    replacement: options.replacement,
+    changeType: hypothesis?.replacementSource === 'instant_spell' ? 'spelling' : undefined,
+    reviewKind: hypothesis?.reviewKind,
+    replacementSource:
+      options.replacementSource
+      ?? (hypothesis?.replacementSource === 'instant_spell' ? 'instant_spell' : 'enforce'),
+  })
+  if (!response) return
+  notifyEnforceEnglishCorrectionApplied({
+    element: options.element,
+    fieldId: options.session.field.id,
+    fullTextBefore: options.fullTextBefore,
+    response,
+  })
+}
 
 export type CycleOutcome = 'applied' | 'noop' | 'suggestion' | 'stale' | 'blocked'
 
@@ -241,6 +275,9 @@ export async function runFieldCycle(
       const replacement = winner?.replacement
       const range = advised.range ?? winner?.range
       if (!replacement || !range) return
+      if (winner?.capability === 'english_correction' && shouldWholeFieldOwnEnglishCorrection()) {
+        return
+      }
       presentPipelineSuggestion({
         fieldId: session.field.id,
         element,
@@ -290,6 +327,24 @@ export async function runFieldCycle(
     commitOpenToken,
   })
   localOutcome = fulfilled instanceof Promise ? await fulfilled : fulfilled
+
+  if (localOutcome === 'applied' && decision.action === 'english_correction') {
+    const winner = candidates.find((item) => item.id === decision.winnerCandidateId)
+    const range = decision.range ?? winner?.range
+    const replacement = winner?.replacement
+    if (range && replacement) {
+      notifyEnglishSpanApplied({
+        element,
+        session,
+        fullTextBefore: text,
+        range,
+        replacement,
+        hypotheses,
+        winnerHypothesisId: decision.winnerHypothesisId ?? winner?.id,
+      })
+    }
+  }
+
   scheduleFieldWritingReview({
     element,
     session,
@@ -327,6 +382,14 @@ export function fulfillWritingDecision(options: {
 
   if (decision.action === 'suggestion') {
     if (replacement && range) {
+      const suggestionAction =
+        winner?.capability === 'layout_fix' ? 'layout_fix' : 'english_correction'
+      if (
+        suggestionAction === 'english_correction'
+        && shouldWholeFieldOwnEnglishCorrection()
+      ) {
+        return 'noop'
+      }
       presentPipelineSuggestion({
         fieldId: session.field.id,
         element,
@@ -335,7 +398,7 @@ export function fulfillWritingDecision(options: {
         range,
         sourceText: text.slice(range.start, range.end),
         suggestion: replacement,
-        action: winner?.capability === 'layout_fix' ? 'layout_fix' : 'english_correction',
+        action: suggestionAction,
         textOrigin: decision.textOrigin,
       })
       return 'suggestion'
@@ -543,7 +606,7 @@ async function runWritingReviewCycle(input: {
       advisorResult: 'unused',
     })
     if (advised.action === 'noop') return
-    fulfillWritingDecision({
+    const reviewOutcome = await fulfillWritingDecision({
       element,
       session,
       generation,
@@ -556,6 +619,23 @@ async function runWritingReviewCycle(input: {
       },
       commitOpenToken: false,
     })
+    if (reviewOutcome === 'applied' && advised.action === 'english_correction') {
+      const winner = candidates.find((item) => item.id === advised.winnerCandidateId)
+      const range = advised.range ?? winner?.range
+      const replacement = winner?.replacement
+      if (range && replacement) {
+        notifyEnglishSpanApplied({
+          element,
+          session,
+          fullTextBefore: text,
+          range,
+          replacement,
+          hypotheses: merged,
+          winnerHypothesisId: advised.winnerHypothesisId ?? winner?.id,
+          replacementSource: 'review',
+        })
+      }
+    }
   } catch {
     recordWritingAnalytics({
       name: 'writing.review_result',

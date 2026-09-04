@@ -19,6 +19,13 @@ import { TranslationEngine } from '../../../extension/src/features/translation/e
 import { createTranslationMetrics } from '../../../extension/src/features/translation/metrics.ts'
 import type { TranslationOutcome } from '../../../extension/src/features/translation/types.ts'
 
+import { LIVE_PAUSE_MS } from '../../../extension/src/features/translation/pauseGate.ts'
+import { setInternalEngineMode, resetEngineModeForTests } from '../../../extension/src/core/engine/flag.ts'
+import {
+  startEnforceCoordinator,
+  stopEnforceCoordinator,
+} from '../../../extension/src/core/writeGate/enforceCoordinator.ts'
+
 const ARABIC_SENTENCE = 'أريد إرسال هذا البريد غدًا.'
 const ARABIC_INCOMPLETE = 'أريد إرسال هذا البريد'
 const TRANSLATION_DIR = join(process.cwd(), 'src/features/translation')
@@ -30,6 +37,11 @@ function textarea(value: string) {
   return ta
 }
 
+/** Bypass 750ms pause gate (e.g. blur/focus-out) so runFieldCycle can translate synchronously. */
+function allowTranslationPause(session: FieldSession) {
+  session.noteBlurTranslationPass()
+}
+
 function enableTranslation(polish = false) {
   applyUserWritingPolicy({
     helpStyle: 'auto',
@@ -38,6 +50,7 @@ function enableTranslation(polish = false) {
     arabicToEnglishMode: true,
     polishAfterTranslate: polish,
   })
+  setInternalEngineMode('enforce')
 }
 
 function disableTranslation() {
@@ -69,6 +82,7 @@ describe('N2 unified translation pipeline', () => {
 
   afterEach(() => {
     setPipelineTranslateFnForTests(null)
+    resetEngineModeForTests()
     stateManager.settings.helpStyle = null
     stateManager.settings.fixWrongTyping = null
     stateManager.settings.improveEnglish = null
@@ -93,6 +107,7 @@ describe('N2 unified translation pipeline', () => {
     enableTranslation()
     const ta = textarea(ARABIC_SENTENCE)
     const session = new FieldSession(ta)
+    allowTranslationPause(session)
     await runFieldCycle(ta, session)
     expect(session.getTranslationSessionId()).toBeTruthy()
   })
@@ -120,19 +135,31 @@ describe('N2 unified translation pipeline', () => {
     expect(ta.value).toBe(ARABIC_SENTENCE)
   })
 
-  it('translation requires a sentence boundary', async () => {
+  it('translation waits for pause before emitting a hypothesis', async () => {
     enableTranslation()
     const ta = textarea(ARABIC_INCOMPLETE)
     const session = new FieldSession(ta)
+    session.noteInput()
     const result = await runFieldCycle(ta, session)
     expect(result).toBe('noop')
     expect(ta.value).toBe(ARABIC_INCOMPLETE)
+  })
+
+  it('translation runs after pause with paragraph fallback (Lingo liveSegmentOnPause)', async () => {
+    enableTranslation()
+    const ta = textarea(`${ARABIC_INCOMPLETE} `)
+    const session = new FieldSession(ta)
+    allowTranslationPause(session)
+    const result = await runFieldCycle(ta, session)
+    expect(result).toBe('applied')
+    expect(ta.value).toBe(`EN:${ARABIC_INCOMPLETE}`)
   })
 
   it('active session produces a real translation through the pipeline', async () => {
     enableTranslation()
     const ta = textarea(ARABIC_SENTENCE)
     const session = new FieldSession(ta)
+    allowTranslationPause(session)
     const result = await runFieldCycle(ta, session)
     expect(result).toBe('applied')
     expect(ta.value).toBe(`EN:${ARABIC_SENTENCE}`)
@@ -143,6 +170,7 @@ describe('N2 unified translation pipeline', () => {
     const gate = vi.spyOn(writeGate, 'commitWriteTransaction')
     const ta = textarea(ARABIC_SENTENCE)
     const session = new FieldSession(ta)
+    allowTranslationPause(session)
     await runFieldCycle(ta, session)
     expect(gate).toHaveBeenCalled()
     expect(gate.mock.calls[0]?.[4]).toMatchObject({
@@ -183,6 +211,7 @@ describe('N2 unified translation pipeline', () => {
     const sessionA = new FieldSession(a)
     const sessionB = new FieldSession(b)
     sessionA.pauseTranslationOnField()
+    allowTranslationPause(sessionB)
     await runFieldCycle(a, sessionA)
     await runFieldCycle(b, sessionB)
     expect(a.value).toBe(ARABIC_SENTENCE)
@@ -197,6 +226,7 @@ describe('N2 unified translation pipeline', () => {
     await runFieldCycle(ta, session)
     expect(ta.value).toBe(ARABIC_SENTENCE)
     session.resumeTranslationOnField()
+    allowTranslationPause(session)
     const result = await runFieldCycle(ta, session)
     expect(result).toBe('applied')
     expect(ta.value).toBe(`EN:${ARABIC_SENTENCE}`)
@@ -208,6 +238,7 @@ describe('N2 unified translation pipeline', () => {
     setPipelineTranslateFnForTests(() => hold.promise)
     const ta = textarea(ARABIC_SENTENCE)
     const session = new FieldSession(ta)
+    allowTranslationPause(session)
     const pending = runFieldCycle(ta, session)
     ta.value = 'نص جديد.'
     session.bumpGeneration()
@@ -222,6 +253,7 @@ describe('N2 unified translation pipeline', () => {
     setPipelineTranslateFnForTests(() => hold.promise)
     const ta = textarea(ARABIC_SENTENCE)
     const session = new FieldSession(ta)
+    allowTranslationPause(session)
     const pending = runFieldCycle(ta, session)
     hold.resolve({ ok: true, translation: 'Fresh English.' })
     expect(await pending).toBe('applied')
@@ -232,6 +264,7 @@ describe('N2 unified translation pipeline', () => {
     enableTranslation()
     const ta = textarea(ARABIC_SENTENCE)
     const session = new FieldSession(ta)
+    allowTranslationPause(session)
     await runFieldCycle(ta, session)
     expect(session.hasTranslatedOverlap(0, ta.value.length)).toBe(true)
     session.pruneTranslatedTags(ta.value)
@@ -242,6 +275,7 @@ describe('N2 unified translation pipeline', () => {
     enableTranslation()
     const ta = textarea(ARABIC_SENTENCE)
     const session = new FieldSession(ta)
+    allowTranslationPause(session)
     await runFieldCycle(ta, session)
     ta.value = `X${ta.value.slice(1)}`
     session.pruneTranslatedTags(ta.value)
@@ -252,6 +286,7 @@ describe('N2 unified translation pipeline', () => {
     enableTranslation(false)
     const ta = textarea(ARABIC_SENTENCE)
     const session = new FieldSession(ta)
+    allowTranslationPause(session)
     await runFieldCycle(ta, session)
     expect(session.isInCooldown()).toBe(true)
     const before = ta.value
@@ -264,6 +299,7 @@ describe('N2 unified translation pipeline', () => {
     setPipelineTranslateFnForTests(async () => ({ ok: true, translation: 'I dont know.' }))
     const ta = textarea(ARABIC_SENTENCE)
     const session = new FieldSession(ta)
+    allowTranslationPause(session)
     await runFieldCycle(ta, session)
     expect(ta.value).toBe('I dont know.')
     session.enterCooldown(0)
@@ -278,6 +314,7 @@ describe('N2 unified translation pipeline', () => {
     enableTranslation(false)
     const ta = textarea(ARABIC_SENTENCE)
     const session = new FieldSession(ta)
+    allowTranslationPause(session)
     await runFieldCycle(ta, session)
     session.enterCooldown(0)
     const context = buildFieldContext({
@@ -306,6 +343,7 @@ describe('N2 unified translation pipeline', () => {
     setPipelineTranslateFnForTests(async () => ({ ok: false, code: 'upstream' }))
     const ta = textarea(ARABIC_SENTENCE)
     const session = new FieldSession(ta)
+    allowTranslationPause(session)
     const result = await runFieldCycle(ta, session)
     expect(result).toBe('noop')
     expect(ta.value).toBe(ARABIC_SENTENCE)
@@ -316,6 +354,7 @@ describe('N2 unified translation pipeline', () => {
     setPipelineTranslateFnForTests(async () => ({ ok: true, translation: '   ' }))
     const ta = textarea(ARABIC_SENTENCE)
     const session = new FieldSession(ta)
+    allowTranslationPause(session)
     expect(await runFieldCycle(ta, session)).toBe('noop')
     expect(ta.value).toBe(ARABIC_SENTENCE)
   })
@@ -346,10 +385,33 @@ describe('N2 unified translation pipeline', () => {
     expect(result).toBe('disabled')
     expect(ta.value).toBe(ARABIC_SENTENCE)
   })
+
+  it('continues translating Arabic appended after an earlier translated segment', async () => {
+    enableTranslation()
+    const ARABIC_PART2 = 'والله ما نعرف'
+    const ta = textarea(ARABIC_SENTENCE)
+    const session = new FieldSession(ta)
+    allowTranslationPause(session)
+    await runFieldCycle(ta, session)
+    const afterFirst = ta.value
+    expect(afterFirst).toBe(`EN:${ARABIC_SENTENCE}`)
+
+    ta.value = `${afterFirst} ${ARABIC_PART2}`
+    session.noteInput()
+    session.enterCooldown(0)
+    allowTranslationPause(session)
+    const result = await runFieldCycle(ta, session)
+    expect(result).toBe('applied')
+    expect(ta.value).toBe(`${afterFirst} EN:${ARABIC_PART2}`)
+  })
 })
 
 describe('N2 cooldown duration', () => {
   it('write gate cooldown is 450ms', () => {
     expect(WRITE_COOLDOWN_MS).toBe(450)
+  })
+
+  it('live translation pause matches Lingo (750ms)', () => {
+    expect(LIVE_PAUSE_MS).toBe(750)
   })
 })

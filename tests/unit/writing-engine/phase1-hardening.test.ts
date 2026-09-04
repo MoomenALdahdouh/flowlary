@@ -170,6 +170,28 @@ describe('Phase 1 writing-engine hardening', () => {
       expect(auto.reason).toBe('unsupported_editor')
     })
 
+    it('allows live translation auto-write on nested rich contenteditable', () => {
+      const el = document.createElement('div')
+      el.contentEditable = 'true'
+      el.innerHTML = '<div><span>مرحبا</span></div>'
+      document.body.append(el)
+      expect(allowsAutomaticFieldWrite(el)).toBe(false)
+
+      const session = new FieldSession(el)
+      const acquired = session.tryAcquireWrite('TRANSLATE')
+      expect(acquired.ok).toBe(true)
+      if (!acquired.ok) return
+      const auto = writeReplacement(el, 0, 5, 'Hello', {
+        origin: 'TRANSLATE',
+        session,
+        requestId: acquired.requestId,
+        expectedGeneration: acquired.generation,
+        auto: true,
+      })
+      expect(auto.verdict).toBe('written')
+      expect(readFieldText(el)).toBe('Hello')
+    })
+
     it('keeps the following space when replacing a contenteditable word', () => {
       const el = document.createElement('div')
       el.contentEditable = 'true'

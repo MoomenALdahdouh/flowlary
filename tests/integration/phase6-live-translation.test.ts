@@ -6,13 +6,30 @@ import { CommandOrchestrator } from '../../extension/src/core/router/CommandOrch
 import { createTranslationFeature } from '../../extension/src/features/translation/TranslationFeature.ts'
 import { createLayoutFeature } from '../../extension/src/features/layout/LayoutFeature.ts'
 import { stateManager } from '../../extension/src/core/state/StateManager.ts'
-import { LIVE_PAUSE_MS } from '../../extension/src/features/translation/scheduler.ts'
+import { LIVE_PAUSE_MS } from '../../extension/src/features/translation/pauseGate.ts'
 import { runLiveTranslation } from '../../extension/src/features/translation/liveTranslate.ts'
 import { TranslationEngine } from '../../extension/src/features/translation/engine.ts'
 import { createTranslationMetrics } from '../../extension/src/features/translation/metrics.ts'
 import { writeReplacement } from '../../extension/src/core/dom/editor.ts'
 import { OWNED_DOCUMENT_EVENTS } from '../../extension/src/core/events/EventBus.ts'
 import { resetComposition } from '../../extension/src/core/dom/composition.ts'
+import { setInternalEngineMode, resetEngineModeForTests } from '../../extension/src/core/engine/flag.ts'
+import {
+  startEnforceCoordinator,
+  stopEnforceCoordinator,
+} from '../../extension/src/core/writeGate/enforceCoordinator.ts'
+import { setPipelineTranslateFnForTests } from '../../extension/src/core/writeGate/pipelineTranslate.ts'
+import { applyUserWritingPolicy } from '../../extension/src/core/policy/writingPolicy.ts'
+
+function enableLiveMode() {
+  applyUserWritingPolicy({
+    helpStyle: 'auto',
+    fixWrongTyping: false,
+    improveEnglish: false,
+    arabicToEnglishMode: true,
+  })
+  stateManager.translation.liveEnabled = true
+}
 
 function focusAndType(ta: HTMLTextAreaElement, value: string): void {
   ta.value = value
@@ -78,6 +95,12 @@ describe('Phase 6 — Live translation', () => {
       router,
       onSpeedBox: () => layout.handleSpeedBox(),
     })
+    setInternalEngineMode('enforce')
+    startEnforceCoordinator(engine)
+    setPipelineTranslateFnForTests(async (text) => {
+      translateCalls += 1
+      return { ok: true, translation: `EN:${text}` }
+    })
     engine.start()
     layout.start()
     translation.start()
@@ -87,8 +110,11 @@ describe('Phase 6 — Live translation', () => {
   afterEach(() => {
     orchestrator.stop()
     translation.stop()
+    stopEnforceCoordinator()
     engine.stop()
     resetComposition()
+    setPipelineTranslateFnForTests(null)
+    resetEngineModeForTests()
     vi.useRealTimers()
   })
 
@@ -99,8 +125,8 @@ describe('Phase 6 — Live translation', () => {
     expect(translateCalls).toBe(0)
   })
 
-  it('2 — enabling live translation activates scheduler', async () => {
-    stateManager.translation.liveEnabled = true
+  it('2 — enabling live translation activates enforce retry path', async () => {
+    enableLiveMode()
     const ta = document.createElement('textarea')
     document.body.append(ta)
     focusAndType(ta, 'مرحبا')
@@ -109,23 +135,29 @@ describe('Phase 6 — Live translation', () => {
   })
 
   it('3 — disabling live translation cancels pending work', async () => {
-    stateManager.translation.liveEnabled = true
+    enableLiveMode()
     const ta = document.createElement('textarea')
     document.body.append(ta)
     focusAndType(ta, 'مرحبا')
+    applyUserWritingPolicy({
+      helpStyle: 'auto',
+      fixWrongTyping: false,
+      improveEnglish: false,
+      arabicToEnglishMode: false,
+    })
     stateManager.translation.liveEnabled = false
     translation.setLiveEnabled(false)
     vi.advanceTimersByTime(LIVE_PAUSE_MS + 50)
     expect(translateCalls).toBe(0)
   })
 
-  it('4 — input events reach scheduler through EventBus', async () => {
-    stateManager.translation.liveEnabled = true
+  it('4 — input events reach enforce coordinator through EventBus', async () => {
+    enableLiveMode()
     const ta = document.createElement('textarea')
     document.body.append(ta)
     focusAndType(ta, 'مرحبا')
     await flushLiveTranslation()
-    await vi.waitFor(() => expect(translation.metrics.translation_live_debounced).toBe(1))
+    await vi.waitFor(() => expect(translateCalls).toBeGreaterThan(0))
   })
 
   it('5 — TranslationFeature does not register document listeners', () => {
@@ -139,8 +171,8 @@ describe('Phase 6 — Live translation', () => {
     addSpy.mockRestore()
   })
 
-  it('6 — scheduler waits for debounce period', async () => {
-    stateManager.translation.liveEnabled = true
+  it('6 — enforce coordinator waits for debounce period', async () => {
+    enableLiveMode()
     const ta = document.createElement('textarea')
     document.body.append(ta)
     focusAndType(ta, 'مرحبا')
@@ -152,7 +184,7 @@ describe('Phase 6 — Live translation', () => {
   })
 
   it('7 — repeated typing resets debounce', async () => {
-    stateManager.translation.liveEnabled = true
+    enableLiveMode()
     const ta = document.createElement('textarea')
     document.body.append(ta)
     focusAndType(ta, 'مر')
@@ -166,7 +198,7 @@ describe('Phase 6 — Live translation', () => {
   })
 
   it('8 — no translation request for every keystroke', async () => {
-    stateManager.translation.liveEnabled = true
+    enableLiveMode()
     const ta = document.createElement('textarea')
     document.body.append(ta)
     ta.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
@@ -182,7 +214,7 @@ describe('Phase 6 — Live translation', () => {
   })
 
   it('9 — current sentence segment selected on punctuation', async () => {
-    stateManager.translation.liveEnabled = true
+    enableLiveMode()
     const ta = document.createElement('textarea')
     document.body.append(ta)
     focusAndType(ta, 'مرحبا كيف حالك؟')
@@ -193,7 +225,7 @@ describe('Phase 6 — Live translation', () => {
   })
 
   it('10 — empty segment ignored', async () => {
-    stateManager.translation.liveEnabled = true
+    enableLiveMode()
     const ta = document.createElement('textarea')
     document.body.append(ta)
     focusAndType(ta, '   ')
@@ -202,7 +234,7 @@ describe('Phase 6 — Live translation', () => {
   })
 
   it('11 — unsafe field blocks live translation', async () => {
-    stateManager.translation.liveEnabled = true
+    enableLiveMode()
     const input = document.createElement('input')
     input.type = 'password'
     document.body.append(input)
@@ -212,7 +244,7 @@ describe('Phase 6 — Live translation', () => {
   })
 
   it('12 — protected token blocks live translation', async () => {
-    stateManager.translation.liveEnabled = true
+    enableLiveMode()
     const ta = document.createElement('textarea')
     document.body.append(ta)
     focusAndType(ta, 'sk-abcdefghijklmnopqrstuvwxyz123456')
@@ -221,7 +253,7 @@ describe('Phase 6 — Live translation', () => {
   })
 
   it('13 — composition blocks translation', async () => {
-    stateManager.translation.liveEnabled = true
+    enableLiveMode()
     const ta = document.createElement('textarea')
     document.body.append(ta)
     ta.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
@@ -233,20 +265,21 @@ describe('Phase 6 — Live translation', () => {
   })
 
   it('14 — composition end allows scheduling again', async () => {
-    stateManager.translation.liveEnabled = true
+    enableLiveMode()
     const ta = document.createElement('textarea')
     document.body.append(ta)
     ta.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
     ta.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }))
-    ta.value = 'مرحبا'
+    ta.value = 'مرحبا كيف حالك؟'
     ta.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }))
+    ta.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertCompositionText' }))
     vi.advanceTimersByTime(LIVE_PAUSE_MS)
     await flushLiveTranslation()
     await vi.waitFor(() => expect(translateCalls).toBe(1))
   })
 
   it('15 — same segment does not duplicate requests', async () => {
-    stateManager.translation.liveEnabled = true
+    enableLiveMode()
     const ta = document.createElement('textarea')
     document.body.append(ta)
     ta.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
@@ -259,7 +292,7 @@ describe('Phase 6 — Live translation', () => {
   })
 
   it('16 — old response cannot overwrite newer user text', async () => {
-    stateManager.translation.liveEnabled = true
+    enableLiveMode()
     let resolveSlow: ((value: { ok: true; translation: string }) => void) | null = null
     const slowProvider = vi.fn(
       () =>
@@ -267,13 +300,7 @@ describe('Phase 6 — Live translation', () => {
           resolveSlow = resolve
         }),
     )
-    translation.stop()
-    translation = createTranslationFeature({
-      engine,
-      provider: slowProvider,
-    })
-    router.registerTranslation(translation)
-    translation.start()
+    setPipelineTranslateFnForTests(slowProvider)
 
     const ta = document.createElement('textarea')
     document.body.append(ta)
@@ -289,7 +316,7 @@ describe('Phase 6 — Live translation', () => {
   })
 
   it('17 — translation write uses WriteOrigin.TRANSLATE without re-trigger loop', async () => {
-    stateManager.translation.liveEnabled = true
+    enableLiveMode()
     const ta = document.createElement('textarea')
     document.body.append(ta)
     focusAndType(ta, 'مرحبا')
@@ -312,7 +339,7 @@ describe('Phase 6 — Live translation', () => {
   })
 
   it('19 — manual translation works when live mode ON', async () => {
-    stateManager.translation.liveEnabled = true
+    enableLiveMode()
     const ta = document.createElement('textarea')
     ta.value = 'مرحبا'
     document.body.append(ta)
@@ -322,7 +349,7 @@ describe('Phase 6 — Live translation', () => {
   })
 
   it('20 — live translation does not invoke CORRECT', async () => {
-    stateManager.translation.liveEnabled = true
+    enableLiveMode()
     const ta = document.createElement('textarea')
     document.body.append(ta)
     focusAndType(ta, 'مرحبا')
@@ -332,7 +359,7 @@ describe('Phase 6 — Live translation', () => {
   })
 
   it('21 — live translation does not invoke FIX_LAYOUT', async () => {
-    stateManager.translation.liveEnabled = true
+    enableLiveMode()
     const ta = document.createElement('textarea')
     document.body.append(ta)
     focusAndType(ta, 'مرحبا')
@@ -342,26 +369,23 @@ describe('Phase 6 — Live translation', () => {
   })
 
   it('22 — network failure leaves text untouched', async () => {
-    stateManager.translation.liveEnabled = true
-    translation.stop()
-    translation = createTranslationFeature({
-      engine,
-      provider: async () => ({ ok: false, code: 'translation_unavailable' }),
+    enableLiveMode()
+    setPipelineTranslateFnForTests(async () => {
+      translateCalls += 1
+      return { ok: false, code: 'translation_unavailable' }
     })
-    router.registerTranslation(translation)
-    translation.start()
 
     const ta = document.createElement('textarea')
     document.body.append(ta)
-    const original = 'مرحبا'
+    const original = 'مرحبا كيف حالك؟'
     focusAndType(ta, original)
     await flushLiveTranslation()
-    await vi.waitFor(() => expect(translation.metrics.translation_live_errors).toBe(1))
+    await vi.waitFor(() => expect(translateCalls).toBe(1))
     expect(ta.value).toBe(original)
   })
 
   it('23 — multiple fields remain isolated', async () => {
-    stateManager.translation.liveEnabled = true
+    enableLiveMode()
     const a = document.createElement('textarea')
     const b = document.createElement('textarea')
     document.body.append(a, b)
@@ -375,7 +399,7 @@ describe('Phase 6 — Live translation', () => {
   })
 
   it('24 — field switch does not redirect result', async () => {
-    stateManager.translation.liveEnabled = true
+    enableLiveMode()
     let resolveSlow: ((value: { ok: true; translation: string }) => void) | null = null
     translation.stop()
     translation = createTranslationFeature({
@@ -400,7 +424,7 @@ describe('Phase 6 — Live translation', () => {
   })
 
   it('25 — rapid typing does not produce request storm', async () => {
-    stateManager.translation.liveEnabled = true
+    enableLiveMode()
     const ta = document.createElement('textarea')
     document.body.append(ta)
     ta.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
@@ -416,43 +440,56 @@ describe('Phase 6 — Live translation', () => {
   })
 })
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((r) => {
+    resolve = r
+  })
+  return { promise, resolve }
+}
+
 describe('Phase 6 — Live translate unit', () => {
+  beforeEach(() => {
+    stateManager.settings.enabled = true
+    enableLiveMode()
+  })
+
   it('generation mismatch returns stale', async () => {
     const ta = document.createElement('textarea')
-    ta.value = 'مرحبا'
+    ta.value = 'مرحبا كيف حالك؟'
     document.body.append(ta)
     const engine = new InputEngine()
     engine.start()
     const session = engine.sessions.getOrCreate(ta)
-    session.bumpGeneration()
 
-    let called = false
+    const hold = deferred<{ ok: true; translation: string }>()
     const metrics = createTranslationMetrics()
-    stateManager.translation.liveEnabled = true
-    const result = await runLiveTranslation(ta, session, {
+    const pending = runLiveTranslation(ta, session, {
       engine: new TranslationEngine({
         async translate() {
-          called = true
-          return { ok: true, translation: 'Hello' }
+          return hold.promise
         },
       }),
       metrics,
       fieldState: { lastRequestedKey: null, lastTranslatedKey: null },
     })
-    expect(['stale', 'busy', 'noop', 'blocked']).toContain(result)
+    session.bumpGeneration()
+    hold.resolve({ ok: true, translation: 'Hello' })
+    expect(await pending).toBe('stale')
     engine.stop()
   })
 
   it('mutex busy when manual translation holds lock', async () => {
     const ta = document.createElement('textarea')
-    ta.value = 'مرحبا'
+    ta.value = 'مرحبا كيف حالك؟'
     document.body.append(ta)
     const inputEngine = new InputEngine()
     inputEngine.start()
     const session = inputEngine.sessions.getOrCreate(ta)
-    session.tryAcquireWrite('TRANSLATE')
+    const acquired = session.tryAcquireWrite('TRANSLATE')
+    expect(acquired.ok).toBe(true)
+    if (!acquired.ok) return
 
-    stateManager.translation.liveEnabled = true
     const metrics = createTranslationMetrics()
     const result = await runLiveTranslation(ta, session, {
       engine: new TranslationEngine({
@@ -464,7 +501,7 @@ describe('Phase 6 — Live translate unit', () => {
       fieldState: { lastRequestedKey: null, lastTranslatedKey: null },
     })
     expect(result).toBe('busy')
-    session.releaseWrite('TRANSLATE', session.getRequestSequence())
+    session.releaseWrite('TRANSLATE', acquired.requestId)
     inputEngine.stop()
   })
 })

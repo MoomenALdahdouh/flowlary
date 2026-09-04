@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import type { TranslationRequestContext } from '@flowlary/shared'
 import type { AppConfig } from '../config/env.ts'
 import { GatewayError, mapProviderFailure } from './errors.ts'
 import { logError, logInfo } from '../logging/logger.ts'
@@ -213,7 +214,13 @@ export class AiGateway {
 
   async translation(
     meta: GatewayRequestMeta,
-    body: { text: string; sourceLanguage: string; targetLanguage: string; mode?: string },
+    body: {
+      text: string
+      sourceLanguage: string
+      targetLanguage: string
+      mode?: string
+      translationContext?: TranslationRequestContext
+    },
   ) {
     const started = Date.now()
     const strategy = resolveTranslationStrategy(this.config, meta.auth, body.mode)
@@ -255,7 +262,19 @@ export class AiGateway {
 
     try {
       const result = await withTimeout(this.config, meta.requestId, (signal) =>
-        runRoutedTranslation(this.config, meta.auth, body, hooks, signal),
+        runRoutedTranslation(
+          this.config,
+          meta.auth,
+          {
+            text: body.text,
+            sourceLanguage: body.sourceLanguage,
+            targetLanguage: body.targetLanguage,
+            mode: body.mode,
+            translationContext: body.translationContext,
+          },
+          hooks,
+          signal,
+        ),
       )
 
       if (result.groqBillable) {
@@ -291,6 +310,8 @@ export class AiGateway {
         groqUsed: result.groqUsed,
         refinementAttempted: result.refinementAttempted,
         refinementSucceeded: result.refinementSucceeded,
+        refinementSkipped: result.refinementSkipped,
+        refinementSkipReason: result.refinementSkipReason,
         fallbackUsed: result.fallbackUsed,
       })
       return {

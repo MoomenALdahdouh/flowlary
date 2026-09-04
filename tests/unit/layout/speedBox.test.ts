@@ -142,6 +142,7 @@ describe('Speed Box modes', () => {
     expect(root().querySelector('[data-flowlary="speed-result-text"]')?.textContent).toBe(
       'I have a cat',
     )
+    expect(root().querySelector('[data-flowlary="speed-result-text"] .mark.grammar')).toBeTruthy()
   })
 
   it('inserts on Enter when opened from a field', () => {

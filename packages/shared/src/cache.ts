@@ -1,7 +1,7 @@
 import type { OperationType } from './types.ts'
 
 /** Bumped when TRANSLATE/CORRECT keys gained accountId isolation (Phase 2). */
-export const CACHE_SCHEMA_VERSION = 3 as const
+export const CACHE_SCHEMA_VERSION = 4 as const
 export const MAX_CACHE_ENTRIES = 200
 export const MAX_CACHE_TEXT_LENGTH = 2_000
 

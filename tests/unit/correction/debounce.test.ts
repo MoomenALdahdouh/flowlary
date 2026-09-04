@@ -5,6 +5,7 @@ import {
   endsWithWordBoundary,
   getDebounceDelay,
   IntelligentDebouncer,
+  debounceOptionsForMode,
 } from '../../../extension/src/features/correction/debounce.ts'
 
 describe('correction debounce', () => {
@@ -22,6 +23,13 @@ describe('correction debounce', () => {
     expect(getDebounceDelay('Done.')).toBe(CORRECTION_DEFAULTS.SENTENCE_BOUNDARY_DEBOUNCE_MS)
     expect(getDebounceDelay('I recive ')).toBe(CORRECTION_DEFAULTS.WORD_BOUNDARY_DEBOUNCE_MS)
     expect(getDebounceDelay('Still typing')).toBe(CORRECTION_DEFAULTS.DEBOUNCE_MS)
+  })
+
+  it('uses slower direct-mode delays to protect API rate limits', () => {
+    const direct = debounceOptionsForMode('direct')
+    expect(direct.defaultMs).toBe(CORRECTION_DEFAULTS.LIVE_DIRECT_DEBOUNCE_MS)
+    expect(direct.wordBoundaryMs).toBe(CORRECTION_DEFAULTS.LIVE_DIRECT_WORD_BOUNDARY_DEBOUNCE_MS)
+    expect(direct.sentenceBoundaryMs).toBe(CORRECTION_DEFAULTS.LIVE_DIRECT_SENTENCE_BOUNDARY_DEBOUNCE_MS)
   })
 
   it('cancels stale scheduled work', async () => {

@@ -1,6 +1,8 @@
 import type { InputEngine } from '../input/InputEngine.ts'
 import { isEditableElement } from '../dom/read.ts'
 import { isEnforceEngineEnabled } from '../engine/flag.ts'
+import { resolveWritingPolicy } from '../policy/writingPolicy.ts'
+import { LIVE_PAUSE_MS } from '../../features/translation/pauseGate.ts'
 import { runFieldCycle } from './pipeline.ts'
 
 const TRIGGER_KEYS = new Set([' ', 'Enter', 'Tab'])
@@ -16,6 +18,9 @@ export function startEnforceCoordinator(engine: InputEngine): void {
     if (event.type === 'input') {
       if (event.composing) return
       void runIfEditable(engine, event.target)
+      if (event.target && resolveWritingPolicy().liveTranslation) {
+        scheduleEnforceRetry(engine, event.target, LIVE_PAUSE_MS)
+      }
       return
     }
     if (event.type === 'composition-update') return
@@ -25,6 +30,7 @@ export function startEnforceCoordinator(engine: InputEngine): void {
     if (event.type === 'focus-out' && event.target) {
       const session = engine.sessions.getOrCreate(event.target)
       session.requestCommitOpenToken()
+      session.noteBlurTranslationPass()
       void runIfEditable(engine, event.target)
     }
   })

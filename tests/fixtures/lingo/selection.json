@@ -1,0 +1,30 @@
+[
+  {
+    "description": "selection wins",
+    "text": "I want شراء هذا المنتج today.",
+    "selectionStart": 7,
+    "selectionEnd": 22,
+    "expect": { "text": "شراء هذا المنتج", "mode": "selection" }
+  },
+  {
+    "description": "collapsed caret uses paragraph",
+    "text": "مرحبا، كيف حالك؟",
+    "selectionStart": 16,
+    "selectionEnd": 16,
+    "expect": { "text": "مرحبا، كيف حالك؟", "mode": "context" }
+  },
+  {
+    "description": "empty selection whitespace",
+    "text": "   ",
+    "selectionStart": 0,
+    "selectionEnd": 0,
+    "expect": null
+  },
+  {
+    "description": "protected API key",
+    "text": "sk-abcdefghijklmnopqrstuvwxyz123456",
+    "selectionStart": 0,
+    "selectionEnd": 35,
+    "protected": true
+  }
+]

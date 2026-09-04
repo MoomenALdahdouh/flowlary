@@ -534,13 +534,25 @@ function validateTranslateText(raw: Record<string, unknown>): ValidationResult<T
   if (typeof raw.mode !== 'string' || !TRANSLATION_MODES.has(raw.mode)) {
     return fail('invalid_mode')
   }
-  return ok({
+  const message: TranslateTextMessage = {
     type: 'TRANSLATE_TEXT',
     text: raw.text,
     sourceLanguage: normalizeLanguage(raw.sourceLanguage, 'en'),
     targetLanguage: normalizeLanguage(raw.targetLanguage, 'ar'),
     mode: raw.mode as TranslateTextMessage['mode'],
-  })
+  }
+  if (raw.context && typeof raw.context === 'object' && raw.context !== null) {
+    const ctx = raw.context as Record<string, unknown>
+    const next: NonNullable<TranslateTextMessage['context']> = {
+      mode: raw.mode as TranslateTextMessage['mode'],
+    }
+    if (ctx.segment_complete === true) next.segment_complete = true
+    if (ctx.focus_out_completion === true) next.focus_out_completion = true
+    if (next.segment_complete || next.focus_out_completion || next.mode) {
+      message.context = next
+    }
+  }
+  return ok(message)
 }
 
 function validateCorrectText(raw: Record<string, unknown>): ValidationResult<CorrectTextMessage> {

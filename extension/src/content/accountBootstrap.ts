@@ -66,9 +66,7 @@ async function hydratePolicyFromStorageChange(
     return
   }
 
-  // Unsigned: global settings may change from the service worker while account-bound
-  // keys are memory-only. Do not clobber pre-auth correction/translation/layout.
-  if (STORAGE_KEYS.settings in changes) {
+  if (hasPolicyKeyChange(changes)) {
     Object.assign(stateManager.settings, await getSettings(flowlaryStorage))
     applyUserPolicyToMemory(resolveWritingPolicy())
   }

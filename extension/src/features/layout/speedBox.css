@@ -272,6 +272,29 @@ textarea:focus {
   font-size: 13px;
 }
 
+.mark {
+  border-radius: 2px;
+  padding: 0;
+  font-weight: 650;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.mark.spelling {
+  color: var(--fl-teach-spelling, #be123c);
+  background: var(--fl-teach-spelling-soft, rgba(244, 63, 94, 0.12));
+}
+
+.mark.grammar {
+  color: var(--fl-teach-grammar, #a16207);
+  background: var(--fl-teach-grammar-soft, rgba(202, 138, 4, 0.16));
+}
+
+.mark.wording {
+  color: var(--fl-teach-wording, #3730a3);
+  background: var(--fl-teach-wording-soft, rgba(99, 102, 241, 0.12));
+}
+
 .result-hint {
   font-size: 10px;
   color: var(--fl-faint);

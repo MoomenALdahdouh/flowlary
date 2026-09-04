@@ -70,6 +70,8 @@ export class FieldSession {
   private lastEngineSpan: { start: number; end: number; hash: string; generation: number } | null = null
   private overrideRanges: { start: number; end: number }[] = []
   private commitOpenToken = false
+  private blurTranslationPass = false
+  private translationFocusOutCompletion = false
   private pendingLayoutRun: {
     direction: 'en_on_ar' | 'ar_on_en'
     consecutiveCount: number
@@ -228,6 +230,24 @@ export class FieldSession {
   consumeCommitOpenToken(): boolean {
     const pending = this.commitOpenToken
     this.commitOpenToken = false
+    return pending
+  }
+
+  noteBlurTranslationPass(): void {
+    this.blurTranslationPass = true
+  }
+
+  consumeBlurTranslationPass(): boolean {
+    const pending = this.blurTranslationPass
+    this.blurTranslationPass = false
+    if (pending) this.translationFocusOutCompletion = true
+    return pending
+  }
+
+  /** Focus-out completion for live translation polish context (consumed once per request). */
+  takeTranslationFocusOutCompletion(): boolean {
+    const pending = this.translationFocusOutCompletion
+    this.translationFocusOutCompletion = false
     return pending
   }
 

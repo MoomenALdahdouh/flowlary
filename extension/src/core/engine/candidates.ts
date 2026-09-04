@@ -5,6 +5,17 @@ import { stateManager } from '../state/StateManager.ts'
 import type { CandidateAction, FieldContext, Hypothesis, SharedAnalysis } from './types.ts'
 import { collectHypotheses } from './hypotheses.ts'
 
+function translationEligibleForAuto(
+  context: FieldContext | undefined,
+  capability: NonNullable<Hypothesis['candidateAction']>,
+): boolean {
+  if (capability !== 'translation') {
+    return context?.capabilities.autoWrite !== false
+  }
+  if (context?.capabilities.autoWrite === true) return true
+  return context?.editorTier === 2 && context.safetyAllowed === true
+}
+
 export function candidatesFromHypotheses(
   hypotheses: Hypothesis[],
   context?: FieldContext,
@@ -28,7 +39,7 @@ export function candidatesFromHypotheses(
           high
           && Boolean(item.replacement || item.candidateAction === 'translation')
           && (item.candidateAction !== 'english_correction' || stateManager.correction.mode === 'direct')
-          && context?.capabilities.autoWrite !== false,
+          && translationEligibleForAuto(context, item.candidateAction!),
         replacement: item.replacement,
       }
     })

@@ -9,6 +9,14 @@ import { runExplicitEnglishAssist } from '../../core/writeGate/pipelineEnglish.t
 import { type FieldCorrectionStateEntry } from './applyCorrection.ts'
 import { createCorrectionMetrics, type CorrectionMetrics } from './metrics.ts'
 import { CorrectionScheduler } from './scheduler.ts'
+import {
+  registerCorrectionFieldStates,
+  unregisterCorrectionFieldStates,
+} from './correctionLiveState.ts'
+import {
+  registerCorrectionFeedback,
+  unregisterCorrectionFeedback,
+} from './correctionFeedback.ts'
 
 export type CorrectionModuleOptions = {
   engine: InputEngine
@@ -25,6 +33,8 @@ export function createCorrectionFeature(options: CorrectionModuleOptions): Corre
   const metrics = createCorrectionMetrics()
   const fieldStates = new Map<string, FieldCorrectionStateEntry>()
   const scheduler = new CorrectionScheduler({ engine: options.engine, metrics, fieldStates })
+  registerCorrectionFieldStates(fieldStates)
+  registerCorrectionFeedback({ engine: options.engine, fieldStates })
 
   let started = false
 
@@ -41,6 +51,8 @@ export function createCorrectionFeature(options: CorrectionModuleOptions): Corre
       if (!started) return
       started = false
       scheduler.stop()
+      unregisterCorrectionFieldStates()
+      unregisterCorrectionFeedback()
     },
 
     clearFieldStates() {

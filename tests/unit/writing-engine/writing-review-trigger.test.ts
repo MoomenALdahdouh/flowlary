@@ -9,6 +9,8 @@ import {
 } from '../../../extension/src/core/engine/index.ts'
 import { applyUserWritingPolicy } from '../../../extension/src/core/policy/writingPolicy.ts'
 import { hashWritingSample } from '@flowlary/shared'
+import { registerCorrectionFieldStates } from '../../../extension/src/features/correction/correctionLiveState.ts'
+import { IntelligentDebouncer } from '../../../extension/src/features/correction/debounce.ts'
 
 function setup(text: string, overrides: Record<string, unknown> = {}, policyPatch: Record<string, unknown> = {}) {
   applyUserWritingPolicy({
@@ -31,6 +33,7 @@ function setup(text: string, overrides: Record<string, unknown> = {}, policyPatc
       composing: false,
       textLength: text.length,
     }),
+    liveWholeFieldCorrection: false,
     ...overrides,
   }
   const analysis = analyzeFieldText(text, { caret: text.length, commitOpenToken: true })
@@ -123,6 +126,47 @@ describe('writing review trigger', () => {
       island,
       localAppliedLayout: false,
       cached: session.hasCachedReview(hash),
+      lastReviewAt: 0,
+    })).toBe(false)
+  })
+
+  it('skips when live whole-field correction is active', () => {
+    const { context, analysis, island } = setup('hello there friend. ', {
+      liveWholeFieldCorrection: true,
+    })
+    expect(shouldScheduleWritingReview({
+      context,
+      analysis,
+      island,
+      localAppliedLayout: false,
+      cached: false,
+      lastReviewAt: 0,
+    })).toBe(false)
+  })
+
+  it('skips when a whole-field correction request is pending', () => {
+    const states = new Map([
+      [
+        'field-1',
+        {
+          debouncer: new IntelligentDebouncer(() => undefined),
+          lastSentText: 'hello there friend.',
+          lastCorrectedFor: '',
+          pendingRequestId: 'req-1',
+          lastCorrectionRequestAt: 0,
+          card: null,
+          cardMounted: false,
+        },
+      ],
+    ])
+    registerCorrectionFieldStates(states)
+    const { context, analysis, island } = setup('hello there friend. ', { fieldId: 'field-1' })
+    expect(shouldScheduleWritingReview({
+      context,
+      analysis,
+      island,
+      localAppliedLayout: false,
+      cached: false,
       lastReviewAt: 0,
     })).toBe(false)
   })

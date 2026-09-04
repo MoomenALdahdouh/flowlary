@@ -68,6 +68,9 @@ export function decideWriting(
 
   if (!context.assistantEnabled) return finish('noop', ['policy_assistant_off'], null)
   if (context.helpStyle === 'shortcuts_only') return finish('noop', ['policy_shortcuts_only'], null)
+  if (context.liveWholeFieldCorrection && candidates.some((item) => item.capability === 'english_correction')) {
+    blocked.push('english_correction')
+  }
   if (!context.safetyAllowed) return finish('noop', ['protected_context'], null)
   if (context.composing) return finish('noop', ['composing'], null)
   if (context.mutexHeld) return finish('noop', ['mutex_held'], null)
@@ -117,6 +120,17 @@ export function decideWriting(
       }
       const winner = candidateFor(picked)
       if (!winner || !picked.candidateAction) continue
+      if (
+        context.liveWholeFieldCorrection
+        && picked.candidateAction === 'english_correction'
+      ) {
+        blocked.push('english_correction')
+        return finish('noop', ['deferred_to_whole_field'], winner, {
+          intent: picked.intent,
+          hypothesisId: picked.id,
+          risk: picked.risk,
+        })
+      }
       if (picked.needsLLM || picked.risk !== 'low' || !winner.eligibleForAuto) {
         blocked.push(picked.candidateAction)
         return finish('suggestion', ['downgraded_to_suggestion', 'hypothesis_winner'], winner, {
@@ -329,6 +343,14 @@ export function decideWriting(
         })
       }
     }
+    if (context.liveWholeFieldCorrection && spelling.replacement) {
+      blocked.push('english_correction')
+      return finish('noop', ['deferred_to_whole_field'], winner ?? null, {
+        intent: 'fix_english',
+        hypothesisId: spelling.id,
+        risk: spelling.risk,
+      })
+    }
     if (spelling.needsLLM || spelling.risk !== 'low' || context.helpStyle === 'suggestions') {
       return finish('suggestion', ['downgraded_to_suggestion', 'low_confidence'], winner ?? null, {
         intent: 'fix_english',
@@ -353,6 +375,14 @@ export function decideWriting(
     && !(origin === 'translated_en' && !context.polishAfterTranslate)
   ) {
     const winner = candidateFor(remoteEnglish)
+    if (context.liveWholeFieldCorrection) {
+      blocked.push('english_correction')
+      return finish('noop', ['deferred_to_whole_field'], winner ?? null, {
+        intent: 'fix_english',
+        hypothesisId: remoteEnglish.id,
+        risk: remoteEnglish.risk,
+      })
+    }
     return finish('suggestion', ['downgraded_to_suggestion', 'low_confidence'], winner ?? null, {
       intent: 'fix_english',
       hypothesisId: remoteEnglish.id,

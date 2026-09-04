@@ -5,6 +5,8 @@ import { looksLikeCodeEditor } from '../safety/codeEditor.ts'
 import { resolveHelpStyle, resolveWritingPolicy } from '../policy/writingPolicy.ts'
 import { stateManager } from '../state/StateManager.ts'
 import { fieldKindFromElement } from '../observability/writeTelemetry.ts'
+import { shouldEmitTranslationHypothesis } from '../../features/translation/pauseGate.ts'
+import { isCorrectionSchedulerEligible } from '../../features/correction/liveAssist.ts'
 import type { FieldSession } from '../session/FieldSession.ts'
 import type { EditorTier, FieldContext, InputSource, TextRange } from './types.ts'
 
@@ -61,7 +63,14 @@ export function buildFieldContext(options: {
     aiWritingReviewEnabled: policy.aiWritingReviewEnabled,
     liveTranslation: policy.liveTranslation,
     arabicToEnglishMode: policy.arabicToEnglishMode,
+    translationPauseReady: shouldEmitTranslationHypothesis(
+      options.session,
+      policy.liveTranslation,
+      { bypassPause: options.session.consumeBlurTranslationPass() },
+    ),
+    translatedRanges: [...options.session.getTranslatedRanges()],
     polishAfterTranslate: policy.polishAfterTranslate,
+    liveWholeFieldCorrection: isCorrectionSchedulerEligible(),
     cooldownActive: options.session.isInCooldown(),
     textLength: options.textLength,
     inputSource: options.inputSource ?? options.session.getInputSource(),

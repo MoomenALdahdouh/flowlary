@@ -54,16 +54,18 @@ describe('translation provider router', () => {
     expect(resolveTranslationStrategy(baseConfig(), auth({ rateLimitTier: 'free' }), 'shortcut')).toBe(
       'google',
     )
+    expect(resolveTranslationStrategy(baseConfig(), auth({ rateLimitTier: 'free' }), 'live')).toBe(
+      'google',
+    )
   })
 
-  it('routes pro shortcut to google_then_groq', () => {
+  it('routes pro shortcut and live to google_then_groq', () => {
     expect(
       resolveTranslationStrategy(baseConfig(), auth({ rateLimitTier: 'pro', clientClaim: 'pro' }), 'shortcut'),
     ).toBe('google_then_groq')
-  })
-
-  it('routes pro live to google only', () => {
-    expect(resolveTranslationStrategy(baseConfig(), auth({ rateLimitTier: 'pro' }), 'live')).toBe('google')
+    expect(resolveTranslationStrategy(baseConfig(), auth({ rateLimitTier: 'pro' }), 'live')).toBe(
+      'google_then_groq',
+    )
   })
 
   it('uses groq strategy when Google is not configured', () => {
@@ -80,6 +82,136 @@ describe('translation provider router', () => {
     const exhausted = auth({ allowed: false, denyReason: 'usage_exhausted', rateLimitTier: 'free' })
     expect(canAccessTranslation(exhausted, 'google')).toBe(true)
     expect(canAccessTranslation(exhausted, 'groq')).toBe(false)
+  })
+
+  it('Free live path does not call Groq refinement', async () => {
+    vi.spyOn(google, 'runGoogleTranslate').mockResolvedValue({
+      translation: 'Hello',
+      model: 'google-translate',
+    })
+    const refine = vi.spyOn(groqProvider, 'runTranslationRefinement')
+
+    const result = await runRoutedTranslation(
+      baseConfig(),
+      auth({ rateLimitTier: 'free' }),
+      {
+        text: 'والله يمكن اجي',
+        sourceLanguage: 'ar',
+        targetLanguage: 'en',
+        mode: 'live',
+        translationContext: { segment_complete: true },
+      },
+      { tryReserveGroq: () => true, releaseGroq: () => undefined },
+    )
+
+    expect(result.provider).toBe('google')
+    expect(refine).not.toHaveBeenCalled()
+  })
+
+  it('Pro live skips Groq when segment is incomplete', async () => {
+    vi.spyOn(google, 'runGoogleTranslate').mockResolvedValue({
+      translation: 'I swear I might come',
+      model: 'google-translate',
+    })
+    const refine = vi.spyOn(groqProvider, 'runTranslationRefinement')
+
+    const result = await runRoutedTranslation(
+      baseConfig(),
+      auth({ rateLimitTier: 'pro' }),
+      {
+        text: 'والله يمكن اجي',
+        sourceLanguage: 'ar',
+        targetLanguage: 'en',
+        mode: 'live',
+        translationContext: { segment_complete: false, focus_out_completion: false },
+      },
+      { tryReserveGroq: () => true, releaseGroq: () => undefined },
+    )
+
+    expect(result.translation).toBe('I swear I might come')
+    expect(result.refinementSkipped).toBe(true)
+    expect(result.refinementSkipReason).toBe('live_incomplete_segment')
+    expect(refine).not.toHaveBeenCalled()
+  })
+
+  it('Pro live colloquial complete sentence may refine', async () => {
+    vi.spyOn(google, 'runGoogleTranslate').mockResolvedValue({
+      translation: "I swear I might come, but I don't know why my stomach hurts.",
+      model: 'google-translate',
+    })
+    vi.spyOn(groqProvider, 'runTranslationRefinement').mockResolvedValue({
+      translation:
+        "Honestly, maybe I'll come, yeah, but I don't know why my stomach hurts.",
+      model: 'openai/gpt-oss-120b',
+    })
+
+    const result = await runRoutedTranslation(
+      baseConfig(),
+      auth({ rateLimitTier: 'pro' }),
+      {
+        text: 'والله يمكن اجي اه بس مش عارف ليش بطني بيجعني',
+        sourceLanguage: 'ar',
+        targetLanguage: 'en',
+        mode: 'live',
+        translationContext: { segment_complete: true },
+      },
+      { tryReserveGroq: () => true, releaseGroq: () => undefined },
+    )
+
+    expect(result.refinementSucceeded).toBe(true)
+    expect(result.translation).toMatch(/Honestly|maybe/i)
+  })
+
+  it('Pro live MSA sentence skips Groq when draft looks natural', async () => {
+    vi.spyOn(google, 'runGoogleTranslate').mockResolvedValue({
+      translation: 'I am going to the university now.',
+      model: 'google-translate',
+    })
+    const refine = vi.spyOn(groqProvider, 'runTranslationRefinement')
+
+    const result = await runRoutedTranslation(
+      baseConfig(),
+      auth({ rateLimitTier: 'pro' }),
+      {
+        text: 'أنا ذاهب إلى الجامعة الآن.',
+        sourceLanguage: 'ar',
+        targetLanguage: 'en',
+        mode: 'live',
+        translationContext: { segment_complete: true },
+      },
+      { tryReserveGroq: () => true, releaseGroq: () => undefined },
+    )
+
+    expect(result.translation).toBe('I am going to the university now.')
+    expect(result.refinementSkipped).toBe(true)
+    expect(refine).not.toHaveBeenCalled()
+  })
+
+  it('Pro live focus-out may refine colloquial text', async () => {
+    vi.spyOn(google, 'runGoogleTranslate').mockResolvedValue({
+      translation: "I swear I might come, but I don't know why my stomach hurts.",
+      model: 'google-translate',
+    })
+    vi.spyOn(groqProvider, 'runTranslationRefinement').mockResolvedValue({
+      translation:
+        "Honestly, maybe I'll come, yeah, but I don't know why my stomach hurts.",
+      model: 'openai/gpt-oss-120b',
+    })
+
+    const result = await runRoutedTranslation(
+      baseConfig(),
+      auth({ rateLimitTier: 'pro' }),
+      {
+        text: 'والله يمكن اجي اه بس مش عارف ليش بطني بيجعني',
+        sourceLanguage: 'ar',
+        targetLanguage: 'en',
+        mode: 'live',
+        translationContext: { focus_out_completion: true },
+      },
+      { tryReserveGroq: () => true, releaseGroq: () => undefined },
+    )
+
+    expect(result.refinementSucceeded).toBe(true)
   })
 
   it('Free Google path does not call Groq or reserve credits', async () => {

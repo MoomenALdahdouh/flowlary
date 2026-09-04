@@ -5,29 +5,39 @@ Optional live translation while typing. **Default OFF.**
 ## Flow
 
 ```
-InputEngine (input / composition-end / Enter)
+InputEngine (input / keyup / focus-out)
     ↓ EventBus
-TranslationScheduler (750ms debounce)
-    ↓
-runLiveTranslation()
-    ↓ Safety Gate + segment eligibility
-    ↓ FieldSession.tryAcquireWrite('TRANSLATE')
-    ↓ TranslationEngine (mode: 'live')
+enforceCoordinator
+    ↓ immediate runFieldCycle (layout / correction)
+    ↓ scheduleEnforceRetry(LIVE_PAUSE_MS = 750) when liveTranslation active
+runFieldCycle()
+    ↓ collectHypotheses (translationPauseReady + liveSegmentOnPause)
+    ↓ decideWriting → translation
+fulfillTranslationDecision()
+    ↓ executeTranslation()  ← shared with manual shortcut path
     ↓ stale verification
-    ↓ writeReplacement(origin: TRANSLATE)
+    ↓ commitWriteTransaction(origin: TRANSLATE)
 ```
 
-Manual translation (Phase 5) remains:
+Manual translation (Phase 5) uses the same executor:
 
 ```
-CommandOrchestrator → TranslationFeature.execute()
+CommandOrchestrator → TranslationFeature.execute() → executeTranslation()
 ```
 
 ## Segmentation (Lingo semantics)
 
+`liveSegmentOnPause()` in `features/translation/segments.ts`:
+
 1. `lastCompletedSegment` — sentence ending in `.!?…؟。！？` or newline
-2. Fallback: `currentParagraph` — `\n\n` boundaries
-3. Never per-word; only after debounce pause
+2. Fallback: `currentParagraph` — `\n\n` boundaries (after deliberate pause)
+3. Never per-word; translation hypothesis requires `translationPauseReady` (750ms since last input, or focus-out bypass)
+
+## Pause gate
+
+- `features/translation/pauseGate.ts` — `LIVE_PAUSE_MS = 750`
+- Wired in `enforceCoordinator` via `scheduleEnforceRetry`
+- `buildFieldContext` exposes `translationPauseReady` for hypotheses
 
 ## Settings
 
@@ -37,6 +47,6 @@ CommandOrchestrator → TranslationFeature.execute()
 ## Invariants
 
 - No feature-level `document.addEventListener`
-- No auto CORRECT / FIX_LAYOUT / PIPELINE
+- No standalone `TranslationScheduler` writer (retired; enforce pipeline owns live path)
 - Controlled writes use `WriteOrigin.TRANSLATE` (no generation bump loop)
-- Cache keys remain `TRANSLATE:{hash}:{src}:{tgt}`
+- Cache keys remain account-scoped `TRANSLATE:{account}:{hash}:…`

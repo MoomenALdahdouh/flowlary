@@ -79,6 +79,7 @@ export function createLayoutFeature(options: LayoutModuleOptions): LayoutModule 
       targetLanguage: stateManager.translation.targetLanguage,
       correctionEnabled: stateManager.correction.enabled,
       correctionConsentAccepted: stateManager.correction.consentAccepted,
+      correctionHighlights: stateManager.correction.highlights,
       correctionMode: stateManager.correction.mode,
       translationMode: stateManager.translation.mode,
       layoutMode: stateManager.layout.mode,

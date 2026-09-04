@@ -76,7 +76,6 @@ const arOverrides: Partial<MessageCatalog> = {
   dashboard: {
     title: 'لوحة التحكم',
     kicker: 'الرئيسية',
-    overview: 'الرئيسية',
     overviewLead: 'اكتب، ثم تدرب على ما تخطئ فيه.',
     progressLead: 'اتجاهات من كتابتك الفعلية.',
     practiceLead: 'تمارين قصيرة من أخطائك.',
@@ -403,6 +402,8 @@ const arOverrides: Partial<MessageCatalog> = {
     translationDesc: 'نص محدد أو حالي',
     liveTranslation: 'عربي → إنجليزي',
     liveTranslationDesc: 'اكتب بالعربية واحصل على إنجليزي في نفس الحقل',
+    liveTranslationAutoHint:
+      'يترجم بعد الضغط على مسافة أو إنهاء جملة (. ! ? ؟). سجّل الدخول للذكاء الاصطناعي. أدوات التخطيط مجانية بدون حساب.',
     layout: 'إصلاح الكتابة',
     layoutDesc: 'إصلاح النص المكتوب بلوحة مفاتيح خاطئة',
     layoutMeta: 'محلي',

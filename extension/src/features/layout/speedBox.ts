@@ -15,6 +15,8 @@ import { FieldSession } from '../../core/session/FieldSession.ts'
 import type { WriterTag } from '@flowlary/shared'
 import { requestTranslationRemote } from '../translation/client.ts'
 import { requestCorrectionRemote } from '../correction/client.ts'
+import { buildHighlightedTokens } from '../correction/diff/tokenDiff.ts'
+import type { CorrectionChange } from '@flowlary/shared'
 import {
   DEFAULT_SOURCE_LANGUAGE,
   DEFAULT_TARGET_LANGUAGE,
@@ -77,6 +79,7 @@ export type SpeedBoxProfile = UserLayoutProfile & {
   targetLanguage?: string
   correctionEnabled?: boolean
   correctionConsentAccepted?: boolean
+  correctionHighlights?: boolean
   correctionMode?: 'box' | 'direct'
   translationMode?: 'box' | 'direct'
   layoutMode?: 'box' | 'direct'
@@ -393,6 +396,38 @@ export function createSpeedBox(options: {
     hint.textContent = resultHintText(text.length > 0)
   }
 
+  function setResultDiff(
+    original: string,
+    corrected: string,
+    changes: CorrectionChange[],
+    dir: 'ltr' | 'rtl' | 'auto' = 'auto',
+  ): void {
+    const button = resultEl()
+    const textEl = outputTextEl()
+    const hint = resultHintEl()
+    if (!button || !textEl || !hint) return
+    textEl.dir = dir
+    const useHighlights = profile().correctionHighlights !== false && changes.length > 0
+    if (useHighlights) {
+      textEl.replaceChildren()
+      const tokens = buildHighlightedTokens(original, corrected, changes)
+      for (const token of tokens) {
+        if (token.type === 'equal' || !token.changeType) {
+          textEl.appendChild(document.createTextNode(token.value))
+        } else {
+          const span = document.createElement('span')
+          span.className = `mark ${token.changeType}`
+          span.textContent = token.value
+          textEl.appendChild(span)
+        }
+      }
+    } else {
+      textEl.textContent = corrected
+    }
+    button.hidden = corrected.length === 0 && !busy
+    hint.textContent = resultHintText(corrected.length > 0)
+  }
+
   function clearResult(): void {
     boxSuggestion = null
     applyEl()?.setAttribute('hidden', '')
@@ -677,7 +712,7 @@ export function createSpeedBox(options: {
       }
       if (isFixBoxMode()) {
         boxSuggestion = corrected
-        setResult(corrected, 'ltr')
+        setResultDiff(text, corrected, response.data.changes, 'ltr')
         applyEl()?.removeAttribute('hidden')
         setStatus('')
         return

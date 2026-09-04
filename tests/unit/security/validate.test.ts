@@ -110,6 +110,28 @@ describe('runtime message validation', () => {
     }
   })
 
+  it('preserves live translation polish context on TRANSLATE_TEXT', () => {
+    const result = validateExtensionRequest({
+      type: 'TRANSLATE_TEXT',
+      text: 'والله يمكن اجي',
+      sourceLanguage: 'ar',
+      targetLanguage: 'en',
+      mode: 'live',
+      context: {
+        mode: 'live',
+        segment_complete: true,
+        focus_out_completion: false,
+      },
+    })
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.value).toMatchObject({
+        type: 'TRANSLATE_TEXT',
+        context: { mode: 'live', segment_complete: true },
+      })
+    }
+  })
+
   it('validateContentCommandType rejects malformed content messages', () => {
     expect(validateContentCommandType(null).ok).toBe(false)
     expect(validateContentCommandType({ type: 'GET_STATUS' }).ok).toBe(false)

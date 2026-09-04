@@ -10,6 +10,7 @@ import { stateManager } from '../state/StateManager.ts'
 import type { DecisionAction, TextOrigin, TextRange } from '../engine/types.ts'
 import type { EditableElement } from '../dom/types.ts'
 import type { FieldSession } from '../session/FieldSession.ts'
+import { shouldWholeFieldOwnEnglishCorrection } from '../../features/correction/liveAssist.ts'
 import { commitWriteTransaction, writerForAction } from './writeGate.ts'
 
 export type PipelineSuggestionRecord = {
@@ -52,6 +53,12 @@ export function hidePipelineSuggestion(fieldId: string): void {
   hideCard(fieldId)
 }
 
+export function hideEnglishPipelineSuggestion(fieldId: string): void {
+  const current = active.get(fieldId)
+  if (current?.action !== 'english_correction') return
+  hideCard(fieldId)
+}
+
 export function invalidateStalePipelineSuggestion(
   session: FieldSession,
   text: string,
@@ -66,6 +73,10 @@ export function invalidateStalePipelineSuggestion(
 
 export function presentPipelineSuggestion(input: PipelineSuggestionRecord): void {
   const { fieldId, element, suggestion, action } = input
+  if (action === 'english_correction' && shouldWholeFieldOwnEnglishCorrection()) {
+    hideCard(fieldId)
+    return
+  }
   hideCard(fieldId)
 
   let card = cards.get(fieldId)

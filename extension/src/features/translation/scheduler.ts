@@ -7,9 +7,9 @@ import {
   type FieldLiveState,
 } from './liveTranslate.ts'
 import type { TranslationMetrics } from './metrics.ts'
+import { LIVE_PAUSE_MS } from './pauseGate.ts'
 
-/** Lingo live translation debounce — verified from ai-writing-translator content_script.ts */
-export const LIVE_PAUSE_MS = 750
+export { LIVE_PAUSE_MS }
 
 export type TranslationSchedulerOptions = {
   engine: InputEngine

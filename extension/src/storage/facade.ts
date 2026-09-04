@@ -68,7 +68,10 @@ export async function setCorrectionSettings(
 }
 
 export async function getTranslationSettings(storage: FlowlaryStorage): Promise<TranslationSettings> {
-  if (!activeAccountContext.getAccountId()) return { ...DEFAULT_TRANSLATION }
+  if (!activeAccountContext.getAccountId()) {
+    const raw = await storage.get(STORAGE_KEYS.translation, 'local')
+    return normalizeTranslation(raw ?? DEFAULT_TRANSLATION)
+  }
   return normalizeTranslation(await getAccountScopedStorage(storage).get('translation'))
 }
 
@@ -76,6 +79,10 @@ export async function setTranslationSettings(
   storage: FlowlaryStorage,
   value: TranslationSettings,
 ): Promise<void> {
+  if (!activeAccountContext.getAccountId()) {
+    await storage.set(STORAGE_KEYS.translation, withVersion(value), 'local')
+    return
+  }
   await getAccountScopedStorage(storage).set('translation', withVersion(value))
 }
 

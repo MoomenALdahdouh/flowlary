@@ -3,7 +3,6 @@ import { establishEngineMode, startShadowEngine } from '../core/engine/index.ts'
 import { registerProductionHypothesisAdvisor } from '../core/engine/hypothesisAdvisorClient.ts'
 import { registerProductionWritingReview } from '../core/engine/writingReviewClient.ts'
 import { startEnforceCoordinator } from '../core/writeGate/enforceCoordinator.ts'
-import { startTranslationSessionChip } from '../features/translation/sessionChip.ts'
 import type { EngineMode } from '../core/engine/flag.ts'
 
 export type WritingRuntimeModules = {
@@ -13,7 +12,6 @@ export type WritingRuntimeModules = {
   layout: { start(): void }
   translation: { start(): void }
   orchestrator: { start(): void }
-  startChip?: boolean
 }
 
 /**
@@ -33,8 +31,5 @@ export async function startWritingRuntime(modules: WritingRuntimeModules): Promi
   modules.layout.start()
   modules.translation.start()
   modules.orchestrator.start()
-  if (modules.startChip !== false) {
-    startTranslationSessionChip(modules.engine)
-  }
   return mode
 }

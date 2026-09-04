@@ -1,4 +1,5 @@
 import type { LanguageCode, TranslationMode, TranslationOutcome } from './types.ts'
+import type { TranslationRequestContext } from '@flowlary/shared'
 
 export type TranslateTextMessage = {
   type: 'TRANSLATE_TEXT'
@@ -6,6 +7,7 @@ export type TranslateTextMessage = {
   sourceLanguage: LanguageCode
   targetLanguage: LanguageCode
   mode: TranslationMode
+  context?: TranslationRequestContext
 }
 
 export type TranslateTextResponse =
@@ -46,6 +48,7 @@ export async function requestTranslationRemote(
   targetLanguage: LanguageCode,
   signal?: AbortSignal,
   mode: TranslationMode = 'shortcut',
+  context?: TranslationRequestContext,
 ): Promise<TranslationOutcome> {
   if (signal?.aborted) return { ok: false, code: 'aborted' }
 
@@ -60,6 +63,7 @@ export async function requestTranslationRemote(
       sourceLanguage,
       targetLanguage,
       mode,
+      context,
     } satisfies TranslateTextMessage)) as TranslateTextResponse | ExtensionErrorResponse | undefined
 
     if (signal?.aborted) return { ok: false, code: 'aborted' }

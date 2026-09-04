@@ -70,9 +70,9 @@ export class IntelligentDebouncer {
 export function debounceOptionsForMode(mode: 'box' | 'direct'): DebounceOptions {
   if (mode === 'direct') {
     return {
-      defaultMs: CORRECTION_DEFAULTS.DIRECT_DEBOUNCE_MS,
-      wordBoundaryMs: CORRECTION_DEFAULTS.DIRECT_WORD_BOUNDARY_DEBOUNCE_MS,
-      sentenceBoundaryMs: CORRECTION_DEFAULTS.DIRECT_SENTENCE_BOUNDARY_DEBOUNCE_MS,
+      defaultMs: CORRECTION_DEFAULTS.LIVE_DIRECT_DEBOUNCE_MS,
+      wordBoundaryMs: CORRECTION_DEFAULTS.LIVE_DIRECT_WORD_BOUNDARY_DEBOUNCE_MS,
+      sentenceBoundaryMs: CORRECTION_DEFAULTS.LIVE_DIRECT_SENTENCE_BOUNDARY_DEBOUNCE_MS,
     }
   }
   return {

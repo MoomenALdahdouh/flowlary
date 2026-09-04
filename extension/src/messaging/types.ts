@@ -259,6 +259,7 @@ export type TranslateTextMessage = {
   sourceLanguage: string
   targetLanguage: string
   mode: 'shortcut' | 'live'
+  context?: import('@flowlary/shared').TranslationRequestContext
 }
 export type GetHistoryMessage = { type: 'GET_HISTORY' }
 export type DeleteHistoryEntryMessage = { type: 'DELETE_HISTORY_ENTRY'; id: string }

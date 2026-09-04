@@ -1,0 +1,65 @@
+[
+  {
+    "description": "fresh ticket matches",
+    "ticket": {
+      "elementGeneration": 1,
+      "originalText": "مرحبا",
+      "start": 0,
+      "end": 5,
+      "sourceLanguage": "ar",
+      "targetLanguage": "en",
+      "mode": "live"
+    },
+    "live": {
+      "generation": 1,
+      "text": "مرحبا",
+      "start": 0,
+      "end": 5,
+      "sourceLanguage": "ar",
+      "targetLanguage": "en"
+    },
+    "expectStale": false
+  },
+  {
+    "description": "generation mismatch is stale",
+    "ticket": {
+      "elementGeneration": 1,
+      "originalText": "مرحبا",
+      "start": 0,
+      "end": 5,
+      "sourceLanguage": "ar",
+      "targetLanguage": "en",
+      "mode": "live"
+    },
+    "live": {
+      "generation": 2,
+      "text": "مرحبا",
+      "start": 0,
+      "end": 5,
+      "sourceLanguage": "ar",
+      "targetLanguage": "en"
+    },
+    "expectStale": true
+  },
+  {
+    "description": "text changed at range is stale",
+    "ticket": {
+      "elementGeneration": 1,
+      "originalText": "hello",
+      "start": 0,
+      "end": 5,
+      "sourceLanguage": "ar",
+      "targetLanguage": "en",
+      "mode": "live"
+    },
+    "live": {
+      "generation": 1,
+      "text": "hallo",
+      "start": 0,
+      "end": 5,
+      "sourceLanguage": "ar",
+      "targetLanguage": "en"
+    },
+    "expectStale": true
+  }
+]

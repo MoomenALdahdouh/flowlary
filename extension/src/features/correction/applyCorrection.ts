@@ -18,6 +18,11 @@ import { isCorrectionAiReady } from './readiness.ts'
 import { allowAutomaticNetworkAssist } from '../../core/policy/writingPolicy.ts'
 import { allowsAutomaticFieldWrite } from '../../core/safety/autoWrite.ts'
 import {
+  isAssistCooldownActive,
+  noteAssistRateLimited,
+} from './assistCooldown.ts'
+import { hideEnglishPipelineSuggestion } from '../../core/writeGate/pipelineSuggest.ts'
+import {
   fieldKindFromElement,
   recordWriteTelemetry,
 } from '../../core/observability/writeTelemetry.ts'
@@ -36,6 +41,7 @@ export type FieldCorrectionState = {
   lastSentText: string
   lastCorrectedFor: string
   pendingRequestId: string | null
+  lastCorrectionRequestAt: number
   card: CorrectionCard | null
   cardMounted: boolean
 }
@@ -65,8 +71,6 @@ export async function runCorrectionRequest(
   options: ApplyCorrectionOptions,
 ): Promise<'committed' | 'stale' | 'blocked' | 'noop' | 'busy' | 'aborted' | 'error' | 'pending'> {
   if (!stateManager.isActive() || !stateManager.correction.enabled) return 'noop'
-  if (!stateManager.correction.consentAccepted) return 'blocked'
-  if (!isCorrectionAiReady(stateManager.correction)) return 'blocked'
   const commandLocked = Boolean(options.orchestratorLock)
   if (!commandLocked && !allowAutomaticNetworkAssist()) {
     recordWriteTelemetry({
@@ -118,6 +122,23 @@ export async function runCorrectionRequest(
     return 'noop'
   }
 
+  const mode = stateManager.correction.mode
+  const card = options.getCard(element)
+
+  if (!isCorrectionAiReady(stateManager.correction)) {
+    card.setError(mapError('consent_required'))
+    return 'blocked'
+  }
+
+  if (isAssistCooldownActive()) {
+    return 'noop'
+  }
+
+  if (mode === 'box' || stateManager.correction.highlights) {
+    hideEnglishPipelineSuggestion(session.field.id)
+    card.setAnalyzing()
+  }
+
   const active = session.getActiveRequest()
   const reuseOrchestratorLock =
     options.orchestratorLock &&
@@ -137,12 +158,9 @@ export async function runCorrectionRequest(
   const remoteRequestId = `${Date.now()}-${requestId}`
   options.fieldState.lastSentText = segment
   options.fieldState.pendingRequestId = remoteRequestId
+  options.fieldState.lastCorrectionRequestAt = Date.now()
   options.metrics.correction_requests += 1
   options.metrics.correction_ai_calls += 1
-
-  const mode = stateManager.correction.mode
-  const card = options.getCard(element)
-  if (mode === 'box') card.setAnalyzing()
 
   let delivery:
     | {
@@ -177,11 +195,15 @@ export async function runCorrectionRequest(
 
     if (!result.ok) {
       options.metrics.correction_errors += 1
-      if (mode === 'box' && result.error !== 'aborted') {
+      if (result.error === 'rate_limited') {
+        noteAssistRateLimited()
+      }
+      if (result.error !== 'aborted' && (mode === 'box' || stateManager.correction.highlights)) {
         card.setError(mapError(result.error))
       } else {
         card.hide()
       }
+      options.fieldState.pendingRequestId = null
       return 'error'
     }
 
@@ -254,6 +276,7 @@ async function deliverCorrectionResult(
       requestedFullText,
       response: { ...data, originalText: segment },
     }
+    hideEnglishPipelineSuggestion(session.field.id)
     options.getCard(element).setReady(binding)
     options.metrics.correction_card_shown += 1
     recordCorrectionDetected(remoteRequestId, segment, binding.response)
@@ -269,6 +292,7 @@ async function deliverCorrectionResult(
       requestedFullText,
       response: { ...data, originalText: segment },
     }
+    hideEnglishPipelineSuggestion(session.field.id)
     options.getCard(element).setReady(binding)
     options.metrics.correction_card_shown += 1
     recordCorrectionDetected(remoteRequestId, segment, binding.response)
@@ -527,11 +551,12 @@ export function syncCardVisibility(
   const mode = stateManager.correction.mode
   const card = options.getCard(element)
 
-  if (
-    mode === 'direct' &&
-    stateManager.correction.highlights &&
-    card.hasReadyCorrection()
-  ) {
+  const cardState = card.getState()
+
+  if (mode === 'direct') {
+    if (card.hasReadyCorrection() || cardState === 'error') return
+    if (cardState === 'analyzing' && stateManager.correction.highlights) return
+    card.hide()
     return
   }
 

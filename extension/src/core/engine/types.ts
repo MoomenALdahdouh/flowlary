@@ -198,7 +198,10 @@ export type FieldContext = {
   aiWritingReviewEnabled: boolean
   liveTranslation: boolean
   arabicToEnglishMode: boolean
+  translationPauseReady: boolean
+  translatedRanges: readonly { start: number; end: number }[]
   polishAfterTranslate: boolean
+  liveWholeFieldCorrection: boolean
   cooldownActive: boolean
   textLength: number
   inputSource: InputSource

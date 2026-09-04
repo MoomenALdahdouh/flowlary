@@ -5,6 +5,12 @@ export const CORRECTION_DEFAULTS = {
   DIRECT_DEBOUNCE_MS: 90,
   DIRECT_WORD_BOUNDARY_DEBOUNCE_MS: 25,
   DIRECT_SENTENCE_BOUNDARY_DEBOUNCE_MS: 20,
+  /** Minimum spacing between live whole-field CORRECT_TEXT calls (managed API RPM). */
+  LIVE_CORRECTION_MIN_INTERVAL_MS: 2500,
+  /** Live direct-mode debounce — slower than legacy EWA to protect server rate limits. */
+  LIVE_DIRECT_DEBOUNCE_MS: 450,
+  LIVE_DIRECT_WORD_BOUNDARY_DEBOUNCE_MS: 700,
+  LIVE_DIRECT_SENTENCE_BOUNDARY_DEBOUNCE_MS: 350,
   MIN_CHARS: 8,
   MIN_WORDS: 3,
   /** @deprecated Field-length gate removed — use extractWritingContext() bounds instead. */

@@ -1,6 +1,5 @@
-import { requestTranslationRemote } from '../../features/translation/client.ts'
-import { isStaleTicket } from '../../features/translation/stale.ts'
-import type { TranslationOutcome, TranslationTicket } from '../../features/translation/types.ts'
+import { executeTranslation } from '../../features/translation/executor.ts'
+import type { TranslationOutcome } from '../../features/translation/types.ts'
 import {
   DEFAULT_SOURCE_LANGUAGE,
   DEFAULT_TARGET_LANGUAGE,
@@ -10,38 +9,42 @@ import { stateManager } from '../state/StateManager.ts'
 import { readFieldText } from '../dom/read.ts'
 import { resolveWritingPolicy } from '../policy/writingPolicy.ts'
 import { recordWritingAnalytics } from '../observability/writingAnalytics.ts'
-import { commitWriteTransaction } from './writeGate.ts'
 import type { EditableElement } from '../dom/types.ts'
 import type { FieldSession } from '../session/FieldSession.ts'
 import type { TextRange } from '../engine/types.ts'
 import { analyzeFieldText } from '../engine/chunks.ts'
-import { planPreservedTranslation } from '../engine/preserveTokens.ts'
+import { requestTranslationRemote } from '../../features/translation/client.ts'
+import { isSentenceCompleteSegment } from '../../features/translation/segments.ts'
+import type { TranslationRequestContext } from '@flowlary/shared'
 
 export type PipelineTranslateFn = (
   text: string,
   sourceLanguage: string,
   targetLanguage: string,
   signal?: AbortSignal,
+  context?: TranslationRequestContext,
 ) => Promise<TranslationOutcome>
 
-let translateFn: PipelineTranslateFn = (text, source, target, signal) =>
+let translateFn: PipelineTranslateFn = (text, source, target, signal, context) =>
   requestTranslationRemote(
     text,
     normalizeLanguage(source, DEFAULT_SOURCE_LANGUAGE),
     normalizeLanguage(target, DEFAULT_TARGET_LANGUAGE),
     signal,
     'live',
+    context,
   )
 
 export function setPipelineTranslateFnForTests(fn: PipelineTranslateFn | null): void {
   translateFn = fn
-    ?? ((text, source, target, signal) =>
+    ?? ((text, source, target, signal, context) =>
       requestTranslationRemote(
         text,
         normalizeLanguage(source, DEFAULT_SOURCE_LANGUAGE),
         normalizeLanguage(target, DEFAULT_TARGET_LANGUAGE),
         signal,
         'live',
+        context,
       ))
 }
 
@@ -83,13 +86,6 @@ export async function fulfillTranslationDecision(
   const liveText = readFieldText(element)
   const source = liveText.slice(range.start, range.end)
   if (!source.trim()) return 'noop'
-  const preserve = planPreservedTranslation(
-    liveText,
-    range.start,
-    range.end,
-    analyzeFieldText(liveText).chunks,
-  )
-  const outbound = preserve.payload
 
   const requestKey = translationRequestKey(
     session.field.id,
@@ -102,104 +98,49 @@ export async function fulfillTranslationDecision(
   if (session.getLastPipelineTranslateKey() === requestKey) return 'noop'
   session.notePipelineTranslateKey(requestKey)
 
-  const ticket: TranslationTicket = {
-    elementGeneration: cycleGeneration,
-    originalText: source,
-    start: range.start,
-    end: range.end,
+  const analysis = analyzeFieldText(liveText)
+  const translationContext: TranslationRequestContext = {
+    mode: 'live',
+    segment_complete: isSentenceCompleteSegment(liveText, range.start, range.end),
+    focus_out_completion: session.takeTranslationFocusOutCompletion(),
+  }
+  // #region agent log
+  fetch('http://127.0.0.1:7879/ingest/9d16d7be-6afb-4b03-8147-7577c1b418b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0ba0e0'},body:JSON.stringify({sessionId:'0ba0e0',runId:'pre-fix',hypothesisId:'E',location:'pipelineTranslate.ts:fulfill',message:'live translate context',data:{sourceLen:source.length,segment_complete:translationContext.segment_complete===true,focus_out_completion:translationContext.focus_out_completion===true,hasBs:/بس/.test(source),hasListenCue:/اسمع/.test(source)},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
+  const result = await executeTranslation({
+    element,
+    session,
+    range,
+    sourceText: source,
     sourceLanguage,
     targetLanguage,
     mode: 'live',
-  }
-
-  const controller = new AbortController()
-  let outcome: TranslationOutcome
-  try {
-    outcome = await translateFn(outbound, sourceLanguage, targetLanguage, controller.signal)
-  } catch {
-    session.notePipelineTranslateKey(null)
-    recordTranslationFailure('translation_failed')
-    return 'noop'
-  }
-
-  if (controller.signal.aborted) {
-    session.notePipelineTranslateKey(null)
-    return 'stale'
-  }
-
-  if (!outcome.ok) {
-    session.notePipelineTranslateKey(null)
-    recordTranslationFailure(outcome.code)
-    return 'noop'
-  }
-
-  const restored = preserve.restore(outcome.translation.trim())
-  if (!restored.ok) {
-    session.notePipelineTranslateKey(null)
-    recordTranslationFailure('preserve_lost')
-    return 'noop'
-  }
-  const translated = restored.text.trim()
-  if (!translated || translated === source) {
-    session.notePipelineTranslateKey(null)
-    recordTranslationFailure('empty_or_unchanged')
-    return 'noop'
-  }
-
-  if (!policy.arabicToEnglishMode || session.isTranslationPaused() || !session.getTranslationSessionId()) {
-    session.notePipelineTranslateKey(null)
-    return 'noop'
-  }
-
-  const current = readFieldText(element)
-  if (
-    isStaleTicket(ticket, {
-      generation: session.getGeneration(),
-      text: current,
-      start: range.start,
-      end: range.end,
-      sourceLanguage,
-      targetLanguage,
-    })
-  ) {
-    session.notePipelineTranslateKey(null)
-    return 'stale'
-  }
-
-  const acquired = session.tryAcquireWrite('TRANSLATE')
-  if (!acquired.ok) {
-    session.notePipelineTranslateKey(null)
-    return 'blocked'
-  }
-
-  if (session.getGeneration() !== cycleGeneration) {
-    session.releaseWrite('TRANSLATE', acquired.requestId)
-    session.notePipelineTranslateKey(null)
-    return 'stale'
-  }
-
-  const write = commitWriteTransaction(element, range.start, range.end, translated, {
-    session,
-    requestId: acquired.requestId,
-    expectedGeneration: acquired.generation,
-    cycleGeneration,
-    origin: 'TRANSLATE',
-    auto: true,
-    engineOriginated: true,
-    capability: 'translation',
     trigger: 'auto',
-    textOrigin: 'translated_en',
-    action: 'translation',
-    tagTranslated: true,
-    allowActiveEdit: true,
-    placeCaretAfter: true,
+    tokenStrategy: 'preserve',
+    cycleGeneration,
+    auto: true,
+    acquireMutex: true,
+    engineOriginated: true,
+    recordHistoryEntry: false,
+    chunks: analysis.chunks,
+    translate: (text, src, tgt, signal) =>
+      translateFn(text, src, tgt, signal, translationContext),
   })
-  session.releaseWrite('TRANSLATE', acquired.requestId)
 
-  if (write.verdict !== 'written') {
+  if (result.status !== 'committed') {
     session.notePipelineTranslateKey(null)
-    return write.verdict === 'stale' ? 'stale' : 'blocked'
+    if (result.status === 'stale') return 'stale'
+    if (result.status === 'blocked' || result.status === 'busy') return 'blocked'
+    if (result.status === 'error') {
+      recordTranslationFailure(result.reason ?? 'translation_failed')
+    } else if (result.reason === 'preserve_lost') {
+      recordTranslationFailure('preserve_lost')
+    } else if (result.reason === 'empty_or_unchanged') {
+      recordTranslationFailure('empty_or_unchanged')
+    }
+    return 'noop'
   }
+
   return 'applied'
 }
 

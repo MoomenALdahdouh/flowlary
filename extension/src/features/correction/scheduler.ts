@@ -1,3 +1,4 @@
+import { CORRECTION_DEFAULTS } from '@flowlary/shared'
 import type { InputEngine } from '../../core/input/InputEngine.ts'
 import { evaluateFieldSafety } from '../../core/safety/index.ts'
 import { readFieldText, isEditableElement } from '../../core/dom/read.ts'
@@ -5,7 +6,9 @@ import { commitWriteTransaction } from '../../core/writeGate/writeGate.ts'
 import type { EditableElement } from '../../core/dom/types.ts'
 import { stateManager } from '../../core/state/StateManager.ts'
 import { applyInstantSpellingIfSafe } from './instantSpell.ts'
-import { isEnforceEngineEnabled } from '../../core/engine/flag.ts'
+import { isCorrectionSchedulerEligible } from './liveAssist.ts'
+import { isAssistCooldownActive } from './assistCooldown.ts'
+import { recordInstantSpellOutcome } from './recordSpanCorrectionOutcome.ts'
 import { shouldShowEnglishAssistant } from './language.ts'
 import {
   debounceOptionsForMode,
@@ -29,6 +32,7 @@ import { cancelCorrectionRemote } from './client.ts'
 import { isCorrectionHost } from './ui/CorrectionCard.ts'
 import { allowsAutomaticFieldWrite } from '../../core/safety/autoWrite.ts'
 import { allowAutomaticNetworkAssist, isShortcutsOnly } from '../../core/policy/writingPolicy.ts'
+import { hideEnglishPipelineSuggestion } from '../../core/writeGate/pipelineSuggest.ts'
 import {
   fieldKindFromElement,
   recordWriteTelemetry,
@@ -52,7 +56,22 @@ export class CorrectionScheduler {
   }
 
   start(): void {
-    // Retired as an EventBus writer. Auto English assist runs in the enforce pipeline.
+    if (this.unsubscribe) return
+    this.unsubscribe = this.options.engine.eventBus.subscribe((event) => {
+      if (event.origin === 'SYSTEM') return
+      if (event.type === 'input') {
+        if (event.composing) return
+        this.onInput(event.target)
+        return
+      }
+      if (event.type === 'composition-end') {
+        this.onInput(event.target)
+        return
+      }
+      if (event.type === 'focus-out') {
+        this.teardownField(event.target)
+      }
+    })
   }
 
   stop(): void {
@@ -116,6 +135,7 @@ export class CorrectionScheduler {
         lastSentText: '',
         lastCorrectedFor: '',
         pendingRequestId: null,
+        lastCorrectionRequestAt: 0,
         card: null,
         cardMounted: false,
       }
@@ -151,10 +171,12 @@ export class CorrectionScheduler {
 
     invalidateCardIfStale(element, session, text, applyOptions)
 
-    if (isEnforceEngineEnabled()) {
+    if (!isCorrectionSchedulerEligible()) {
       fieldState.debouncer.cancel()
+      fieldState.card?.hide()
       return
     }
+    hideEnglishPipelineSuggestion(session.field.id)
     if (session.hasTranslatedOverlap(0, text.length) && !stateManager.settings.polishAfterTranslate) {
       fieldState.debouncer.cancel()
       return
@@ -235,6 +257,11 @@ export class CorrectionScheduler {
               fieldState.lastSentText = segment
               fieldState.debouncer.bump()
               this.options.metrics.correction_local_hits += 1
+              recordInstantSpellOutcome({
+                element,
+                fullTextBefore: text,
+                fullTextAfter: fixed,
+              })
             }
           }
         }
@@ -272,6 +299,22 @@ export class CorrectionScheduler {
     }
 
     if (!allowsAutomaticFieldWrite(element) && stateManager.correction.mode === 'direct') {
+      fieldState.debouncer.cancel()
+      return
+    }
+
+    if (isAssistCooldownActive()) {
+      fieldState.debouncer.cancel()
+      return
+    }
+
+    if (!endsWithWordBoundary(workingText) && !endsWithSentenceBoundary(workingText)) {
+      fieldState.debouncer.cancel()
+      return
+    }
+
+    const now = Date.now()
+    if (now - fieldState.lastCorrectionRequestAt < CORRECTION_DEFAULTS.LIVE_CORRECTION_MIN_INTERVAL_MS) {
       fieldState.debouncer.cancel()
       return
     }

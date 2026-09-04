@@ -11,8 +11,8 @@ import { TranslationEngine } from './engine.ts'
 import { requestTranslationRemote } from './client.ts'
 import { createTranslationCache } from './cache.ts'
 import { resolveTranslateTarget, targetLooksProtected } from './selection.ts'
-import { isStaleTicket } from './stale.ts'
-import type { TranslationOutcome, TranslationRequest, TranslationTicket } from './types.ts'
+import { executeTranslation } from './executor.ts'
+import type { TranslationOutcome, TranslationRequest } from './types.ts'
 import {
   DEFAULT_SOURCE_LANGUAGE,
   DEFAULT_TARGET_LANGUAGE,
@@ -21,7 +21,6 @@ import {
 } from './languages.ts'
 import { createTranslationMetrics, type TranslationMetrics } from './metrics.ts'
 import { TranslationScheduler } from './scheduler.ts'
-import { recordHistory } from '../../storage/history/record.ts'
 import { InlineSuggestionCard } from '../shared/InlineSuggestionCard.ts'
 
 export type TranslationProviderFn = (
@@ -237,64 +236,25 @@ export function createTranslationFeature(options: TranslationModuleOptions): Tra
         return { ok: false, operation: 'TRANSLATE', error: 'protected' }
       }
 
-      const ticket: TranslationTicket = {
-        elementGeneration: generation,
-        originalText: target.text,
-        start: target.start,
-        end: target.end,
-        sourceLanguage,
-        targetLanguage,
-        mode: 'shortcut',
-      }
-
-      const outcome = await engine.translate(
-        {
-          text: target.text,
-          sourceLanguage,
-          targetLanguage,
-          mode: 'shortcut',
-        },
-        signal,
-      )
-
-      if (signal?.aborted) {
-        return { ok: false, operation: 'TRANSLATE', aborted: true }
-      }
-
-      if (!outcome.ok) {
-        return { ok: false, operation: 'TRANSLATE', error: outcome.code }
-      }
-
-      if (outcome.translation === target.text) {
-        return { ok: false, operation: 'TRANSLATE', error: 'noop' }
-      }
-
-      const liveText = readFieldText(editable)
-      if (
-        isStaleTicket(ticket, {
-          generation: session.getGeneration(),
-          text: liveText,
-          start: target.start,
-          end: target.end,
-          sourceLanguage,
-          targetLanguage,
-        })
-      ) {
-        return { ok: false, operation: 'TRANSLATE', stale: true }
-      }
-
-      const commit = session.canCommit(generation, requestId)
-      if (!commit.ok) {
-        return {
-          ok: false,
-          operation: 'TRANSLATE',
-          stale: commit.reason === 'stale-generation' || commit.reason === 'stale-request',
-          aborted: commit.reason === 'aborted',
-          error: commit.reason,
-        }
-      }
-
       if (stateManager.translation.mode === 'box') {
+        const outcome = await engine.translate(
+          {
+            text: target.text,
+            sourceLanguage,
+            targetLanguage,
+            mode: 'shortcut',
+          },
+          signal,
+        )
+        if (signal?.aborted) {
+          return { ok: false, operation: 'TRANSLATE', aborted: true }
+        }
+        if (!outcome.ok) {
+          return { ok: false, operation: 'TRANSLATE', error: outcome.code }
+        }
+        if (outcome.translation === target.text) {
+          return { ok: false, operation: 'TRANSLATE', error: 'noop' }
+        }
         ensureCard(editable).show(
           {
             element: editable,
@@ -307,32 +267,39 @@ export function createTranslationFeature(options: TranslationModuleOptions): Tra
         return { ok: true, operation: 'TRANSLATE', data: { applied: false, mode: 'box' } }
       }
 
-      const write = commitWriteTransaction(editable, target.start, target.end, outcome.translation, {
-        origin: 'TRANSLATE',
+      const result = await executeTranslation({
+        element: editable,
         session,
+        range: { start: target.start, end: target.end },
+        sourceText: target.text,
+        sourceLanguage,
+        targetLanguage,
+        mode: 'shortcut',
+        trigger: 'shortcut',
+        tokenStrategy: 'block',
         requestId,
         expectedGeneration: generation,
-        placeCaretAfter: true,
-        allowActiveEdit: true,
-        capability: 'translation',
-        trigger: 'shortcut',
-        tagTranslated: true,
+        cycleGeneration: generation,
+        signal,
+        recordHistoryEntry: true,
+        translate: (text, src, tgt, abortSignal) =>
+          engine.translate(
+            { text, sourceLanguage: src, targetLanguage: tgt, mode: 'shortcut' },
+            abortSignal,
+          ),
       })
 
-      if (write.verdict !== 'written') {
-        return { ok: false, operation: 'TRANSLATE', stale: true, error: write.reason ?? 'stale' }
+      if (result.status === 'committed') {
+        return { ok: true, operation: 'TRANSLATE', data: { applied: true, mode: target.mode } }
       }
 
-      void recordHistory({
+      return {
+        ok: false,
         operation: 'TRANSLATE',
-        element: editable,
-        sourceText: target.text,
-        resultText: outcome.translation,
-        mode: 'manual',
-        metadata: { sourceLanguage, targetLanguage },
-      })
-
-      return { ok: true, operation: 'TRANSLATE', data: { applied: true, mode: target.mode } }
+        stale: result.status === 'stale' || result.status === 'aborted',
+        aborted: result.status === 'aborted',
+        error: result.reason ?? result.status,
+      }
     },
   }
 }

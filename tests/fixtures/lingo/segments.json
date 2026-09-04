@@ -1,0 +1,39 @@
+[
+  {
+    "description": "no segment mid-word typing",
+    "text": "مرحبا",
+    "caret": 5,
+    "fn": "liveSegmentOnPause",
+    "expect": { "text": "مرحبا", "complete": true }
+  },
+  {
+    "description": "no segment without sentence boundary during word-by-word typing",
+    "text": "مرحبا كيف حالك",
+    "caret": 15,
+    "fn": "lastCompletedSegment",
+    "options": { "requireBoundary": true },
+    "expect": null
+  },
+  {
+    "description": "completed sentence after Arabic question mark",
+    "text": "مرحبا كيف حالك؟",
+    "caret": 16,
+    "fn": "lastCompletedSegment",
+    "options": { "requireBoundary": true },
+    "expect": { "text": "مرحبا كيف حالك؟", "complete": true }
+  },
+  {
+    "description": "current paragraph for manual fallback",
+    "text": "First line\n\nSecond paragraph here.",
+    "caret": 28,
+    "fn": "currentParagraph",
+    "expect": { "text": "Second paragraph here." }
+  },
+  {
+    "description": "live pause falls back to paragraph when no sentence end",
+    "text": "مرحبا world",
+    "caret": 11,
+    "fn": "liveSegmentOnPause",
+    "expect": { "text": "مرحبا world" }
+  }
+]

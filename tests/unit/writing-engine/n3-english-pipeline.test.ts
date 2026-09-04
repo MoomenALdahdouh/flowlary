@@ -1,3 +1,4 @@
+/** @vitest-environment happy-dom */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { FieldSession } from '../../../extension/src/core/session/FieldSession.ts'
 import { stateManager } from '../../../extension/src/core/state/StateManager.ts'
@@ -97,31 +98,90 @@ describe('N3 unified English assist', () => {
     vi.restoreAllMocks()
   })
 
-  it('1. original English simple typo auto-corrects when allowed', async () => {
+  it('1. original English simple typo does not enforce-write when English improvement is off', async () => {
+    stateManager.correction.consentAccepted = false
+    applyUserWritingPolicy({ improveEnglish: false, fixWrongTyping: true, helpStyle: 'auto' })
     const ta = textarea('I dont know.')
     const session = new FieldSession(ta)
     const result = await runFieldCycle(ta, session)
-    expect(result).toBe('applied')
-    expect(ta.value).toBe("I don't know.")
+    expect(result).toBe('noop')
+    expect(ta.value).toBe('I dont know.')
+  })
+
+  it('1a. defers enforce local spelling when whole-field scheduler is eligible', async () => {
+    stateManager.correction.consentAccepted = false
+    const ta = textarea('I dont know.')
+    const session = new FieldSession(ta)
+    const result = await runFieldCycle(ta, session)
+    expect(result).toBe('noop')
+    expect(ta.value).toBe('I dont know.')
+  })
+
+  it('1b. defers local spelling when live whole-field correction is active', async () => {
+    stateManager.correction.consentAccepted = true
+    const ta = textarea('I dont know.')
+    const session = new FieldSession(ta)
+    const result = await runFieldCycle(ta, session)
+    expect(result).toBe('noop')
+    expect(ta.value).toBe('I dont know.')
   })
 
   it('2. suggestions mode shows a card and does not write', async () => {
-    policy('suggestions')
+    stateManager.correction.enabled = false
+    applyUserWritingPolicy({
+      helpStyle: 'suggestions',
+      improveEnglish: false,
+      fixWrongTyping: true,
+    })
     const ta = textarea('I dont know.')
     const session = new FieldSession(ta)
-    const result = await runFieldCycle(ta, session)
-    expect(result).toBe('suggestion')
+    presentPipelineSuggestion({
+      fieldId: session.field.id,
+      element: ta,
+      session,
+      generation: session.getGeneration(),
+      range: { start: 2, end: 6 },
+      sourceText: 'dont',
+      suggestion: "don't",
+      action: 'english_correction',
+      textOrigin: 'original_en',
+    })
     expect(ta.value).toBe('I dont know.')
     expect(getActivePipelineSuggestion(session.field.id)?.suggestion).toBe("don't")
     expect(document.querySelectorAll('[data-flowlary-suggestion-host]').length).toBe(1)
   })
 
-  it('3. suggestion Apply goes through the Write Gate', async () => {
+  it('2b. suggestions mode with whole-field enabled defers enforce span UI', async () => {
     policy('suggestions')
+    stateManager.correction.consentAccepted = true
+    const ta = textarea('I dont know.')
+    const session = new FieldSession(ta)
+    const result = await runFieldCycle(ta, session)
+    expect(result).toBe('noop')
+    expect(getActivePipelineSuggestion(session.field.id)).toBeNull()
+  })
+
+  it('3. suggestion Apply goes through the Write Gate', async () => {
+    stateManager.correction.enabled = false
+    applyUserWritingPolicy({
+      helpStyle: 'suggestions',
+      improveEnglish: false,
+      fixWrongTyping: true,
+    })
     const spy = vi.spyOn(writeGate, 'commitWriteTransaction')
     const ta = textarea('I dont know.')
     const session = new FieldSession(ta)
-    await runFieldCycle(ta, session)
+    presentPipelineSuggestion({
+      fieldId: session.field.id,
+      element: ta,
+      session,
+      generation: session.getGeneration(),
+      range: { start: 2, end: 6 },
+      sourceText: 'dont',
+      suggestion: "don't",
+      action: 'english_correction',
+      textOrigin: 'original_en',
+    })
     expect(applyPipelineSuggestion(session.field.id)).toBe('applied')
     expect(ta.value).toBe("I don't know.")
     expect(spy).toHaveBeenCalled()
@@ -129,20 +189,50 @@ describe('N3 unified English assist', () => {
   })
 
   it('4. suggestion Dismiss does not write', async () => {
-    policy('suggestions')
+    stateManager.correction.enabled = false
+    applyUserWritingPolicy({
+      helpStyle: 'suggestions',
+      improveEnglish: false,
+      fixWrongTyping: true,
+    })
     const ta = textarea('I dont know.')
     const session = new FieldSession(ta)
-    await runFieldCycle(ta, session)
+    presentPipelineSuggestion({
+      fieldId: session.field.id,
+      element: ta,
+      session,
+      generation: session.getGeneration(),
+      range: { start: 2, end: 6 },
+      sourceText: 'dont',
+      suggestion: "don't",
+      action: 'english_correction',
+      textOrigin: 'original_en',
+    })
     expect(dismissPipelineSuggestion(session.field.id)).toBe('dismissed')
     expect(ta.value).toBe('I dont know.')
     expect(getActivePipelineSuggestion(session.field.id)).toBeNull()
   })
 
   it('5. stale suggestion cannot apply', async () => {
-    policy('suggestions')
+    stateManager.correction.enabled = false
+    applyUserWritingPolicy({
+      helpStyle: 'suggestions',
+      improveEnglish: false,
+      fixWrongTyping: true,
+    })
     const ta = textarea('I dont know.')
     const session = new FieldSession(ta)
-    await runFieldCycle(ta, session)
+    presentPipelineSuggestion({
+      fieldId: session.field.id,
+      element: ta,
+      session,
+      generation: session.getGeneration(),
+      range: { start: 2, end: 6 },
+      sourceText: 'dont',
+      suggestion: "don't",
+      action: 'english_correction',
+      textOrigin: 'original_en',
+    })
     ta.value = 'I changed this sentence.'
     expect(applyPipelineSuggestion(session.field.id)).toBe('stale')
     expect(ta.value).toBe('I changed this sentence.')
@@ -344,6 +434,8 @@ describe('N3 unified English assist', () => {
   })
 
   it('17. only one active suggestion per field', async () => {
+    stateManager.correction.enabled = false
+    applyUserWritingPolicy({ improveEnglish: false, fixWrongTyping: true, helpStyle: 'suggestions' })
     const ta = textarea('I dont know.')
     const session = new FieldSession(ta)
     presentPipelineSuggestion({
@@ -373,10 +465,21 @@ describe('N3 unified English assist', () => {
   })
 
   it('18. analytics records origin and outcome without raw text', async () => {
-    policy('suggestions')
+    stateManager.correction.enabled = false
+    applyUserWritingPolicy({ helpStyle: 'suggestions', improveEnglish: false, fixWrongTyping: true })
     const ta = textarea('I dont know.')
     const session = new FieldSession(ta)
-    await runFieldCycle(ta, session)
+    presentPipelineSuggestion({
+      fieldId: session.field.id,
+      element: ta,
+      session,
+      generation: session.getGeneration(),
+      range: { start: 2, end: 6 },
+      sourceText: 'dont',
+      suggestion: "don't",
+      action: 'english_correction',
+      textOrigin: 'original_en',
+    })
     applyPipelineSuggestion(session.field.id)
     const snapshot = getWritingAnalyticsSnapshot()
     const serialized = JSON.stringify(snapshot)
