@@ -215,6 +215,9 @@ describe('marketing routes', () => {
 
   it('lab route sends people into the dashboard writing lab', () => {
     const html = renderRoute('/lab')
+    expect(html).toContain('<h1')
+    expect(html).toContain('Writing Lab')
+    expect(html).toContain('/dashboard#lab')
     expect(html).not.toContain('flowlary-api.zaixos.com')
     expect(html.toLowerCase()).not.toContain('postpond')
   })
