@@ -18,6 +18,8 @@ export type WritingRuntimeModules = {
  * Authoritative content-script boot order:
  * account/settings hydrate → engine mode → input + enforce + orchestrator.
  * Feature modules start for shortcut/Speed Box fulfillment only — they are not EventBus writers.
+ * Auto analysis is scheduled by IdleScheduler (started from startEnforceCoordinator).
+ * `legacyImmediateCycle` stays false in production.
  */
 export async function startWritingRuntime(modules: WritingRuntimeModules): Promise<EngineMode> {
   await modules.bootstrap()

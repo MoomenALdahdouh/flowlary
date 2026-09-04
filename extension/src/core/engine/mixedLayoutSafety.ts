@@ -3,6 +3,7 @@
  * Distinguishes a coherent keyboard-layout run from intentional mixed language.
  * No word lists. No network.
  */
+import { isEnglishWord } from '../../features/layout/layouts/lexicons/en-words.ts'
 import { mapLayout } from '../../features/layout/layouts/registry.ts'
 import type { LayoutSpanInference, TextRange, WritingChunk } from './types.ts'
 
@@ -98,5 +99,26 @@ export function layoutSpanUnsafeForAutoWrite(
 ): boolean {
   if (layoutSpanConflictsWithMixedIntent(span.range, chunks)) return true
   const source = sourceText.slice(span.range.start, span.range.end)
-  return layoutReplacementDropsSharedPunct(source, span.replacement)
+  if (layoutReplacementDropsSharedPunct(source, span.replacement)) return true
+  if (!layoutReplacementIsCredible(span.replacement)) return true
+  return false
+}
+
+/**
+ * Arabic→English layout must land on real English words (hello), never junk (ofvkd).
+ * English→Arabic layout may be Arabic script.
+ */
+export function layoutReplacementIsCredible(replacement: string): boolean {
+  const text = replacement.trim()
+  if (!text) return false
+  const hasArabic = /[\u0600-\u06FF]/.test(text)
+  const latinWords = text.split(/[^\p{L}']+/u).filter((word) => /[A-Za-z]/.test(word))
+  if (hasArabic && latinWords.length === 0) return true
+  if (latinWords.length === 0) return false
+  let hits = 0
+  for (const word of latinWords) {
+    const lower = word.toLocaleLowerCase()
+    if (isEnglishWord(lower) || isEnglishWord(lower.replace(/'/g, ''))) hits += 1
+  }
+  return hits >= 1 && hits / latinWords.length >= 0.6
 }

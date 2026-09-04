@@ -20,6 +20,7 @@ import { runFieldCycle } from '../../../extension/src/core/writeGate/pipeline.ts
 import { skipReasonForToken } from '../../../extension/src/core/safety/tokenKind.ts'
 import { mapLayoutText } from '../../../extension/src/features/layout/layouts/registry.ts'
 import { commitWriteTransaction } from '../../../extension/src/core/writeGate/writeGate.ts'
+import { issueImmediateWriteAuthorization } from '../../../extension/src/core/runtime/writeAuthorization.ts'
 import { readFieldText } from '../../../extension/src/core/dom/read.ts'
 import { clearWritingAnalytics, getWritingAnalyticsSnapshot } from '../../../extension/src/core/observability/writingAnalytics.ts'
 
@@ -188,6 +189,13 @@ describe('product readiness — stale generation protection', () => {
     const ta = textarea('hello world')
     const session = new FieldSession(ta)
     const gen = session.getGeneration()
+    const authorization = issueImmediateWriteAuthorization({
+      session,
+      action: 'english_correction',
+      range: { start: 0, end: 5 },
+      replacement: 'world',
+      snapshotFullText: 'hello world',
+    })
     session.bumpGeneration()
     const acquired = session.tryAcquireWrite('CORRECT')
     expect(acquired.ok).toBe(true)
@@ -202,6 +210,8 @@ describe('product readiness — stale generation protection', () => {
       engineOriginated: true,
       capability: 'correction',
       trigger: 'auto',
+      action: 'english_correction',
+      authorization,
     })
     expect(result.verdict).toBe('stale')
     expect(ta.value).toBe('hello world')
@@ -445,6 +455,14 @@ describe('product readiness — first-run defaults and write cue', () => {
       engineOriginated: true,
       capability: 'correction',
       trigger: 'auto',
+      action: 'english_correction',
+      authorization: issueImmediateWriteAuthorization({
+        session,
+        action: 'english_correction',
+        range: { start: 0, end: 5 },
+        replacement: 'howdy',
+        snapshotFullText: 'hello world',
+      }),
     })
     expect(result.verdict).toBe('written')
     const flash = document.querySelector('.fl-correction-flash')

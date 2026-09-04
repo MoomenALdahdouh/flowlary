@@ -6,6 +6,46 @@ export type CommandTarget = {
   adapter: EditableAdapter | null
 }
 
+/** Walk open shadow roots (and same-origin iframes) to the real focused control. */
+export function deepActiveElement(
+  root: Document | ShadowRoot | null | undefined = typeof document !== 'undefined' ? document : null,
+): Element | null {
+  if (!root) return null
+  let el: Element | null = root.activeElement
+  const seen = new Set<Element>()
+  while (el && !seen.has(el)) {
+    seen.add(el)
+    if (el instanceof HTMLIFrameElement) {
+      try {
+        const inner = el.contentDocument
+        if (inner) {
+          const nested = deepActiveElement(inner)
+          if (nested && nested !== inner.body && nested !== inner.documentElement) {
+            el = nested
+            continue
+          }
+        }
+      } catch {
+        break
+      }
+      break
+    }
+    const shadow = el instanceof HTMLElement ? el.shadowRoot : null
+    if (shadow?.activeElement) {
+      el = shadow.activeElement
+      continue
+    }
+    break
+  }
+  return el
+}
+
+export function eventTargetForCommand(event: Event): EventTarget | null {
+  const path = typeof event.composedPath === 'function' ? event.composedPath() : []
+  const hit = path[0]
+  return hit instanceof EventTarget ? hit : event.target
+}
+
 /**
  * Canonical command-target resolution.
  * Reuses EditableAdapter / DOM layer — does not invent a second field detector.
@@ -15,7 +55,7 @@ export type CommandTarget = {
  */
 export function resolveCommandTarget(
   from: EventTarget | null | undefined = typeof document !== 'undefined'
-    ? document.activeElement
+    ? deepActiveElement(document)
     : null,
 ): CommandTarget | null {
   const adapter = findEditableFromTarget(from ?? null)
@@ -34,7 +74,8 @@ export function resolveCommandTarget(
     if (node instanceof HTMLElement && node.isContentEditable) {
       return { element: node, adapter: createEditableAdapter(node) }
     }
-    node = node.parentElement
+    const root = node.getRootNode()
+    node = node.parentElement ?? (root instanceof ShadowRoot ? root.host : null)
   }
 
   return null

@@ -59,6 +59,20 @@ describe('unified writing assistant', () => {
     expect(stateManager.correction.enabled).toBe(true)
   })
 
+  it('keeps live translation on in Box mode so cards can appear', () => {
+    applyUserWritingPolicy({
+      helpStyle: 'suggestions',
+      fixWrongTyping: false,
+      improveEnglish: false,
+      arabicToEnglishMode: true,
+    })
+    const policy = resolveWritingPolicy()
+    expect(policy.helpStyle).toBe('suggestions')
+    expect(policy.liveTranslation).toBe(true)
+    expect(stateManager.translation.liveEnabled).toBe(true)
+    expect(stateManager.translation.mode).toBe('box')
+  })
+
   it('keeps existing users on derived auto when helpStyle is unset', () => {
     expect(resolveWritingPolicy().helpStyle).toBe('auto')
     expect(resolveWritingPolicy().derived).toBe(true)

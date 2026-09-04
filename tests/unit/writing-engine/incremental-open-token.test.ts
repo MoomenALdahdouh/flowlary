@@ -100,11 +100,11 @@ describe('incremental open-token writing', () => {
     expect(analyzeFieldText(ta.value, { caret: ta.value.length }).openToken).not.toBeNull()
   })
 
-  it('repairs a completed garbled word after the space', async () => {
+  it('does not force-remap an isolated completed garbled word after Space', async () => {
     const completed = `${GARBLED_COMING} `
-    expect(inferLayoutSpans(completed).some((span) => span.replacement === 'comming' && span.risk === 'low')).toBe(true)
+    expect(inferLayoutSpans(completed).some((span) => span.replacement === 'comming' && span.risk === 'low')).toBe(false)
     const ta = await typeThrough(completed)
-    expect(ta.value.toLocaleLowerCase()).toContain('comming')
+    expect(ta.value).toContain(GARBLED_COMING)
   })
 
   it('repairs the reported bilingual sentence after tokens complete', async () => {

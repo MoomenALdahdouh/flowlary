@@ -6,8 +6,10 @@ describe('FieldSession', () => {
     const el = document.createElement('textarea')
     const session = new FieldSession(el)
     expect(session.getGeneration()).toBe(0)
+    expect(session.getRevision()).toBe(0)
     session.bumpGeneration()
     expect(session.getGeneration()).toBe(1)
+    expect(session.getRevision()).toBe(1)
   })
 
   it('rejects stale operation when generation changed', () => {
@@ -53,5 +55,16 @@ describe('FieldSession', () => {
     if (!acquired.ok) throw new Error('acquire failed')
     session.noteWrite('FIX_LAYOUT', acquired.requestId)
     expect(session.getLastWriter()).toBe('FIX_LAYOUT')
+  })
+
+  it('suppresses paste assistance until the user types', () => {
+    const el = document.createElement('textarea')
+    const session = new FieldSession(el)
+    session.notePasteBurst(12, 1_000)
+    expect(session.isPasteAssistanceSuppressed(1_100)).toBe(true)
+    expect(session.getInputSource()).toBe('paste')
+    expect(session.isPasteAssistanceSuppressed(2_000)).toBe(true)
+    session.clearPasteBurst()
+    expect(session.isPasteAssistanceSuppressed(2_000)).toBe(false)
   })
 })

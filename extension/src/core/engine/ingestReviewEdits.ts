@@ -36,20 +36,17 @@ export function pickReviewEdit(edits: WritingReviewEdit[]): WritingReviewEdit | 
   })[0] ?? null
 }
 
-export function ingestReviewEdits(
-  edits: WritingReviewEdit[],
+function hypothesisFromEdit(
+  picked: WritingReviewEdit,
   island: ReviewIsland,
   analysis: SharedAnalysis,
   context: FieldContext,
-  existing: Hypothesis[],
-): Hypothesis[] {
-  const picked = pickReviewEdit(edits)
-  if (!picked) return []
+): Hypothesis | null {
   const span = {
     start: island.range.start + picked.start,
     end: island.range.start + picked.end,
   }
-  if (analysis.openToken && overlaps(span, analysis.openToken)) return []
+  if (analysis.openToken && overlaps(span, analysis.openToken)) return null
   if (analysis.chunks.some((chunk) => (
     overlaps(chunk.range, span)
     && (
@@ -62,24 +59,11 @@ export function ingestReviewEdits(
       || chunk.role === 'technical_token'
     )
   ))) {
-    return []
+    return null
   }
-  if (layoutSpanConflictsWithMixedIntent(span, analysis.chunks)) return []
-  if (existing.some((item) =>
-    item.intent === 'user_override' && overlaps(item.span, span)
-  )) {
-    return []
-  }
-  if (existing.some((item) =>
-    item.intent === 'fix_layout'
-    && item.risk === 'low'
-    && !item.needsLLM
-    && overlaps(item.span, span)
-  )) {
-    return []
-  }
+  if (layoutSpanConflictsWithMixedIntent(span, analysis.chunks)) return null
   if (picked.kind === 'layout_suspect' && !layoutRemapMatches(picked.original, picked.proposed)) {
-    return []
+    return null
   }
   const autoEligible =
     context.helpStyle === 'auto'
@@ -87,7 +71,7 @@ export function ingestReviewEdits(
     && picked.confidence === 'high'
     && (picked.kind === 'spelling' || picked.kind === 'grammar' || picked.kind === 'punctuation')
     && context.capabilities.autoWrite
-  return [{
+  return {
     id: `review-${span.start}-${span.end}`,
     span,
     intent: picked.kind === 'layout_suspect' ? 'fix_layout' : 'fix_english',
@@ -102,5 +86,38 @@ export function ingestReviewEdits(
     sourceChunkIds: analysis.chunks.filter((chunk) => overlaps(chunk.range, span)).map((chunk) => chunk.id),
     reviewKind: picked.kind,
     reviewConfidence: picked.confidence,
-  }]
+  }
+}
+
+export function ingestReviewEdits(
+  edits: WritingReviewEdit[],
+  island: ReviewIsland,
+  analysis: SharedAnalysis,
+  context: FieldContext,
+  existing: Hypothesis[],
+): Hypothesis[] {
+  const usable = edits
+    .filter((edit) => REVIEW_KINDS.has(edit.kind))
+    .sort((a, b) => a.start - b.start)
+  const accepted: Hypothesis[] = []
+  for (const edit of usable) {
+    const hyp = hypothesisFromEdit(edit, island, analysis, context)
+    if (!hyp) continue
+    if (existing.some((item) =>
+      item.intent === 'user_override' && overlaps(item.span, hyp.span)
+    )) {
+      continue
+    }
+    if (existing.some((item) =>
+      item.intent === 'fix_layout'
+      && item.risk === 'low'
+      && !item.needsLLM
+      && overlaps(item.span, hyp.span)
+    )) {
+      continue
+    }
+    if (accepted.some((item) => overlaps(item.span, hyp.span))) continue
+    accepted.push(hyp)
+  }
+  return accepted
 }

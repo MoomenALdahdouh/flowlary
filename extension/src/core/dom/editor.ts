@@ -37,6 +37,20 @@ export type WriteResult = {
     | 'shadow_only'
     | 'unfinished-token'
     | 'neighbor-mismatch'
+    | 'unauthorized'
+    | 'stale_revision'
+    | 'superseded'
+    | 'aborted'
+    | 'failed'
+    | 'missing'
+    | 'field_mismatch'
+    | 'operation_mismatch'
+    | 'action_mismatch'
+    | 'replacement_mismatch'
+    | 'snapshot_mismatch'
+    | 'range_mismatch'
+    | 'range_text_mismatch'
+    | 'disconnected'
 }
 
 export type WriteReplacementOptions = CommitOptions & {

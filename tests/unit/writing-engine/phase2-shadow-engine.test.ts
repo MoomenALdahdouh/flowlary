@@ -172,10 +172,22 @@ describe('Phase 2 shadow decision engine', () => {
     stateManager.translation.liveEnabled = true
     const ta = textarea('مرحبا كيف حالك اليوم؟')
     const result = runShadowDecisionForTests(contextFor(ta, { liveTranslation: true }), ta.value)
-    expect(result.candidates.some((item) => item.capability === 'translation')).toBe(true)
     expect(result.decision.action).not.toBe('layout_fix')
-    expect(result.decision.reasonCodes.some((code) => code === 'session_missing' || code === 'legacy_live_behavior' || code === 'no_candidates' || code === 'ambiguous_mixed' || code === 'shadow_observe_only')).toBe(true)
+    expect(result.decision.action).not.toBe('translation')
     expect(result.event.shadowOnly).toBe(true)
+    if (result.candidates.some((item) => item.capability === 'translation')) {
+      expect(
+        result.decision.reasonCodes.some(
+          (code) =>
+            code === 'session_missing'
+            || code === 'legacy_live_behavior'
+            || code === 'no_candidates'
+            || code === 'ambiguous_mixed'
+            || code === 'shadow_observe_only'
+            || code === 'mixed_spans_no_blob_translate',
+        ),
+      ).toBe(true)
+    }
   })
 
   it('mixed ambiguous text blocks English correction auto', () => {

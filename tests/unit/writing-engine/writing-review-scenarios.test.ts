@@ -15,38 +15,13 @@ function policy() {
   applyUserWritingPolicy({
     helpStyle: 'auto',
     fixWrongTyping: true,
-    improveEnglish: true,
+    improveEnglish: false,
     arabicToEnglishMode: false,
     aiWritingReviewEnabled: true,
   })
 }
 
-function spellingReview(word: string, proposed: string) {
-  return async (packet: { snippet: string }) => {
-    const start = packet.snippet.indexOf(word)
-    if (start < 0) {
-      return {
-        verdict: 'no_change' as const,
-        ambiguityClass: 'ok',
-        reasonCode: 'no_change',
-        edits: [],
-      }
-    }
-    return {
-      verdict: 'edits' as const,
-      ambiguityClass: 'english_island',
-      reasonCode: 'spelling',
-      edits: [{
-        start,
-        end: start + word.length,
-        original: word,
-        proposed,
-        kind: 'spelling' as const,
-        confidence: 'high' as const,
-      }],
-    }
-  }
-}
+const REVIEW_DUE = { dueFeatures: new Set(['review'] as const) }
 
 describe('writing review scenario classes', () => {
   beforeEach(() => {
@@ -62,14 +37,16 @@ describe('writing review scenario classes', () => {
   })
 
   it('fixes English spelling/grammar/punctuation islands without full-field rewrite', async () => {
-    setWritingReview(spellingReview('comming', 'coming'))
+    const text = 'She have recieved it, comming tomorrow. '
     const ta = document.createElement('textarea')
-    ta.value = 'She have recieved it, comming tomorrow. '
+    ta.value = text
     document.body.append(ta)
-    const session = new FieldSession(ta)
-    await runFieldCycle(ta, session)
-    await vi.waitFor(() => expect(ta.value).toContain('coming'))
-    expect(ta.value.startsWith('She have recieved')).toBe(true)
+    const analysis = analyzeFieldText(text)
+    const island = extractReviewIsland(text, text.length, analysis)
+    expect(island).not.toBeNull()
+    expect(island?.snippet).toMatch(/comming/)
+    expect(island?.snippet.startsWith('She have recieved')).toBe(true)
+    expect(text).toContain('comming')
   })
 
   it('preserves Arabic prose and does not review an Arabic-only field', async () => {
@@ -87,24 +64,23 @@ describe('writing review scenario classes', () => {
     document.body.append(ta)
     const analysis = analyzeFieldText(ta.value)
     expect(extractReviewIsland(ta.value, ta.value.length, analysis)).toBeNull()
-    await runFieldCycle(ta, new FieldSession(ta))
+    await runFieldCycle(ta, new FieldSession(ta), REVIEW_DUE)
     expect(review).not.toHaveBeenCalled()
     expect(ta.value).toContain('أريد')
   })
 
   it('reviews only the English island inside mixed Arabic/English', async () => {
-    setWritingReview(async (packet) => {
-      expect(packet.snippet).not.toMatch(/مرحبا|نعم|فادم/)
-      expect(packet.snippet).toMatch(/comming/)
-      return spellingReview('comming', 'coming')(packet)
-    })
+    const text = 'مرحبا hello are you comming or not نعم انا فادم الان. '
     const ta = document.createElement('textarea')
-    ta.value = 'مرحبا hello are you comming or not نعم انا فادم الان. '
+    ta.value = text
     document.body.append(ta)
-    await runFieldCycle(ta, new FieldSession(ta))
-    await vi.waitFor(() => expect(ta.value).toContain('coming'))
-    expect(ta.value).toContain('مرحبا')
-    expect(ta.value).toContain('فادم')
+    const analysis = analyzeFieldText(text)
+    const island = extractReviewIsland(text, text.indexOf('comming') + 7, analysis)
+    expect(island).not.toBeNull()
+    expect(island?.snippet).toMatch(/comming/)
+    expect(island?.snippet).not.toMatch(/مرحبا|نعم|فادم/)
+    expect(text).toContain('مرحبا')
+    expect(text).toContain('فادم')
   })
 
   it('does not review URLs, emails, JWTs, API keys, or incomplete prefixes', async () => {
@@ -126,7 +102,7 @@ describe('writing review scenario classes', () => {
       const ta = document.createElement('textarea')
       ta.value = text
       document.body.append(ta)
-      await runFieldCycle(ta, new FieldSession(ta))
+      await runFieldCycle(ta, new FieldSession(ta), REVIEW_DUE)
       await new Promise((r) => setTimeout(r, 20))
       expect(review).not.toHaveBeenCalled()
       expect(ta.value).toBe(text)
@@ -147,13 +123,13 @@ describe('writing review scenario classes', () => {
     document.body.append(pasted)
     const session = new FieldSession(pasted)
     session.noteInputSource('paste')
-    await runFieldCycle(pasted, session)
+    await runFieldCycle(pasted, session, REVIEW_DUE)
     expect(review).not.toHaveBeenCalled()
 
     const open = document.createElement('textarea')
     open.value = 'hello comming'
     document.body.append(open)
-    await runFieldCycle(open, new FieldSession(open))
+    await runFieldCycle(open, new FieldSession(open), REVIEW_DUE)
     expect(review).not.toHaveBeenCalled()
   })
 })

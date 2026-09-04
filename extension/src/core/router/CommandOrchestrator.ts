@@ -3,7 +3,7 @@ import { stateManager } from '../state/StateManager.ts'
 import { evaluateFieldSafety } from '../safety/index.ts'
 import { readFieldText, isEditableElement, readSelectionRange, readCaret } from '../dom/read.ts'
 import type { InputEngine } from '../input/InputEngine.ts'
-import { resolveCommandTarget } from '../input/resolveTarget.ts'
+import { resolveCommandTarget, deepActiveElement } from '../input/resolveTarget.ts'
 import type { ShortcutCommand } from '../input/shortcuts.ts'
 import type { CommandRouter } from './CommandRouter.ts'
 import { mapHandlerResult, type DispatchResult } from './dispatch.ts'
@@ -13,6 +13,18 @@ import { runWritingPipeline } from '../writeGate/pipeline.ts'
 import { shortcutRangeForOperation } from '../engine/shortcutRange.ts'
 
 const DEDUP_MS = 250
+
+function noteCommandTarget(): void {
+  if (typeof chrome === 'undefined' || !chrome.runtime?.sendMessage) return
+  try {
+    const sent = chrome.runtime.sendMessage({ type: 'NOTE_COMMAND_TARGET' })
+    if (sent && typeof (sent as Promise<unknown>).catch === 'function') {
+      void (sent as Promise<unknown>).catch(() => undefined)
+    }
+  } catch {
+    /* tests / no service worker */
+  }
+}
 
 export type CommandOrchestratorOptions = {
   engine: InputEngine
@@ -67,6 +79,9 @@ export class CommandOrchestrator {
     this.started = true
 
     this.unsubscribe = this.engine.eventBus.subscribe((event) => {
+      if (event.type === 'focus-in' || event.type === 'input' || event.type === 'shortcut') {
+        noteCommandTarget()
+      }
       if (event.type === 'shortcut') {
         void this.handleShortcut(event.command).then((result) => {
           this.lastResult = result
@@ -163,7 +178,10 @@ export class CommandOrchestrator {
       return { status: 'blocked', operation, reason: 'paused', handlerExecuted: false }
     }
 
-    const seed = options.target ?? this.engine.getActiveElement() ?? document.activeElement
+    const seed =
+      options.target
+      ?? this.engine.getActiveElement()
+      ?? deepActiveElement(typeof document !== 'undefined' ? document : null)
     const resolved = resolveCommandTarget(seed)
     if (!resolved) {
       return { status: 'no_target', operation, handlerExecuted: false }
@@ -193,13 +211,7 @@ export class CommandOrchestrator {
 
     const session = this.engine.sessions.getOrCreate(resolved.element)
     if (session.isComposing()) {
-      return {
-        status: 'busy',
-        operation,
-        reason: 'composing',
-        fieldId: session.field.id,
-        handlerExecuted: false,
-      }
+      session.setComposing(false)
     }
 
     const acquire = session.tryAcquireWrite(operation)

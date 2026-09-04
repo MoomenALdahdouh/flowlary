@@ -29,13 +29,16 @@ export function shortcutRangeForOperation(
 
   if (operation === 'FIX_LAYOUT') {
     const spans = analysis.layoutSpans.filter((span) => span.replacement)
-    const focused = selection
-      ? spans.filter((span) => overlaps(span.range, selection))
-      : spans
-    const picked = (focused.length > 0 ? focused : spans).sort(
-      (a, b) => a.range.start - b.range.start,
-    )[0]
-    return picked?.range ?? (text.trim() ? { start: 0, end: text.length } : null)
+    if (spans.length === 0) return text.trim() ? { start: 0, end: text.length } : null
+    const focused =
+      selection && selection.end > selection.start
+        ? spans.filter((span) => overlaps(span.range, selection))
+        : spans
+    const use = (focused.length > 0 ? focused : spans)
+    return {
+      start: Math.min(...use.map((span) => span.range.start)),
+      end: Math.max(...use.map((span) => span.range.end)),
+    }
   }
 
   if (operation === 'TRANSLATE') {

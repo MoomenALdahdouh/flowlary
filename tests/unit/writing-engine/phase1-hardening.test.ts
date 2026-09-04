@@ -62,7 +62,7 @@ describe('Phase 1 writing-engine hardening', () => {
     })
 
     it('still fixes longer unambiguous typos', () => {
-      expect(applyInstantSpelling('hello hwo ')).toBe('hello how ')
+      expect(applyInstantSpelling('hello hwo ')).toBe('Hello, how ')
     })
   })
 

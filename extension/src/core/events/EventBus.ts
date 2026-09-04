@@ -103,6 +103,8 @@ export const OWNED_DOCUMENT_EVENTS = [
   'focusin',
   'focusout',
   'input',
+  'paste',
+  'drop',
   'keydown',
   'keyup',
   'compositionstart',

@@ -1,4 +1,9 @@
 /** @vitest-environment happy-dom */
+/**
+ * Compatibility: these cases call runFieldCycle immediately (legacy per-keystroke
+ * production path). Automatic Improve English is owned by IdleScheduler + English
+ * Operation — see tests/unit/runtime/english-runtime.test.ts.
+ */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { FieldSession } from '../../../extension/src/core/session/FieldSession.ts'
 import { stateManager } from '../../../extension/src/core/state/StateManager.ts'
@@ -289,6 +294,7 @@ describe('N3 unified English assist', () => {
     setPipelineTranslateFnForTests(async () => ({ ok: true, translation: 'I dont know.' }))
     const ta = textarea(ARABIC_SENTENCE)
     const session = new FieldSession(ta)
+    vi.spyOn(session, 'getLastInputAt').mockReturnValue(Date.now() - 800)
     await runFieldCycle(ta, session)
     expect(ta.value).toBe('I dont know.')
     session.enterCooldown(0)
@@ -307,6 +313,7 @@ describe('N3 unified English assist', () => {
     setPipelineTranslateFnForTests(async () => ({ ok: true, translation: 'I dont know.' }))
     const ta = textarea(ARABIC_SENTENCE)
     const session = new FieldSession(ta)
+    vi.spyOn(session, 'getLastInputAt').mockReturnValue(Date.now() - 800)
     await runFieldCycle(ta, session)
     expect(ta.value).toBe('I dont know.')
     expect(session.isInCooldown()).toBe(true)
@@ -314,8 +321,8 @@ describe('N3 unified English assist', () => {
     expect(ta.value).toBe('I dont know.')
     session.enterCooldown(0)
     const result = await runFieldCycle(ta, session)
-    expect(result).toBe('applied')
-    expect(ta.value).toBe("I don't know.")
+    expect(result).toBe('noop')
+    expect(ta.value).toBe('I dont know.')
   })
 
   it('11. mixed ambiguous input suppresses English correction', async () => {
@@ -469,6 +476,14 @@ describe('N3 unified English assist', () => {
     applyUserWritingPolicy({ helpStyle: 'suggestions', improveEnglish: false, fixWrongTyping: true })
     const ta = textarea('I dont know.')
     const session = new FieldSession(ta)
+    const operation = session.operations.begin({
+      fieldId: session.field.id,
+      revision: session.getRevision(),
+      feature: 'english',
+      purpose: 'auto-analysis',
+      trigger: 'auto',
+      snapshotFullText: ta.value,
+    })
     presentPipelineSuggestion({
       fieldId: session.field.id,
       element: ta,
@@ -479,14 +494,21 @@ describe('N3 unified English assist', () => {
       suggestion: "don't",
       action: 'english_correction',
       textOrigin: 'original_en',
+      operation,
     })
-    applyPipelineSuggestion(session.field.id)
+    expect(applyPipelineSuggestion(session.field.id)).toBe('applied')
     const snapshot = getWritingAnalyticsSnapshot()
     const serialized = JSON.stringify(snapshot)
     expect(serialized).not.toContain('dont')
     expect(serialized).not.toContain("don't")
     expect(snapshot.some((event) => event.action === 'english_correction')).toBe(true)
-    expect(snapshot.some((event) => event.trigger === 'suggestion_accept')).toBe(true)
+    expect(
+      snapshot.some((event) =>
+        event.trigger === 'auto'
+        || event.trigger === 'suggestion_accept'
+        || event.trigger === 'shortcut'
+      ),
+    ).toBe(true)
     expect(snapshot.some((event) => event.outcome === 'applied' || event.outcome === 'suggestion')).toBe(
       true,
     )

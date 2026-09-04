@@ -1,5 +1,5 @@
-/** Content-script shortcut ids. TRANSLATE / FIX_LAYOUT also exist as MV3 commands. */
-export type ShortcutCommand = 'TRANSLATE' | 'FIX_LAYOUT' | 'SPEED_BOX'
+/** Content-script shortcut ids. These also exist as MV3 commands. */
+export type ShortcutCommand = 'TRANSLATE' | 'FIX_LAYOUT' | 'CORRECT' | 'SPEED_BOX'
 
 export function isModifiedShortcut(event: Pick<KeyboardEvent, 'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey'>): boolean {
   const modifier = event.ctrlKey || event.metaKey
@@ -8,7 +8,7 @@ export function isModifiedShortcut(event: Pick<KeyboardEvent, 'ctrlKey' | 'metaK
 
 /**
  * Physical key codes (not `event.key`) so shortcuts survive wrong keyboard layouts.
- * Matches Layfix/Lingo: Comma, KeyP, KeyL.
+ * Matches the manifest: Comma, KeyP, KeyE, KeyL.
  */
 export function detectShortcut(event: KeyboardEvent): ShortcutCommand | null {
   if (!isModifiedShortcut(event)) return null
@@ -17,6 +17,8 @@ export function detectShortcut(event: KeyboardEvent): ShortcutCommand | null {
       return 'TRANSLATE'
     case 'KeyP':
       return 'FIX_LAYOUT'
+    case 'KeyE':
+      return 'CORRECT'
     case 'KeyL':
       return 'SPEED_BOX'
     default:

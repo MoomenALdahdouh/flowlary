@@ -15,6 +15,12 @@ import {
 import { recordWritingAnalytics } from '../observability/writingAnalytics.ts'
 import type { DecisionAction, TextOrigin } from '../engine/types.ts'
 import { showCorrectionFlash } from './correctionFlash.ts'
+import {
+  evaluateWriteAuthorization,
+  type WriteAuthorization,
+  type WriteAuthorizationInvalidReason,
+} from '../runtime/writeAuthorization.ts'
+import { markOperationSucceeded } from '../runtime/Operation.ts'
 
 export const WRITE_COOLDOWN_MS = 450
 
@@ -27,6 +33,23 @@ export type WriteTransactionOptions = WriteReplacementOptions & {
   textOrigin?: TextOrigin
   action?: DecisionAction
   cycleGeneration?: number
+  authorization?: WriteAuthorization
+}
+
+function authorizationFailure(reason: WriteAuthorizationInvalidReason): WriteResult {
+  if (
+    reason === 'stale_revision'
+    || reason === 'superseded'
+    || reason === 'aborted'
+    || reason === 'failed'
+    || reason === 'missing'
+    || reason === 'snapshot_mismatch'
+    || reason === 'range_mismatch'
+    || reason === 'range_text_mismatch'
+  ) {
+    return { verdict: 'stale', reason }
+  }
+  return { verdict: 'rejected', reason }
 }
 
 export function commitWriteTransaction(
@@ -45,9 +68,52 @@ export function commitWriteTransaction(
     textOrigin,
     action,
     cycleGeneration,
+    authorization,
     auto = false,
     ...writeOptions
   } = options
+
+  const intendedAction = action ?? capabilityToAction(capability)
+
+  if (!authorization) {
+    recordWriteTelemetry({
+      capability,
+      trigger,
+      outcome: 'blocked',
+      reasonCodes: ['policy_blocked'],
+      fieldKind: fieldKindFromElement(element),
+    })
+    return { verdict: 'rejected', reason: 'unauthorized' }
+  }
+
+  const operation = session.operations.get(authorization.operationId)
+  const authorized = evaluateWriteAuthorization({
+    authorization,
+    session,
+    element,
+    operation,
+    start,
+    end,
+    replacement,
+    action: intendedAction,
+  })
+  if (!authorized.ok) {
+    const failure = authorizationFailure(authorized.reason)
+    recordWriteTelemetry({
+      capability,
+      trigger,
+      outcome: failure.verdict === 'stale' ? 'stale' : 'blocked',
+      reasonCodes: [
+        authorized.reason === 'stale_revision' || authorized.reason === 'superseded'
+          ? 'stale_generation'
+          : authorized.reason === 'aborted'
+            ? 'aborted'
+            : 'policy_blocked',
+      ],
+      fieldKind: fieldKindFromElement(element),
+    })
+    return failure
+  }
 
   if (isShadowEngineEnabled() && engineOriginated) {
     recordWriteTelemetry({
@@ -91,7 +157,9 @@ export function commitWriteTransaction(
   })
 
   if (result.verdict === 'written') {
-    showCorrectionFlash(element, action ?? capabilityToAction(capability))
+    const op = session.operations.get(authorization.operationId)
+    if (op) markOperationSucceeded(op)
+    showCorrectionFlash(element, intendedAction)
     session.enterCooldown(WRITE_COOLDOWN_MS)
     session.noteEngineSpan(start, start + replacement.length, replacement)
     if (tagTranslated) {
@@ -102,8 +170,8 @@ export function commitWriteTransaction(
     }
     recordWritingAnalytics({
       name: 'writing.write',
-      action: action ?? capabilityToAction(capability),
-      trigger,
+      action: intendedAction,
+      trigger: trigger === 'manual_box' || trigger === 'suggestion_accept' ? 'shortcut' : trigger,
       outcome: 'applied',
       textOrigin: textOrigin ?? 'unknown',
       shadowOnly: false,

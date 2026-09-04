@@ -202,14 +202,6 @@ function evaluateToken(span: TokenSpan, index: number): TokenEval {
       isEnglishWord(toEn.mapped)
       || isTechnicalToken(toEn.mapped)
       || isStructuralTechnicalToken(toEn.mapped)
-      || (
-        toEn.coverage >= 0.99
-        && /^[A-Za-z][A-Za-z'.-]*$/.test(toEn.mapped)
-        && (
-          (mappedEnScore >= 0.68 && [...toEn.mapped].length >= 4)
-          || (mappedEnScore >= 0.5 && [...toEn.mapped].length >= 6)
-        )
-      )
     ),
   )
   const layoutToAr = structuralToAr && (

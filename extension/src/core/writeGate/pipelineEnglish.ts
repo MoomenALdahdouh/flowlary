@@ -11,6 +11,7 @@ import type { TextOrigin, TextRange } from '../engine/types.ts'
 import type { EditableElement } from '../dom/types.ts'
 import type { FieldSession } from '../session/FieldSession.ts'
 import { commitWriteTransaction } from './writeGate.ts'
+import { issueImmediateWriteAuthorization } from '../runtime/writeAuthorization.ts'
 import { analyzeFieldText } from '../engine/chunks.ts'
 import { collectHypotheses } from '../engine/hypotheses.ts'
 import { buildFieldContext } from '../engine/context.ts'
@@ -127,21 +128,35 @@ function writeExplicitEnglishSpan(
     session.releaseWrite('CORRECT', acquired.requestId)
     return 'stale'
   }
-  const write = commitWriteTransaction(element, start, end, replacement, {
-    session,
-    requestId: acquired.requestId,
-    expectedGeneration: acquired.generation,
-    cycleGeneration: generation,
-    origin: 'CORRECT',
-    auto: false,
-    engineOriginated: false,
-    capability: 'correction',
-    trigger: 'shortcut',
-    textOrigin,
-    action: 'english_correction',
-    tagTranslated: false,
-    allowActiveEdit: true,
-  })
-  session.releaseWrite('CORRECT', acquired.requestId)
-  return write.verdict === 'written' ? 'applied' : write.verdict === 'stale' ? 'stale' : 'blocked'
+  try {
+    const snapshot = readFieldText(element)
+    const authorization = issueImmediateWriteAuthorization({
+      session,
+      action: 'english_correction',
+      range: { start, end },
+      replacement,
+      snapshotFullText: snapshot,
+      purpose: 'shortcut',
+      trigger: 'shortcut',
+    })
+    const write = commitWriteTransaction(element, start, end, replacement, {
+      session,
+      requestId: acquired.requestId,
+      expectedGeneration: acquired.generation,
+      cycleGeneration: generation,
+      origin: 'CORRECT',
+      auto: false,
+      engineOriginated: false,
+      capability: 'correction',
+      trigger: 'shortcut',
+      textOrigin,
+      action: 'english_correction',
+      tagTranslated: false,
+      allowActiveEdit: true,
+      authorization,
+    })
+    return write.verdict === 'written' ? 'applied' : write.verdict === 'stale' ? 'stale' : 'blocked'
+  } finally {
+    session.releaseWrite('CORRECT', acquired.requestId)
+  }
 }

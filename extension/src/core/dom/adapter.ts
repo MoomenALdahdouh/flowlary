@@ -131,20 +131,24 @@ export function createEditableAdapter(el: Element): EditableAdapter | null {
   return null
 }
 
+function parentOrShadowHost(node: Element): Element | null {
+  if (node.parentElement) return node.parentElement
+  const root = node.getRootNode()
+  return root instanceof ShadowRoot ? root.host : null
+}
+
 export function findEditableFromTarget(target: EventTarget | null): EditableAdapter | null {
   if (!(target instanceof Element)) return null
   let node: Element | null = target
   while (node) {
     const adapter = createEditableAdapter(node)
     if (adapter) return adapter
-    if (
-      node.parentElement?.isContentEditable ||
-      node.parentElement?.getAttribute('contenteditable') === 'true'
-    ) {
-      const parentAdapter = createEditableAdapter(node.parentElement)
+    const parent = parentOrShadowHost(node)
+    if (parent?.isContentEditable || parent?.getAttribute('contenteditable') === 'true') {
+      const parentAdapter = createEditableAdapter(parent)
       if (parentAdapter) return parentAdapter
     }
-    node = node.parentElement
+    node = parent
   }
   return null
 }

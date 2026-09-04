@@ -76,6 +76,33 @@ describe('writing review ingest', () => {
     expect(pickReviewEdit(edits)?.kind).toBe('spelling')
   })
 
+  it('ingests every non-overlapping spelling edit', () => {
+    const text = 'if you nee help I can hel you. '
+    const { context, analysis, hypotheses } = contextFor(text)
+    const island = extractReviewIsland(text, text.length, analysis)!
+    const nee = island.snippet.indexOf('nee')
+    const hel = island.snippet.indexOf('hel')
+    const extra = ingestReviewEdits([
+      {
+        start: nee,
+        end: nee + 3,
+        original: 'nee',
+        proposed: 'need',
+        kind: 'spelling',
+        confidence: 'high',
+      },
+      {
+        start: hel,
+        end: hel + 3,
+        original: 'hel',
+        proposed: 'help',
+        kind: 'spelling',
+        confidence: 'high',
+      },
+    ], island, analysis, context, hypotheses)
+    expect(extra.map((item) => item.replacement).sort()).toEqual(['help', 'need'])
+  })
+
   it('drops an unfinished open token and a user override span', () => {
     const openText = 'hello comming'
     const open = contextFor(openText)

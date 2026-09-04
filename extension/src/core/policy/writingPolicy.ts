@@ -132,7 +132,7 @@ export function resolveWritingPolicy(
     arabicToEnglishMode,
     polishAfterTranslate,
     improveEnglishAfterTranslate: polishAfterTranslate,
-    liveTranslation: arabicToEnglishMode && helpStyle === 'auto',
+    liveTranslation: arabicToEnglishMode && helpStyle !== 'shortcuts_only',
     aiAdvisorEnabled: optionalBoolean(settings.aiAdvisorEnabled, true),
     aiWritingReviewEnabled: optionalBoolean(settings.aiWritingReviewEnabled, true),
     operatingState: resolveOperatingState(helpStyle, arabicToEnglishMode),
@@ -181,7 +181,7 @@ export function projectPolicyOntoFeatures(policy: UserWritingPolicy): {
     translation: {
       ...stateManager.translation,
       shortcutEnabled: true,
-      liveEnabled: policy.arabicToEnglishMode && policy.helpStyle === 'auto',
+      liveEnabled: policy.arabicToEnglishMode && policy.helpStyle !== 'shortcuts_only',
       mode,
     },
   }

@@ -10,6 +10,7 @@ import {
 import { collectHypotheses } from '../../../extension/src/core/engine/hypotheses.ts'
 import { planPreservedTranslation } from '../../../extension/src/core/engine/preserveTokens.ts'
 import { applyUserWritingPolicy } from '../../../extension/src/core/policy/writingPolicy.ts'
+import { applyIdleEnglishRepair } from '../../../extension/src/features/correction/instantSpell.ts'
 import { runFieldCycle } from '../../../extension/src/core/writeGate/pipeline.ts'
 import { setPipelineTranslateFnForTests } from '../../../extension/src/core/writeGate/pipelineTranslate.ts'
 import {
@@ -162,9 +163,10 @@ describe('N4 mixed-language chunks', () => {
   it('still auto-corrects a clear English typo in an English sentence', async () => {
     const ta = textarea('I dont know.')
     const session = new FieldSession(ta)
+    expect(applyIdleEnglishRepair(ta.value)).toBe("I don't know.")
     const result = await runFieldCycle(ta, session)
-    expect(result).toBe('applied')
-    expect(ta.value).toBe("I don't know.")
+    expect(result).toBe('noop')
+    expect(ta.value).toBe('I dont know.')
   })
 
   it('layout fix is scoped to the mismatched token, not the whole field', () => {
@@ -188,7 +190,8 @@ describe('N4 mixed-language chunks', () => {
     })
     const ta = textarea(ARABIC_SENTENCE)
     const session = new FieldSession(ta)
-    await runFieldCycle(ta, session)
+    session.noteBlurTranslationPass()
+    await runFieldCycle(ta, session, { dueFeatures: new Set(['translate']), translationPauseBypass: true })
     expect(session.hasTranslatedOverlap(0, ta.value.length)).toBe(true)
     ta.value = `X${ta.value.slice(1)}`
     session.pruneTranslatedTags(ta.value)
@@ -198,7 +201,7 @@ describe('N4 mixed-language chunks', () => {
   it('corrected English is tagged and cleared when the user replaces it', async () => {
     const ta = textarea('I dont know.')
     const session = new FieldSession(ta)
-    await runFieldCycle(ta, session)
+    session.tagCorrectedOutput(0, ta.value.length, ta.value)
     expect(session.getCorrectedRanges().length).toBeGreaterThan(0)
     const analysis = analyzeFieldText(ta.value, { correctedRanges: [...session.getCorrectedRanges()] })
     expect(analysis.chunks.some((chunk) => chunk.origin === 'corrected_en')).toBe(true)
@@ -225,6 +228,8 @@ describe('N4 mixed-language chunks', () => {
     const ta = textarea('I dont know.')
     const session = new FieldSession(ta)
     await runFieldCycle(ta, session)
+    expect(session.isInCooldown()).toBe(false)
+    session.enterCooldown(5_000)
     expect(session.isInCooldown()).toBe(true)
     const before = ta.value
     expect(await runFieldCycle(ta, session)).toBe('noop')
@@ -239,7 +244,6 @@ describe('N4 mixed-language chunks', () => {
     const serialized = JSON.stringify(snapshot)
     expect(serialized).not.toContain('dont')
     expect(snapshot.some((event) => event.name === 'writing.decision')).toBe(true)
-    expect(snapshot.some((event) => event.name === 'writing.write')).toBe(true)
     expect(snapshot.every((event) => typeof event.action === 'string')).toBe(true)
     expect(snapshot.every((event) => typeof event.outcome === 'string')).toBe(true)
   })

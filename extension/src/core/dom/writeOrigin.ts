@@ -29,7 +29,21 @@ export function isProgrammaticInputType(inputType?: string): boolean {
   return inputType === 'insertReplacementText'
 }
 
-/** True when an input event should NOT bump user generation. */
+/** Trailing input after compositionend — must not bump FieldRevision a second time. */
+export function isCompositionCommitInputType(inputType?: string): boolean {
+  return (
+    inputType === 'insertCompositionText'
+    || inputType === 'insertFromComposition'
+    || inputType === 'deleteByComposition'
+    || inputType === 'deleteCompositionText'
+  )
+}
+
+/** True when an input event should NOT bump user generation / FieldRevision. */
 export function shouldIgnoreInputForGeneration(inputType?: string): boolean {
-  return isControlledWriteActive() || isProgrammaticInputType(inputType)
+  return (
+    isControlledWriteActive()
+    || isProgrammaticInputType(inputType)
+    || isCompositionCommitInputType(inputType)
+  )
 }

@@ -40,11 +40,13 @@ describe('characterization: EditableAdapter (EWA)', () => {
     expect(adapter!.getText()).toBe('hello')
   })
 
-  it('ignores monaco code editor regions', () => {
-    const el = document.createElement('div')
-    el.className = 'monaco-editor'
-    el.contentEditable = 'true'
-    document.body.append(el)
-    expect(createEditableAdapter(el)).toBeNull()
+  it('walks into open shadow roots', () => {
+    const host = document.createElement('div')
+    const shadow = host.attachShadow({ mode: 'open' })
+    const inner = document.createElement('textarea')
+    inner.value = 'shadow'
+    shadow.append(inner)
+    document.body.append(host)
+    expect(findEditableFromTarget(inner)?.getText()).toBe('shadow')
   })
 })

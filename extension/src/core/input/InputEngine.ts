@@ -30,6 +30,8 @@ export class InputEngine {
     focusIn: (event: FocusEvent) => this.onFocusIn(event),
     focusOut: (event: FocusEvent) => this.onFocusOut(event),
     input: (event: Event) => this.onInput(event),
+    paste: (event: ClipboardEvent) => this.onPaste(event),
+    drop: (event: DragEvent) => this.onDrop(event),
     keyDown: (event: KeyboardEvent) => this.onKeyDown(event),
     keyUp: (event: KeyboardEvent) => this.onKeyUp(event),
     compositionStart: (event: CompositionEvent) => this.onCompositionStart(event),
@@ -51,6 +53,8 @@ export class InputEngine {
     document.addEventListener('focusin', this.bound.focusIn, opts)
     document.addEventListener('focusout', this.bound.focusOut, opts)
     document.addEventListener('input', this.bound.input, opts)
+    document.addEventListener('paste', this.bound.paste, opts)
+    document.addEventListener('drop', this.bound.drop, opts)
     document.addEventListener('keydown', this.bound.keyDown, opts)
     document.addEventListener('keyup', this.bound.keyUp, opts)
     document.addEventListener('compositionstart', this.bound.compositionStart, opts)
@@ -64,6 +68,8 @@ export class InputEngine {
     document.removeEventListener('focusin', this.bound.focusIn, true)
     document.removeEventListener('focusout', this.bound.focusOut, true)
     document.removeEventListener('input', this.bound.input, true)
+    document.removeEventListener('paste', this.bound.paste, true)
+    document.removeEventListener('drop', this.bound.drop, true)
     document.removeEventListener('keydown', this.bound.keyDown, true)
     document.removeEventListener('keyup', this.bound.keyUp, true)
     document.removeEventListener('compositionstart', this.bound.compositionStart, true)
@@ -144,12 +150,22 @@ export class InputEngine {
     const inputEvent = event as InputEvent
     const session = this.sessions.getOrCreate(target)
     session.noteInput()
-    const inputSource = inputSourceFromType(inputEvent.inputType)
+    let inputSource = inputSourceFromType(inputEvent.inputType)
+    if (
+      session.isPasteAssistanceSuppressed()
+      && (inputSource === 'typing' || inputSource === 'unknown')
+    ) {
+      inputSource = 'paste'
+    }
     const insertLength =
       inputSource === 'paste' || inputSource === 'drop'
         ? inputEvent.data?.length ?? 0
         : 0
-    session.noteInputSource(inputSource, insertLength)
+    if (inputSource === 'paste' || inputSource === 'drop') {
+      session.notePasteBurst(insertLength)
+    } else {
+      session.noteInputSource(inputSource, insertLength)
+    }
 
     const composing = session.isComposing() || isComposing()
     const ignoreGeneration =
@@ -185,15 +201,19 @@ export class InputEngine {
     const shortcut = detectShortcut(event)
     if (shortcut) {
       event.preventDefault()
+      event.stopPropagation()
+      event.stopImmediatePropagation()
+      const hit = event.composedPath?.()[0] ?? event.target
       const target =
-        this.resolveEditableTarget(event.target) ?? this.activeElement
+        this.resolveEditableTarget(hit instanceof EventTarget ? hit : event.target)
+        ?? this.activeElement
       const session = target ? this.sessions.get(target) : this.getActiveSession()
       this.emit({
         type: 'shortcut',
         command: shortcut,
         target,
         session,
-        composing: session?.isComposing() ?? isComposing(),
+        composing: false,
         origin: 'USER',
       })
       return
@@ -202,6 +222,11 @@ export class InputEngine {
     const target = this.resolveEditableTarget(event.target)
     if (!target || !this.shouldAssist(target)) return
     const session = this.sessions.getOrCreate(target)
+    if ((event.metaKey || event.ctrlKey) && !event.altKey && event.code === 'KeyV') {
+      session.notePasteBurst()
+    } else if (!event.metaKey && !event.ctrlKey && !event.altKey && event.key.length === 1) {
+      session.clearPasteBurst()
+    }
     this.emit({
       type: 'keydown',
       target,
@@ -213,6 +238,39 @@ export class InputEngine {
       shiftKey: event.shiftKey,
       composing: session.isComposing(),
       origin: 'USER',
+    })
+  }
+
+  private onPaste(event: ClipboardEvent): void {
+    const target = this.resolveEditableTarget(event.target) ?? this.activeElement
+    if (!target || !this.shouldAssist(target)) return
+    const session = this.sessions.getOrCreate(target)
+    session.notePasteBurst(clipboardPlainLength(event))
+    this.emit({
+      type: 'input',
+      target,
+      session,
+      inputType: 'insertFromPaste',
+      generation: session.getGeneration(),
+      origin: 'USER',
+      composing: session.isComposing(),
+    })
+  }
+
+  private onDrop(event: DragEvent): void {
+    const target = this.resolveEditableTarget(event.target) ?? this.activeElement
+    if (!target || !this.shouldAssist(target)) return
+    const session = this.sessions.getOrCreate(target)
+    const dropped = dropPlainLength(event)
+    session.notePasteBurst(dropped, Date.now(), 'drop')
+    this.emit({
+      type: 'input',
+      target,
+      session,
+      inputType: 'insertFromDrop',
+      generation: session.getGeneration(),
+      origin: 'USER',
+      composing: session.isComposing(),
     })
   }
 
@@ -289,9 +347,21 @@ export class InputEngine {
 function inputSourceFromType(inputType?: string): 'typing' | 'paste' | 'drop' | 'programmatic' | 'unknown' {
   if (inputType === 'insertFromPaste') return 'paste'
   if (inputType === 'insertFromDrop') return 'drop'
-  if (inputType === 'insertReplacementText') return 'paste'
+  if (inputType === 'insertReplacementText') return 'programmatic'
   if (inputType) return 'typing'
   return 'unknown'
+}
+
+function clipboardPlainLength(event: ClipboardEvent): number {
+  const data = event.clipboardData
+  if (!data) return 0
+  return (data.getData('text/plain') || data.getData('text') || '').length
+}
+
+function dropPlainLength(event: DragEvent): number {
+  const data = event.dataTransfer
+  if (!data) return 0
+  return (data.getData('text/plain') || data.getData('text') || '').length
 }
 
 /** Detect whether an element is a supported editable target. */

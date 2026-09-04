@@ -158,8 +158,8 @@ describe('writing scenario classes', () => {
       range: { start: 0, end: 3 },
       sourceText: 'teh',
       suggestion: 'the',
-      action: 'english_correction',
-      textOrigin: 'original_en',
+      action: 'layout_fix',
+      textOrigin: 'layout_mismatch_suspected',
     })
     expect(dismissPipelineSuggestion(session.field.id)).toBe('dismissed')
     expect(session.getOverrideRanges().some((range) => range.start === 0 && range.end === 3)).toBe(true)

@@ -26,6 +26,8 @@ export function buildFieldContext(options: {
   textLength: number
   inputSource?: InputSource
   selection?: TextRange | null
+  bypassTranslationPause?: boolean
+  consumeBlurPass?: boolean
 }): FieldContext {
   const hostname = typeof location !== 'undefined' ? location.hostname : ''
   const safety = evaluateFieldSafety(options.element, {
@@ -57,7 +59,7 @@ export function buildFieldContext(options: {
     fieldKind: fieldKindFromElement(options.element),
     helpStyle: resolveHelpStyle(),
     assistantEnabled: policy.assistantEnabled,
-    layoutAuto: policy.fixWrongTyping && policy.helpStyle === 'auto',
+    layoutAuto: policy.fixWrongTyping && policy.helpStyle !== 'shortcuts_only',
     correctionEnabled: policy.improveEnglish,
     aiAdvisorEnabled: policy.aiAdvisorEnabled,
     aiWritingReviewEnabled: policy.aiWritingReviewEnabled,
@@ -66,7 +68,9 @@ export function buildFieldContext(options: {
     translationPauseReady: shouldEmitTranslationHypothesis(
       options.session,
       policy.liveTranslation,
-      { bypassPause: options.session.consumeBlurTranslationPass() },
+      {
+        bypassPause: resolveTranslationPauseBypass(options),
+      },
     ),
     translatedRanges: [...options.session.getTranslatedRanges()],
     polishAfterTranslate: policy.polishAfterTranslate,
@@ -76,4 +80,17 @@ export function buildFieldContext(options: {
     inputSource: options.inputSource ?? options.session.getInputSource(),
     selection: options.selection ?? null,
   }
+}
+
+function resolveTranslationPauseBypass(options: {
+  session: FieldSession
+  bypassTranslationPause?: boolean
+  consumeBlurPass?: boolean
+}): boolean {
+  if (options.bypassTranslationPause) {
+    options.session.consumeBlurTranslationPass()
+    return true
+  }
+  if (options.consumeBlurPass === false) return false
+  return options.session.consumeBlurTranslationPass()
 }

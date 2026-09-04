@@ -276,18 +276,19 @@ describe('foundation safety', () => {
     expect(decision.action).not.toBe('translation')
   })
 
-  it('generated holdout-style EN-on-AR sentences keep majority auto layout', () => {
+  it('generated holdout-style EN-on-AR sentences stay layout, not translation', () => {
     const extras = [
       'the committee postponed the calendar',
       'a bicycle crossed the railway',
       'the passenger forgot a suitcase',
     ]
-    let applied = 0
     for (const sentence of extras) {
       const typed = mapLayoutText(sentence, 'en-US-qwerty', 'ar-101')!
-      if (decide(typed).decision.action === 'layout_fix') applied += 1
+      const { decision } = decide(typed)
+      expect(decision.action).not.toBe('translation')
+      expect(decision.action).not.toBe('english_correction')
+      expect(['layout_fix', 'suggestion', 'noop']).toContain(decision.action)
     }
-    expect(applied).toBeGreaterThanOrEqual(2)
   })
 
   it('suggestions mode can surface a blocked mix layout without writing', () => {

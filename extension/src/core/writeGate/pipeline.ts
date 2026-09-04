@@ -12,6 +12,13 @@ import { isEditableElement, readCaret, readFieldText, readSelectionRange } from 
 import { resolveWritingPolicy } from '../policy/writingPolicy.ts'
 import { stateManager } from '../state/StateManager.ts'
 import { commitWriteTransaction, writerForAction } from './writeGate.ts'
+import {
+  abortLowerPriorityOperations,
+  clearCommitInFlight,
+  featureFromAction,
+  flushDeferredAutomaticCommits,
+  prepareAutomaticWrite,
+} from '../runtime/arbitration.ts'
 import { fulfillTranslationDecision } from './pipelineTranslate.ts'
 import {
   hidePipelineSuggestion,
@@ -19,6 +26,10 @@ import {
   presentPipelineSuggestion,
 } from './pipelineSuggest.ts'
 import { shouldWholeFieldOwnEnglishCorrection } from '../../features/correction/liveAssist.ts'
+import type { Operation } from '../runtime/types.ts'
+import { isOperationCurrent } from '../runtime/validity.ts'
+import { markOperationCompleted } from '../runtime/Operation.ts'
+import { mergeAbortSignals } from '../runtime/abortSignals.ts'
 import type { EditableElement } from '../dom/types.ts'
 import type { FieldSession } from '../session/FieldSession.ts'
 import type {
@@ -80,6 +91,45 @@ function notifyEnglishSpanApplied(options: {
 
 export type CycleOutcome = 'applied' | 'noop' | 'suggestion' | 'stale' | 'blocked'
 
+export type SchedulerCycleFeature = 'layout' | 'english' | 'translate' | 'review'
+
+export type FieldCycleOptions = {
+  dueFeatures?: ReadonlySet<SchedulerCycleFeature>
+  translationPauseBypass?: boolean
+  operations?: Partial<Record<SchedulerCycleFeature, Operation>>
+  source?: 'auto' | 'command'
+}
+
+function cycleOperations(options?: FieldCycleOptions): Operation[] {
+  if (!options?.operations) return []
+  return Object.values(options.operations).filter((item): item is Operation => Boolean(item))
+}
+
+function cycleStillCurrent(session: FieldSession, options?: FieldCycleOptions): boolean {
+  const ops = cycleOperations(options)
+  if (ops.length === 0) return true
+  return ops.some((operation) => isOperationCurrent(operation, session.getRevision()))
+}
+
+function cycleAbortSignal(options?: FieldCycleOptions, extra?: AbortSignal): AbortSignal {
+  return mergeAbortSignals([
+    extra,
+    ...cycleOperations(options).map((operation) => operation.abort.signal),
+  ])
+}
+
+function operationForDecision(
+  decision: WritingDecision,
+  options?: FieldCycleOptions,
+): Operation | undefined {
+  const ops = options?.operations
+  if (!ops) return undefined
+  if (decision.action === 'translation') return ops.translate
+  if (decision.action === 'layout_fix') return ops.layout
+  if (decision.action === 'english_correction') return ops.english
+  return ops.translate ?? ops.layout ?? ops.english
+}
+
 function recordShadowAdvisorCompare(options: {
   baseline: WritingDecision
   advised: WritingDecision
@@ -139,7 +189,7 @@ export async function runWritingPipeline(
   }
 
   const session = engine.sessions.getOrCreate(resolved.element)
-  const result = await runFieldCycle(resolved.element, session)
+  const result = await runFieldCycle(resolved.element, session, { source: 'command' })
   return {
     ok: result === 'applied' || result === 'noop' || result === 'suggestion',
     operation: 'PIPELINE',
@@ -150,6 +200,7 @@ export async function runWritingPipeline(
 export async function runFieldCycle(
   element: EditableElement,
   session: FieldSession,
+  options?: FieldCycleOptions,
 ): Promise<CycleOutcome> {
   const policy = resolveWritingPolicy()
   if (policy.arabicToEnglishMode && !session.isTranslationPaused()) {
@@ -165,12 +216,22 @@ export async function runFieldCycle(
     cycleId: `en-${++cycle}`,
     composing: session.isComposing(),
     textLength: 0,
+    bypassTranslationPause: options?.translationPauseBypass === true,
+    consumeBlurPass: options ? false : undefined,
   })
 
-  if (session.getGeneration() !== generation) return 'stale'
-  if (session.isBulkPasteInput()) return 'noop'
+    if (session.getGeneration() !== generation) return 'stale'
+  if (!cycleStillCurrent(session, options)) return 'stale'
 
   const text = readFieldText(element)
+  if (!text.trim()) {
+    hidePipelineSuggestion(session.field.id)
+    return 'noop'
+  }
+  if (session.isPasteAssistanceSuppressed() && options?.source !== 'command') {
+    hidePipelineSuggestion(session.field.id)
+    return 'noop'
+  }
   context.textLength = text.length
   session.pruneTranslatedTags(text)
   session.pruneCorrectedTags(text)
@@ -238,11 +299,12 @@ export async function runFieldCycle(
       text,
       analysis,
       generation,
-      signal: generationRequest.signal,
+      signal: cycleAbortSignal(options, generationRequest.signal),
     }).finally(generationRequest.release)
 
     void advisorPromise.then((consulted) => {
       if (session.getGeneration() !== generation) return
+      if (!cycleStillCurrent(session, options)) return
       if (readFieldText(element) !== text) return
       let vote = consulted.vote
       let result = consulted.result
@@ -325,8 +387,17 @@ export async function runFieldCycle(
     candidates,
     decision,
     commitOpenToken,
+    dueFeatures: options?.dueFeatures,
+    operation: operationForDecision(decision, options),
   })
   localOutcome = fulfilled instanceof Promise ? await fulfilled : fulfilled
+
+  for (const operation of cycleOperations(options)) {
+    if (operation.state !== 'running') continue
+    if (isOperationCurrent(operation, session.getRevision())) {
+      markOperationCompleted(operation)
+    }
+  }
 
   if (localOutcome === 'applied' && decision.action === 'english_correction') {
     const winner = candidates.find((item) => item.id === decision.winnerCandidateId)
@@ -355,8 +426,30 @@ export async function runFieldCycle(
     analysis,
     hypotheses,
     localAppliedLayout: localOutcome === 'applied' && decision.action === 'layout_fix',
+    dueFeatures: options?.dueFeatures,
+    reviewOperation: options?.operations?.review,
   })
   return localOutcome
+}
+
+function decisionAllowedForDueFeatures(
+  decision: WritingDecision,
+  candidates: CandidateAction[],
+  due: ReadonlySet<SchedulerCycleFeature>,
+): boolean {
+  const winner = candidates.find((item) => item.id === decision.winnerCandidateId)
+  const capability = winner?.capability
+  if (decision.action === 'translation' || capability === 'translation') return due.has('translate')
+  if (decision.action === 'layout_fix' || capability === 'layout_fix') return due.has('layout')
+  if (decision.action === 'english_correction' || capability === 'english_correction') {
+    return due.has('english')
+  }
+  if (decision.action === 'suggestion') {
+    if (capability === 'translation') return due.has('translate')
+    if (capability === 'layout_fix') return due.has('layout')
+    return due.has('english')
+  }
+  return true
 }
 
 export function fulfillWritingDecision(options: {
@@ -368,13 +461,20 @@ export function fulfillWritingDecision(options: {
   candidates: CandidateAction[]
   decision: WritingDecision
   commitOpenToken: boolean
+  dueFeatures?: ReadonlySet<SchedulerCycleFeature>
+  operation?: Operation
 }): CycleOutcome | Promise<CycleOutcome> {
-  const { element, session, generation, text, analysis, candidates, decision, commitOpenToken } = options
+  const { element, session, generation, text, analysis, candidates, decision, commitOpenToken, dueFeatures, operation } = options
   if (session.getGeneration() !== generation) return 'stale'
+  if (operation && !isOperationCurrent(operation, session.getRevision())) return 'stale'
   if (readFieldText(element) !== text) return 'stale'
   invalidateStalePipelineSuggestion(session, text)
 
   if (decision.action === 'noop') return 'noop'
+
+  if (dueFeatures && !decisionAllowedForDueFeatures(decision, candidates, dueFeatures)) {
+    return 'noop'
+  }
 
   const winner = candidates.find((item) => item.id === decision.winnerCandidateId)
   const replacement = winner?.replacement
@@ -383,7 +483,11 @@ export function fulfillWritingDecision(options: {
   if (decision.action === 'suggestion') {
     if (replacement && range) {
       const suggestionAction =
-        winner?.capability === 'layout_fix' ? 'layout_fix' : 'english_correction'
+        winner?.capability === 'layout_fix'
+          ? 'layout_fix'
+          : winner?.capability === 'translation'
+            ? 'translation'
+            : 'english_correction'
       if (
         suggestionAction === 'english_correction'
         && shouldWholeFieldOwnEnglishCorrection()
@@ -400,6 +504,7 @@ export function fulfillWritingDecision(options: {
         suggestion: replacement,
         action: suggestionAction,
         textOrigin: decision.textOrigin,
+        operation,
       })
       return 'suggestion'
     }
@@ -412,7 +517,7 @@ export function fulfillWritingDecision(options: {
   if (decision.action === 'translation') {
     hidePipelineSuggestion(session.field.id)
     if (!range) return 'noop'
-    return fulfillTranslationDecision(element, session, range, generation)
+    return fulfillTranslationDecision(element, session, range, generation, operation)
   }
 
   if (decision.action === 'english_correction' && !replacement && range) {
@@ -431,55 +536,88 @@ export function fulfillWritingDecision(options: {
   }
 
   const writer = writerForAction(decision.action)
-  const acquired = session.tryAcquireWrite(writer)
-  if (!acquired.ok) return 'blocked'
-
-  if (session.getGeneration() !== generation) {
-    session.releaseWrite(writer, acquired.requestId)
-    return 'stale'
-  }
-
-  hidePipelineSuggestion(session.field.id)
-
-  const neighborGuard = {
-    before: text.slice(Math.max(0, range.start - 12), range.start),
-    after: text.slice(range.end, Math.min(text.length, range.end + 12)),
-  }
-
-  const write = commitWriteTransaction(element, range.start, range.end, replacement, {
-    session,
-    requestId: acquired.requestId,
-    expectedGeneration: acquired.generation,
-    cycleGeneration: generation,
-    origin: writer,
-    auto: true,
-    engineOriginated: true,
-    capability: decision.action === 'layout_fix' ? 'layout' : 'correction',
+  if (operation && !isOperationCurrent(operation, session.getRevision())) return 'stale'
+  const feature = featureFromAction(decision.action)
+  const writeOperation = operation ?? session.operations.begin({
+    fieldId: session.field.id,
+    revision: session.getRevision(),
+    feature,
+    purpose: 'auto-analysis',
     trigger: 'auto',
-    textOrigin: decision.textOrigin,
-    action: decision.action,
-    tagTranslated: false,
-    allowActiveEdit: true,
-    commitOpenToken,
-    requireCompletedToken: true,
-    neighborGuard,
+    snapshotFullText: text,
   })
+  const prepared = prepareAutomaticWrite({
+    session,
+    operation: writeOperation,
+    feature,
+    action: decision.action,
+    effect: 'direct',
+    range,
+    replacement,
+    resume: () => {
+      void fulfillWritingDecision(options)
+    },
+  })
+  if (prepared.decision.verdict === 'DEFER') return 'noop'
+  if (prepared.decision.verdict !== 'ALLOW' || !prepared.authorization) return 'noop'
 
-  if (write.verdict !== 'written') {
-    session.releaseWrite(writer, acquired.requestId)
-    return write.verdict === 'stale' ? 'stale' : 'blocked'
+  const acquired = session.tryAcquireWrite(writer)
+  if (!acquired.ok) {
+    clearCommitInFlight(session)
+    return 'blocked'
   }
-  if (decision.action === 'layout_fix') {
-    const applied = analysis.layoutSpans.find((span) => (
-      span.range.start === range.start && span.replacement === replacement
-    )) ?? analysis.layoutSpans.find((span) => span.replacement === replacement)
-    if (applied) {
-      session.noteLayoutRun(applied.direction, range.start + replacement.length, applied.sourceChunkIds.length)
+
+  try {
+    if (session.getGeneration() !== generation) return 'stale'
+    if (!isOperationCurrent(writeOperation, session.getRevision())) return 'stale'
+
+    hidePipelineSuggestion(session.field.id)
+
+    const neighborGuard = {
+      before: text.slice(Math.max(0, range.start - 12), range.start),
+      after: text.slice(range.end, Math.min(text.length, range.end + 12)),
     }
-  } else {
-    session.clearPendingLayoutRun()
+
+    const write = commitWriteTransaction(element, range.start, range.end, replacement, {
+      session,
+      requestId: acquired.requestId,
+      expectedGeneration: acquired.generation,
+      cycleGeneration: generation,
+      origin: writer,
+      auto: true,
+      engineOriginated: true,
+      capability: decision.action === 'layout_fix' ? 'layout' : 'correction',
+      trigger: 'auto',
+      textOrigin: decision.textOrigin,
+      action: decision.action,
+      tagTranslated: false,
+      allowActiveEdit: true,
+      commitOpenToken,
+      requireCompletedToken: true,
+      neighborGuard,
+      authorization: prepared.authorization,
+    })
+
+    if (write.verdict !== 'written') {
+      return write.verdict === 'stale' ? 'stale' : 'blocked'
+    }
+    if (decision.action === 'layout_fix') {
+      abortLowerPriorityOperations(session, 'layout')
+      const applied = analysis.layoutSpans.find((span) => (
+        span.range.start === range.start && span.replacement === replacement
+      )) ?? analysis.layoutSpans.find((span) => span.replacement === replacement)
+      if (applied) {
+        session.noteLayoutRun(applied.direction, range.start + replacement.length, applied.sourceChunkIds.length)
+      }
+    } else {
+      session.clearPendingLayoutRun()
+    }
+    return 'applied'
+  } finally {
+    session.releaseWrite(writer, acquired.requestId)
+    clearCommitInFlight(session)
+    flushDeferredAutomaticCommits(session)
   }
-  return 'applied'
 }
 
 function scheduleFieldWritingReview(input: {
@@ -492,8 +630,11 @@ function scheduleFieldWritingReview(input: {
   analysis: SharedAnalysis
   hypotheses: Hypothesis[]
   localAppliedLayout: boolean
+  dueFeatures?: ReadonlySet<SchedulerCycleFeature>
+  reviewOperation?: Operation
 }): void {
-  const { element, session, generation, text, caret, context, analysis, hypotheses, localAppliedLayout } = input
+  const { element, session, generation, text, caret, context, analysis, hypotheses, localAppliedLayout, dueFeatures, reviewOperation } = input
+  if (dueFeatures && !dueFeatures.has('review')) return
   const island = extractReviewIsland(text, caret, analysis)
   const hash = island ? hashWritingSample(island.snippet) : ''
   if (!shouldScheduleWritingReview({
@@ -518,10 +659,11 @@ function scheduleFieldWritingReview(input: {
       hypotheses,
       island: island!,
       hash,
+      reviewOperation,
     })
   }
-  if (reviewFiresImmediately(text)) fire()
-  else if (reviewEligibleAfterPause(text)) session.schedulePausedReview(fire, REVIEW_PAUSE_MS)
+  if (reviewFiresImmediately(text) || dueFeatures?.has('review')) fire()
+  else if (!dueFeatures && reviewEligibleAfterPause(text)) session.schedulePausedReview(fire, REVIEW_PAUSE_MS)
 }
 
 async function runWritingReviewCycle(input: {
@@ -534,11 +676,13 @@ async function runWritingReviewCycle(input: {
   hypotheses: Hypothesis[]
   island: NonNullable<ReturnType<typeof extractReviewIsland>>
   hash: string
+  reviewOperation?: Operation
 }): Promise<void> {
-  const { element, session, generation, text, context, analysis, hypotheses, island, hash } = input
+  const { element, session, generation, text, context, analysis, hypotheses, island, hash, reviewOperation } = input
   const reviewFn = getWritingReview()
   if (!reviewFn) return
   if (session.getGeneration() !== generation || readFieldText(element) !== text) return
+  if (reviewOperation && !isOperationCurrent(reviewOperation, session.getRevision())) return
   if (text.slice(island.range.start, island.range.end) !== island.snippet) return
     session.noteReviewAttempt()
     recordWritingAnalytics({
@@ -552,7 +696,9 @@ async function runWritingReviewCycle(input: {
   })
   const generationRequest = session.beginGenerationRequest(generation)
   try {
-    const raw = await reviewFn(buildReviewPacket(context, island), { signal: generationRequest.signal })
+    const raw = await reviewFn(buildReviewPacket(context, island), {
+      signal: mergeAbortSignals([generationRequest.signal, reviewOperation?.abort.signal]),
+    })
     const parsed = parseWritingReviewContent(JSON.stringify(raw), island.snippet)
     if (!parsed.ok) {
       recordWritingAnalytics({

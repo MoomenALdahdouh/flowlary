@@ -4,6 +4,11 @@ import { isEnforceEngineEnabled } from '../engine/flag.ts'
 import { resolveWritingPolicy } from '../policy/writingPolicy.ts'
 import { LIVE_PAUSE_MS } from '../../features/translation/pauseGate.ts'
 import { runFieldCycle } from './pipeline.ts'
+import {
+  startWritingRuntimeScheduler,
+  stopWritingRuntimeScheduler,
+} from '../runtime/WritingRuntime.ts'
+import { isLegacyImmediateCycle } from '../runtime/legacyImmediateCycle.ts'
 
 const TRIGGER_KEYS = new Set([' ', 'Enter', 'Tab'])
 
@@ -12,14 +17,21 @@ const pendingRetry = new WeakMap<Element, ReturnType<typeof setTimeout>>()
 
 export function startEnforceCoordinator(engine: InputEngine): void {
   if (unsubscribe) return
+  startWritingRuntimeScheduler(engine)
   unsubscribe = engine.eventBus.subscribe((event) => {
     if (!isEnforceEngineEnabled()) return
+    if (!isLegacyImmediateCycle()) return
     if (event.origin === 'SYSTEM') return
     if (event.type === 'input') {
       if (event.composing) return
       void runIfEditable(engine, event.target)
-      if (event.target && resolveWritingPolicy().liveTranslation) {
-        scheduleEnforceRetry(engine, event.target, LIVE_PAUSE_MS)
+      if (event.target) {
+        const policy = resolveWritingPolicy()
+        const keepBox =
+          policy.liveTranslation || (policy.fixWrongTyping && policy.helpStyle === 'suggestions')
+        if (keepBox) {
+          scheduleEnforceRetry(engine, event.target, policy.liveTranslation ? LIVE_PAUSE_MS : 400)
+        }
       }
       return
     }
@@ -39,6 +51,7 @@ export function startEnforceCoordinator(engine: InputEngine): void {
 export function stopEnforceCoordinator(): void {
   unsubscribe?.()
   unsubscribe = null
+  stopWritingRuntimeScheduler()
 }
 
 export function scheduleEnforceRetry(
@@ -60,7 +73,7 @@ export function scheduleEnforceRetry(
 async function runIfEditable(engine: InputEngine, target: Element | null | undefined): Promise<void> {
   if (!target || !isEditableElement(target)) return
   const session = engine.sessions.getOrCreate(target)
-  if (session.isBulkPasteInput()) return
+  if (session.isPasteAssistanceSuppressed() || session.isBulkPasteInput()) return
   if (session.isComposing()) return
   if (session.isInCooldown()) {
     scheduleEnforceRetry(engine, target, session.getCooldownUntil() - Date.now() + 16)

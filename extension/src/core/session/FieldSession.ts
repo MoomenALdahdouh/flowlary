@@ -2,6 +2,11 @@ import type { WriterTag } from '@flowlary/shared'
 import { hashWritingSample } from '@flowlary/shared'
 import type { FieldSnapshot } from '../dom/types.ts'
 import { resolveEditableKind } from '../dom/read.ts'
+import { OperationRegistry } from '../runtime/OperationRegistry.ts'
+import { runtimeTrace } from '../runtime/trace.ts'
+import { notifyFieldRevisionBump } from '../runtime/revisionBump.ts'
+import { getPhysicalHttpLimiter } from '../runtime/physicalHttp.ts'
+import { clearArbitrationBoard } from '../runtime/arbitration.ts'
 import { BULK_PASTE_CHAR_LIMIT } from '../safety/index.ts'
 
 let nextFieldCounter = 0
@@ -50,6 +55,8 @@ export type CommitVerdict =
 export class FieldSession {
   readonly field: ReturnType<typeof toFieldRef>
   readonly element: Element
+  /** Per-field writing operations. Freshness is FieldRevision (`generation`), not operationId. */
+  readonly operations = new OperationRegistry()
 
   private generation = 0
   private requestSequence = 0
@@ -59,6 +66,7 @@ export class FieldSession {
   private composing = false
   private lastWriter: WriterTag | null = null
   private lastInputAt = 0
+  private lastEnglishNetworkAt = 0
   private cooldownUntil = 0
   private translationSessionId: string | null = null
   private translationPaused = false
@@ -66,6 +74,7 @@ export class FieldSession {
   private correctedRanges: { start: number; end: number; hash: string }[] = []
   private lastPipelineTranslateKey: string | null = null
   private inputSource: 'typing' | 'paste' | 'drop' | 'programmatic' | 'unknown' = 'unknown'
+  private pasteBurstUntil = 0
   private lastInputInsertLength = 0
   private lastEngineSpan: { start: number; end: number; hash: string; generation: number } | null = null
   private overrideRanges: { start: number; end: number }[] = []
@@ -79,7 +88,7 @@ export class FieldSession {
   } | null = null
   private reviewHashes = new Set<string>()
   private lastReviewAt = 0
-  private pauseReviewTimer: ReturnType<typeof setTimeout> | null = null
+  private snapshotReanalysisRevision: number | null = null
 
   constructor(element: Element) {
     this.element = element
@@ -90,8 +99,32 @@ export class FieldSession {
     return this.generation
   }
 
+  /** FieldRevision — same integer as generation. The only freshness clock. */
+  getRevision(): number {
+    return this.generation
+  }
+
+  /**
+   * At most one same-revision reanalysis after an external snapshot mismatch.
+   * Not a freshness clock and not a second scheduler.
+   */
+  trySameRevisionReanalysis(): boolean {
+    if (this.snapshotReanalysisRevision === this.generation) return false
+    this.snapshotReanalysisRevision = this.generation
+    return true
+  }
+
   bumpGeneration(): number {
     this.generation += 1
+    this.operations.invalidateOlderThan(this.generation)
+    getPhysicalHttpLimiter().discardStaleWaiters()
+    clearArbitrationBoard(this)
+    notifyFieldRevisionBump(this.field.id, this.generation)
+    runtimeTrace({
+      name: 'REVISION',
+      fieldId: this.field.id,
+      revision: this.generation,
+    })
     this.abortActiveRequest()
     for (const controller of this.generationRequests) controller.abort()
     this.generationRequests.clear()
@@ -223,6 +256,14 @@ export class FieldSession {
     this.lastInputAt = Date.now()
   }
 
+  noteEnglishNetwork(at = Date.now()): void {
+    this.lastEnglishNetworkAt = at
+  }
+
+  getLastEnglishNetworkAt(): number {
+    return this.lastEnglishNetworkAt
+  }
+
   requestCommitOpenToken(): void {
     this.commitOpenToken = true
   }
@@ -289,6 +330,23 @@ export class FieldSession {
   ): void {
     this.inputSource = source
     this.lastInputInsertLength = Math.max(0, insertLength)
+  }
+
+  /** Clipboard paste/drop: suppress automatic assistance until the user types. */
+  notePasteBurst(insertLength = 0, now = Date.now(), source: 'paste' | 'drop' = 'paste'): void {
+    if (insertLength > 0) this.lastInputInsertLength = Math.max(this.lastInputInsertLength, insertLength)
+    this.inputSource = source
+    this.pasteBurstUntil = now + 600
+  }
+
+  clearPasteBurst(): void {
+    this.pasteBurstUntil = 0
+    if (this.inputSource === 'paste' || this.inputSource === 'drop') this.inputSource = 'typing'
+  }
+
+  isPasteAssistanceSuppressed(now = Date.now()): boolean {
+    if (this.inputSource === 'paste' || this.inputSource === 'drop') return true
+    return this.pasteBurstUntil > now
   }
 
   getInputSource(): 'typing' | 'paste' | 'drop' | 'programmatic' | 'unknown' {
@@ -531,6 +589,7 @@ export class FieldSessionRegistry {
   delete(element: Element): void {
     const session = this.sessions.get(element)
     if (session) this.idToElement.delete(session.field.id)
+    session?.operations.clear()
     session?.abortActiveRequest()
     this.sessions.delete(element)
   }

@@ -9,7 +9,7 @@ import type {
   WritingDecision,
   WritingIntent,
 } from './types.ts'
-import { layoutSpanConflictsWithMixedIntent } from './mixedLayoutSafety.ts'
+import { layoutSpanConflictsWithMixedIntent, layoutReplacementIsCredible } from './mixedLayoutSafety.ts'
 
 let nextDecision = 1
 
@@ -174,6 +174,9 @@ export function decideWriting(
 
   const layoutHyps = hypotheses.filter((item) => item.intent === 'fix_layout')
   const uniqueStrongLayout = layoutHyps.filter((item) => {
+    if (!item.replacement || !layoutReplacementIsCredible(item.replacement)) {
+      return false
+    }
     if (analysis && layoutSpanConflictsWithMixedIntent(item.span, analysis.chunks)) {
       return false
     }
@@ -194,6 +197,13 @@ export function decideWriting(
     if (winner?.eligibleForAuto) {
       blocked.push('english_correction')
       blocked.push('translation')
+      if (context.helpStyle === 'suggestions') {
+        return finish('suggestion', ['downgraded_to_suggestion', 'single_winner_layout'], winner, {
+          intent: 'fix_layout',
+          hypothesisId: uniqueStrongLayout.id,
+          risk: uniqueStrongLayout.risk,
+        })
+      }
       return finish('layout_fix', ['single_winner_layout', 'hypothesis_winner'], winner, {
         intent: 'fix_layout',
         hypothesisId: uniqueStrongLayout.id,
@@ -397,16 +407,22 @@ export function decideWriting(
     blocked.push('english_correction')
   }
   if (legacyLayout && hypotheses.length === 0) {
-    if (legacyLayout.confidence.class === 'ambiguous' || legacyLayout.evidence.some((item) => item.kind === 'short_token')) {
+    if (!legacyLayout.replacement || !layoutReplacementIsCredible(legacyLayout.replacement)) {
+      blocked.push('layout_fix')
+    } else if (legacyLayout.confidence.class === 'ambiguous' || legacyLayout.evidence.some((item) => item.kind === 'short_token')) {
       blocked.push('layout_fix')
       return finish('noop', ['ambiguous_short_token'], legacyLayout, {
         confidence: { score: legacyLayout.confidence.score, class: 'ambiguous' },
         intent: 'fix_layout',
       })
-    }
-    if (legacyLayout.eligibleForAuto && legacyLayout.confidence.class === 'high') {
+    } else if (legacyLayout.eligibleForAuto && legacyLayout.confidence.class === 'high') {
       blocked.push('english_correction')
       blocked.push('translation')
+      if (context.helpStyle === 'suggestions') {
+        return finish('suggestion', ['downgraded_to_suggestion', 'single_winner_layout'], legacyLayout, {
+          intent: 'fix_layout',
+        })
+      }
       return finish('layout_fix', ['single_winner_layout'], legacyLayout, { intent: 'fix_layout' })
     }
   }
@@ -415,6 +431,7 @@ export function decideWriting(
     const leftoverLayout = layoutHyps
       .filter((item) => {
         if (!item.replacement || item.risk !== 'low' || item.needsLLM) return false
+        if (!layoutReplacementIsCredible(item.replacement)) return false
         if (analysis?.openToken && overlaps(item.span, analysis.openToken)) return false
         if (analysis && layoutSpanConflictsWithMixedIntent(item.span, analysis.chunks)) return false
         return !hypotheses.some((other) =>

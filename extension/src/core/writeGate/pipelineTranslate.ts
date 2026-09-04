@@ -1,4 +1,7 @@
-import { executeTranslation } from '../../features/translation/executor.ts'
+import {
+  executeTranslation,
+  normalizeTranslationWriteSpacing,
+} from '../../features/translation/executor.ts'
 import type { TranslationOutcome } from '../../features/translation/types.ts'
 import {
   DEFAULT_SOURCE_LANGUAGE,
@@ -16,6 +19,11 @@ import { analyzeFieldText } from '../engine/chunks.ts'
 import { requestTranslationRemote } from '../../features/translation/client.ts'
 import { isSentenceCompleteSegment } from '../../features/translation/segments.ts'
 import type { TranslationRequestContext } from '@flowlary/shared'
+import { presentPipelineSuggestion } from './pipelineSuggest.ts'
+import type { Operation } from '../runtime/types.ts'
+import { isOperationCurrent } from '../runtime/validity.ts'
+import { runWithPhysicalHttp } from '../runtime/physicalHttp.ts'
+import { flushDeferredAutomaticCommits } from '../runtime/arbitration.ts'
 
 export type PipelineTranslateFn = (
   text: string,
@@ -64,6 +72,7 @@ export async function fulfillTranslationDecision(
   session: FieldSession,
   range: TextRange,
   cycleGeneration: number,
+  operation?: Operation,
 ): Promise<'applied' | 'noop' | 'stale' | 'blocked'> {
   const policy = resolveWritingPolicy()
   if (!policy.arabicToEnglishMode || session.isTranslationPaused()) {
@@ -84,6 +93,8 @@ export async function fulfillTranslationDecision(
   if (sourceLanguage === targetLanguage) return 'noop'
 
   const liveText = readFieldText(element)
+  if (operation && !isOperationCurrent(operation, session.getRevision())) return 'stale'
+  if (operation && operation.snapshotFullText !== liveText) return 'stale'
   const source = liveText.slice(range.start, range.end)
   if (!source.trim()) return 'noop'
 
@@ -104,9 +115,76 @@ export async function fulfillTranslationDecision(
     segment_complete: isSentenceCompleteSegment(liveText, range.start, range.end),
     focus_out_completion: session.takeTranslationFocusOutCompletion(),
   }
-  // #region agent log
-  fetch('http://127.0.0.1:7879/ingest/9d16d7be-6afb-4b03-8147-7577c1b418b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0ba0e0'},body:JSON.stringify({sessionId:'0ba0e0',runId:'pre-fix',hypothesisId:'E',location:'pipelineTranslate.ts:fulfill',message:'live translate context',data:{sourceLen:source.length,segment_complete:translationContext.segment_complete===true,focus_out_completion:translationContext.focus_out_completion===true,hasBs:/بس/.test(source),hasListenCue:/اسمع/.test(source)},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
+  const translationAbort = operation?.abort.signal
+  const physical = {
+    fieldId: session.field.id,
+    feature: 'translate' as const,
+    isCurrent: () => {
+      if (translationAbort?.aborted) return false
+      return !operation || isOperationCurrent(operation, session.getRevision())
+    },
+  }
+  const dispatchTranslate = async (
+    text: string,
+    source: string,
+    target: string,
+    signal?: AbortSignal,
+  ) => {
+    const gated = await runWithPhysicalHttp(physical, () =>
+      translateFn(text, source, target, signal ?? translationAbort, translationContext),
+    )
+    if (!gated.dispatched) return { ok: false as const, code: 'aborted' as const }
+    return gated.value
+  }
+  const showBox = stateManager.translation.mode === 'box'
+  if (showBox) {
+    if (operation && !isOperationCurrent(operation, session.getRevision())) {
+      session.notePipelineTranslateKey(null)
+      return 'stale'
+    }
+    const outcome = await dispatchTranslate(
+      source,
+      sourceLanguage,
+      targetLanguage,
+      translationAbort,
+    )
+    if (operation && !isOperationCurrent(operation, session.getRevision())) {
+      session.notePipelineTranslateKey(null)
+      return 'stale'
+    }
+    if (!outcome.ok) {
+      session.notePipelineTranslateKey(null)
+      recordTranslationFailure(outcome.code ?? 'translation_failed')
+      return 'noop'
+    }
+    const suggestion = normalizeTranslationWriteSpacing(liveText, range.start, range.end, outcome.translation)
+    if (!suggestion || suggestion === source) {
+      session.notePipelineTranslateKey(null)
+      return 'noop'
+    }
+    if (session.getGeneration() !== cycleGeneration || readFieldText(element) !== liveText) {
+      session.notePipelineTranslateKey(null)
+      return 'stale'
+    }
+    if (operation && !isOperationCurrent(operation, session.getRevision())) {
+      session.notePipelineTranslateKey(null)
+      return 'stale'
+    }
+    presentPipelineSuggestion({
+      fieldId: session.field.id,
+      element,
+      session,
+      generation: cycleGeneration,
+      range,
+      sourceText: source,
+      suggestion,
+      action: 'translation',
+      textOrigin: 'original_ar',
+      operation,
+    })
+    flushDeferredAutomaticCommits(session)
+    return 'noop'
+  }
   const result = await executeTranslation({
     element,
     session,
@@ -123,8 +201,10 @@ export async function fulfillTranslationDecision(
     engineOriginated: true,
     recordHistoryEntry: false,
     chunks: analysis.chunks,
+    operation,
+    signal: translationAbort,
     translate: (text, src, tgt, signal) =>
-      translateFn(text, src, tgt, signal, translationContext),
+      dispatchTranslate(text, src, tgt, signal ?? translationAbort),
   })
 
   if (result.status !== 'committed') {
