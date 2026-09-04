@@ -219,9 +219,9 @@ ensure_git() {
   fi
   log "fetching origin"
   if [[ -d $ROOT/repo/.git ]]; then
-    "$GIT_BIN" -C "$ROOT/repo" fetch --prune origin
+    "$GIT_BIN" -C "$ROOT/repo" fetch --prune --tags --force origin
   else
-    "$GIT_BIN" --git-dir="$gdir" fetch --prune origin
+    "$GIT_BIN" --git-dir="$gdir" fetch --prune --tags --force origin
   fi
 }
 
