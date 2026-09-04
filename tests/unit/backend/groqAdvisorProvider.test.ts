@@ -273,7 +273,7 @@ describe('Groq advisor provider', () => {
   it('reviews writing islands with a separate JSON contract and never ranks hypotheses', async () => {
     const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body))
-      expect(body.messages[0].content).toContain('correctness only')
+      expect(body.messages[0].content).toContain('You are a reviewer, not a writer')
       expect(body.messages[1].content).toContain('hello comming')
       return response({
         choices: [{
