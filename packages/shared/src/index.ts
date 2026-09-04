@@ -3,6 +3,8 @@ export * from './types.ts'
 export { FLOWLARY_MARK, FLOWLARY_MARK_COLORS } from './brand.ts'
 export {
   FLOWLARY_LOGO_GRADIENT_ID,
+  FLOWLARY_LOGO_GRADIENT_STOPS,
+  flowlaryBrandTileSvg,
   flowlaryFaviconDataUri,
   flowlaryFaviconSvg,
   flowlaryFaviconSvgAdaptive,

@@ -1,3 +1,6 @@
+import { applyLocalEnglishRepair } from './localEnglishRepair.ts'
+import { finalizeCorrectionResponse } from './refine.ts'
+
 export const CORRECTION_DEFAULTS = {
   DEBOUNCE_MS: 120,
   WORD_BOUNDARY_DEBOUNCE_MS: 45,
@@ -54,10 +57,15 @@ export type CorrectRequestContext = {
   fieldType?: 'textarea' | 'text' | 'contenteditable' | 'other'
 }
 
-export const CORRECTION_SYSTEM_PROMPT = `Correct English spelling, grammar, punctuation, and obvious word-usage mistakes. Preserve meaning, tone, contractions, proper nouns, URLs, emails, code, numbers, and quoted text. Do not rewrite for style or add facts. If the text is already correct or is not English writing, return identical originalText and correctedText with empty changes. Return one JSON object only with keys originalText, correctedText, and changes. Each change must use keys type, original, corrected, start, end (not suggestion). Change types: spelling, grammar, wording. start/end are exclusive-end offsets in originalText. Prefer the smallest grammatical edit.
+export const CORRECTION_SYSTEM_PROMPT = `You are an English writing teacher and professional proofreader. Infer the writer's intent (greeting, question, request, statement, or quoted speech) and correct their English so it matches that intent — spelling, grammar, capitalization, apostrophes, and quotation marks. Keep their meaning, tone, and words. Always capitalize the first letter of each sentence. Add missing ?, !, or . when a sentence is complete. Split a new sentence after "or not" when a follow-up starts (let me know, tell me, please). Fix homophones and wrong words (let me now → let me know, your/you're when clearly wrong). Restore contractions (im → I'm, dont → don't). When the writer started a quote or used a speech verb with quoted words, restore the missing quotation marks and the comma before the quote (she said im tired → She said, "I'm tired."). Do not invent quotes around ordinary statements. Preserve proper nouns, URLs, emails, code, numbers, and already-correct quoted text. Do not rewrite for style or add facts. If the text is already correct or is not English writing, return identical originalText and correctedText with empty changes. Return one JSON object only with keys originalText, correctedText, and changes. Each change must use keys type, original, corrected, start, end (not suggestion). Change types: spelling (typos), grammar (caps, punctuation, quotes, missing words, agreement), wording (wrong word choice, homophones). start/end are exclusive-end offsets in originalText. Prefer the smallest grammatical edit. Never put a whole sentence in one change. Each misspelled or missing word is its own change. A missing ?, quote, or capital letter is its own grammar change.
 
+Good: "hell how are yuo" → "Hello, how are you?"
+Good: "hell hwo are yuo are yuo comming or not let me now" → "Hello, how are you? Are you coming or not? Let me know."
+Good: she said im tired → She said, "I'm tired."
 Good: "I want to go library tomorrow because I need study." → "I want to go to the library tomorrow because I need to study."
-Bad: rewriting that into "I intend to visit the library tomorrow because I need to study."`
+Bad: rewriting that into "I intend to visit the library tomorrow because I need to study."
+Bad: leaving "let me now" uncorrected.
+Bad: wrapping a normal sentence in quotation marks the writer did not start.`
 
 const TYPE_MAP: Record<string, ChangeType> = {
   spelling: 'spelling',
@@ -124,9 +132,29 @@ export function validateCorrectionResponse(
     })
   }
 
-  return {
-    originalText: sourceText,
-    correctedText: obj.correctedText,
-    changes,
-  }
+  return finalizeCorrectionResponse(
+    sourceText,
+    {
+      correctedText: obj.correctedText,
+      changes,
+    },
+    applyLocalEnglishRepair,
+  )
 }
+
+export {
+  tightenCorrectionPair,
+  deriveCorrectionChanges,
+  finalizeCorrectionResponse,
+  classifyCorrectionPair,
+} from './refine.ts'
+export {
+  applyLocalEnglishRepair,
+  applySentenceMechanics,
+  lookupKnownTypo,
+  COMMON_ENGLISH_TYPOS,
+  MIN_AUTO_SPELL_CHARS,
+  applyGreetingRepair,
+  isCredibleLocalEnglish,
+} from './localEnglishRepair.ts'
+export { correctEnglishToken, applyDictionarySpelling } from './englishSpell.ts'
