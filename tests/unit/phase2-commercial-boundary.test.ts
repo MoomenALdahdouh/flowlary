@@ -141,10 +141,10 @@ describe("Phase 2 — commercial boundary", () => {
     expect(resolveTranslationStrategy(googleConfig, exhausted, "shortcut")).toBe("google")
   })
 
-  it("Pro non-live resolves google_then_groq; Pro live uses google_then_groq", () => {
+  it("Pro shortcut and live resolve groq (LLM translator)", () => {
     const pro = auth({ rateLimitTier: "pro", allowed: true })
-    expect(resolveTranslationStrategy(googleConfig, pro, "shortcut")).toBe("google_then_groq")
-    expect(resolveTranslationStrategy(googleConfig, pro, "live")).toBe("google_then_groq")
+    expect(resolveTranslationStrategy(googleConfig, pro, "shortcut")).toBe("groq")
+    expect(resolveTranslationStrategy(googleConfig, pro, "live")).toBe("groq")
   })
 
   it("usage UX notes Google Translation remains available when AI exhausted", () => {

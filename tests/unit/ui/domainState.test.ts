@@ -175,4 +175,20 @@ describe('computeDomainState', () => {
     expect(domain?.features.liveTranslation.kind).toBe('ready')
     expect(domain?.features.layout.kind).toBe('ready')
   })
+
+  it('keeps live Arabic→English ready in Box mode', () => {
+    const domain = computeDomainState(
+      baseStatus({
+        translation: {
+          mode: 'box',
+          liveEnabled: true,
+          shortcutEnabled: true,
+          sourceLanguage: 'ar',
+          targetLanguage: 'en',
+        },
+      }),
+      false,
+    )
+    expect(domain?.features.liveTranslation.kind).toBe('ready')
+  })
 })

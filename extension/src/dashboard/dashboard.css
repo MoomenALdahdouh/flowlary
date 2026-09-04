@@ -7,6 +7,15 @@ html.fl-dashboard-page body {
   margin: 0;
 }
 
+html.fl-dashboard-page button:not(:disabled),
+html.fl-dashboard-page [role='button']:not([aria-disabled='true']) {
+  cursor: pointer;
+}
+
+html.fl-dashboard-page button:disabled {
+  cursor: not-allowed;
+}
+
 html.fl-dashboard-page body {
   font-size: 14px;
   background:
@@ -1800,9 +1809,200 @@ html.fl-dashboard-page body {
   margin-bottom: 6px;
 }
 
+.fl-progress-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.fl-progress-hero {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.fl-progress-stat-hero {
+  padding: 16px 18px;
+}
+
+.fl-progress-stat-note {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--fl-muted);
+  line-height: 1.4;
+}
+
+.fl-progress-focus {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-color: color-mix(in srgb, var(--fl-teach-spelling) 28%, var(--fl-border));
+  background: color-mix(in srgb, var(--fl-teach-spelling-soft) 55%, var(--fl-surface));
+}
+
+.fl-progress-focus-grammar {
+  border-color: color-mix(in srgb, var(--fl-teach-grammar) 28%, var(--fl-border));
+  background: color-mix(in srgb, var(--fl-teach-grammar-soft) 55%, var(--fl-surface));
+}
+
+.fl-progress-focus-wording {
+  border-color: color-mix(in srgb, var(--fl-teach-wording) 28%, var(--fl-border));
+  background: color-mix(in srgb, var(--fl-teach-wording-soft) 55%, var(--fl-surface));
+}
+
+.fl-progress-focus-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fl-progress-top-phrase {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.fl-progress-skill-spelling {
+  border-color: color-mix(in srgb, var(--fl-teach-spelling) 35%, var(--fl-border));
+  box-shadow: inset 3px 0 0 var(--fl-teach-spelling);
+}
+
+.fl-progress-skill-grammar {
+  border-color: color-mix(in srgb, var(--fl-teach-grammar) 35%, var(--fl-border));
+  box-shadow: inset 3px 0 0 var(--fl-teach-grammar);
+}
+
+.fl-progress-skill-wording {
+  border-color: color-mix(in srgb, var(--fl-teach-wording) 35%, var(--fl-border));
+  box-shadow: inset 3px 0 0 var(--fl-teach-wording);
+}
+
 .fl-progress-charts {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
+}
+
+.fl-progress-mistakes {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.fl-progress-mistakes-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fl-mistake-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.fl-mistake-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fl-mistake-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--fl-border);
+  border-radius: 14px;
+  background: var(--fl-surface);
+}
+
+.fl-mistake-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  font-size: 12px;
+  color: var(--fl-faint);
+}
+
+.fl-mistake-count {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fl-accent-soft) 80%, transparent);
+  color: var(--fl-accent-hover);
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.fl-mistake-status {
+  margin-inline-start: auto;
+  font-weight: 650;
+}
+
+.fl-mistake-card .fl-teach-badge {
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-size: 11px;
+}
+
+.fl-mistake-pair {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.45;
+  letter-spacing: -0.02em;
+}
+
+.fl-mistake-pair del {
+  margin-right: 8px;
+  color: #e11d48;
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  font-weight: 650;
+}
+
+.fl-mistake-pair ins {
+  color: var(--fl-text);
+  text-decoration: none;
+  font-weight: 750;
+}
+
+.fl-mistake-tip {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--fl-muted);
+}
+
+.fl-mistake-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fl-teach-text.fl-mistake-pair del,
+.fl-history-colored .fl-teach-wrong {
+  color: #e11d48;
+}
+
+.fl-teach-text.fl-mistake-pair ins,
+.fl-history-colored .fl-teach-fix {
+  color: var(--fl-text);
+  font-weight: 750;
+}
+
+@media (max-width: 720px) {
+  .fl-progress-hero,
+  .fl-progress-charts {
+    grid-template-columns: 1fr;
+  }
 }
 
 .fl-chart {
@@ -2267,6 +2467,129 @@ html.fl-dashboard-page body {
 
 .fl-compose-input::placeholder {
   color: var(--fl-faint);
+}
+
+.fl-box-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(17, 24, 39, 0.1);
+  border-radius: 14px;
+  background: #f4f5f7;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 8px 24px rgba(15, 23, 42, 0.1),
+    0 24px 48px rgba(15, 23, 42, 0.06);
+}
+
+.fl-box-card:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.fl-box-card:disabled {
+  cursor: default;
+}
+
+.fl-box-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.fl-box-card-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: rgba(17, 24, 39, 0.62);
+  background: rgba(17, 24, 39, 0.06);
+}
+
+.fl-box-card-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #2563eb;
+}
+
+.fl-box-card-hint {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(17, 24, 39, 0.55);
+  white-space: nowrap;
+}
+
+.fl-box-card-text {
+  margin: 0;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.fl-box-card.is-applied {
+  border-color: rgba(22, 163, 74, 0.35);
+  background: rgba(240, 253, 244, 0.96);
+}
+
+.fl-compose-suggest {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: var(--fl-radius);
+  background: color-mix(in srgb, var(--fl-muted) 12%, var(--fl-product-bg));
+  border: 1px solid var(--fl-border);
+}
+
+.fl-compose-suggest-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.fl-compose-suggest-body:disabled {
+  cursor: default;
+}
+
+.fl-compose-suggest-apply {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--fl-muted);
+  font: inherit;
+  font-size: 0.85em;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.fl-compose-suggest-apply:hover {
+  color: var(--fl-text);
+}
+
+.fl-compose-suggest.is-applied .fl-compose-suggest-apply {
+  opacity: 0.7;
 }
 
 .fl-compose-result {
@@ -2792,13 +3115,15 @@ html[dir='rtl'] .wd-nav-group-label {
 .wd-panel-head h2 {
   margin: 0;
   font-family: var(--fl-font-display);
-  font-size: clamp(1.35rem, 2.5vw, 1.75rem);
+  font-size: 1.35rem;
+  line-height: 1.25;
   letter-spacing: -0.02em;
 }
 
 .wd-lead {
   margin: 0.35rem 0 0;
   color: var(--fl-muted);
+  font-size: 0.9rem;
   line-height: 1.45;
 }
 
@@ -3158,4 +3483,69 @@ html[dir='rtl'] .wd-section-title {
   .wd-lab-chip {
     transition: none;
   }
+}
+
+.fl-dash-help-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.fl-dash-help-row .wd-muted {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+}
+
+.wd-overview-split {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 52rem) {
+  .wd-overview-split {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}
+
+.wd-home {
+  gap: 0.9rem;
+}
+
+.wd-home-install,
+.wd-home-usage-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.wd-home-usage-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.wd-home-usage-count {
+  margin: 0.55rem 0 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.wd-home-meter {
+  margin-top: 0.55rem;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--fl-border);
+  overflow: hidden;
+}
+
+.wd-home-meter-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--fl-accent);
 }

@@ -32,7 +32,7 @@ const STEPS: TourStep[] = [
   {
     id: 'compose',
     target: 'compose',
-    section: 'overview',
+    section: 'practice',
     prefer: 'below',
     titleKey: 'tour.composeTitle',
     bodyKey: 'tour.composeBody',
@@ -40,7 +40,7 @@ const STEPS: TourStep[] = [
   {
     id: 'features',
     target: 'features',
-    section: 'overview',
+    section: 'settings',
     prefer: 'below',
     titleKey: 'tour.featuresTitle',
     bodyKey: 'tour.featuresBody',

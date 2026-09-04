@@ -22,17 +22,6 @@ export function FeatureModeSwitch({
       <button
         type="button"
         role="radio"
-        aria-checked={mode === 'direct'}
-        className={mode === 'direct' ? 'is-active' : ''}
-        disabled={disabled}
-        onClick={() => onChange('direct')}
-      >
-        <span className="fl-mode-title">{t('settings.directEdit')}</span>
-        <span className="fl-mode-desc">{directDesc}</span>
-      </button>
-      <button
-        type="button"
-        role="radio"
         aria-checked={mode === 'box'}
         className={mode === 'box' ? 'is-active' : ''}
         disabled={disabled}
@@ -40,6 +29,17 @@ export function FeatureModeSwitch({
       >
         <span className="fl-mode-title">{t('settings.suggestionCard')}</span>
         <span className="fl-mode-desc">{cardDesc}</span>
+      </button>
+      <button
+        type="button"
+        role="radio"
+        aria-checked={mode === 'direct'}
+        className={mode === 'direct' ? 'is-active' : ''}
+        disabled={disabled}
+        onClick={() => onChange('direct')}
+      >
+        <span className="fl-mode-title">{t('settings.directEdit')}</span>
+        <span className="fl-mode-desc">{directDesc}</span>
       </button>
     </div>
   )

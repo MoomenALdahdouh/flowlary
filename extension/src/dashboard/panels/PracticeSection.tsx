@@ -3,23 +3,29 @@ import type { ExtensionStatus } from '../../messaging/types.ts'
 import { t } from '../../popup/i18n/index.ts'
 import { LayoutPracticePanel } from './LayoutPracticePanel.tsx'
 import { PracticePanel } from './PracticePanel.tsx'
+import { ComposeWorkbench } from '../components/ComposeWorkbench.tsx'
+import type { DomainState } from '../../ui/domainState.ts'
 
 type PracticeSectionProps = {
   status?: ExtensionStatus | null
+  domain?: DomainState | null
   onOpenOverview: () => void
   onOpenProgress?: () => void
   fullAccess?: boolean
   initialTargetPatternId?: string
+  onCorrectionModeChange?: (next: 'box' | 'direct') => void
 }
 
 type PracticeTab = 'english' | 'layout'
 
 export function PracticeSection({
   status,
+  domain,
   onOpenOverview,
   onOpenProgress,
   fullAccess,
   initialTargetPatternId,
+  onCorrectionModeChange,
 }: PracticeSectionProps) {
   const [tab, setTab] = useState<PracticeTab>('english')
 
@@ -46,13 +52,23 @@ export function PracticeSection({
         </button>
       </div>
       {tab === 'english' ? (
-        <PracticePanel
-          status={status}
-          onOpenOverview={onOpenOverview}
-          onOpenProgress={onOpenProgress}
-          fullAccess={fullAccess}
-          initialTargetPatternId={initialTargetPatternId}
-        />
+        <>
+          {status && domain ? (
+            <ComposeWorkbench
+              status={status}
+              domain={domain}
+              correctionOnly
+              onCorrectionModeChange={onCorrectionModeChange}
+            />
+          ) : null}
+          <PracticePanel
+            status={status}
+            onOpenOverview={onOpenOverview}
+            onOpenProgress={onOpenProgress}
+            fullAccess={fullAccess}
+            initialTargetPatternId={initialTargetPatternId}
+          />
+        </>
       ) : (
         <LayoutPracticePanel status={status} />
       )}

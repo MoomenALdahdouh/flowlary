@@ -118,53 +118,22 @@ export function StackedBars({ rows }: { rows: ProgressWeekBar[] }) {
 export function ProgressChartBlock({
   daily,
   weekly,
-  skills,
   range,
-  onRange,
 }: {
   daily: ProgressDayPoint[]
   weekly: ProgressWeekBar[]
-  skills: ProgressSkillSpark[]
-  range: '7d' | '30d'
-  onRange: (range: '7d' | '30d') => void
+  skills?: ProgressSkillSpark[]
+  range: '7d' | '30d' | 'all'
+  onRange?: (range: '7d' | '30d' | 'all') => void
 }) {
   const points = range === '7d' ? daily.slice(-7) : daily
   const hasSignal = points.some((point) => point.errors > 0 || point.words > 0)
 
   return (
-    <section className="fl-dash-card fl-progress-section" aria-labelledby="progress-charts-heading">
-      <div className="fl-progress-chart-head">
-        <h3 id="progress-charts-heading" className="fl-section-label">
-          {t('progress.charts')}
-        </h3>
-        <div className="fl-progress-range" role="group" aria-label={t('progress.chartRange')}>
-          {(['7d', '30d'] as const).map((id) => (
-            <button
-              key={id}
-              type="button"
-              className={`fl-history-filter${range === id ? ' is-active' : ''}`}
-              onClick={() => onRange(id)}
-            >
-              {id === '7d' ? t('progress.range7d') : t('progress.range30d')}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="fl-progress-skills">
-        {skills.map((skill) => (
-          <article key={skill.type} className="fl-progress-skill">
-            <div className="fl-progress-skill-head">
-              <span className={`fl-teach-badge fl-teach-${skill.type}`}>
-                {t(`learning.focus.${skill.type}` as 'learning.focus.spelling')}
-              </span>
-              <Sparkline values={skill.spark} color={TEACH_HEX[skill.type]} />
-            </div>
-            <p className="fl-progress-stat-value">{skill.count}</p>
-          </article>
-        ))}
-      </div>
-
+    <section className="fl-progress-charts-block" aria-labelledby="progress-charts-heading">
+      <h3 id="progress-charts-heading" className="visually-hidden">
+        {t('progress.charts')}
+      </h3>
       {hasSignal ? (
         <div className="fl-progress-charts">
           <div>

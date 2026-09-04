@@ -153,11 +153,9 @@ export function computeDomainState(status: ExtensionStatus | null, loading: bool
       correction: managedAiFeatureState(status, status.correction.enabled, { creditGated: true }),
       // Google translation is not credit-gated; auth/consent/service gates only.
       translation: managedAiFeatureState(status, status.translation.shortcutEnabled, { creditGated: false }),
-      liveTranslation: managedAiFeatureState(
-        status,
-        status.translation.mode === 'direct' && status.translation.liveEnabled,
-        { creditGated: false },
-      ),
+      liveTranslation: managedAiFeatureState(status, status.translation.liveEnabled, {
+        creditGated: false,
+      }),
       layout: layoutState(status),
     },
   }

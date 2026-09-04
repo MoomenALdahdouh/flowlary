@@ -1,15 +1,13 @@
 import { BRAND } from '@flowlary/shared'
-import { useEffect, useState } from 'react'
 import { PopupLogo, ThemeToggle, AccountAvatar } from './components.tsx'
 import { t } from './i18n/index.ts'
-import { HeaderStatusPill } from '../ui/SystemStatus.tsx'
 import { useFeatureMutations } from '../ui/useFeatureMutations.ts'
 import { resolveAccountPlanLabel } from './status.ts'
 import { openDashboard } from './openDashboard.ts'
 import { openAccountSurface } from '../config/upgrade.ts'
 import { useExtensionSession } from './useExtensionSession.ts'
 import { HomeView } from './views/HomeView.tsx'
-import { ContextualFeedbackPrompt, HelpFeedbackLink } from './components/ContextualFeedbackPrompt.tsx'
+import { ContextualFeedbackPrompt } from './components/ContextualFeedbackPrompt.tsx'
 import { FirstWinView } from './views/FirstWinView.tsx'
 import {
   dispatchCommand,
@@ -67,7 +65,6 @@ export function App() {
           <h1 className="fl-title">{t('brand.name')}</h1>
         </div>
         <div className="fl-header-actions">
-          <HeaderStatusPill domain={domain} />
           <ThemeToggle />
           <AccountAvatar
             signedIn={Boolean(status?.account.signedIn)}
@@ -125,7 +122,6 @@ export function App() {
               showSignInBanner={!status.firstWin?.localSuccess && !status.firstWin?.aiSuccess}
               onGlobalToggle={mutations.onGlobalToggle}
               onSiteExcludedChange={mutations.onSiteExcludedChange}
-              onOpenDashboard={openDashboard}
               onDispatchCorrect={mutations.onDispatchCorrect}
               onDispatchTranslate={mutations.onDispatchTranslate}
               onDispatchLayout={mutations.onDispatchLayout}
@@ -136,12 +132,16 @@ export function App() {
 
       {status ? (
         <footer className="fl-popup-footbar">
-          <span>{resolveAccountPlanLabel(status)}</span>
+          <span>
+            {t('popup.plan')}: {resolveAccountPlanLabel(status)}
+          </span>
           <div className="fl-popup-footbar-actions">
+            <button type="button" className="fl-link-btn" onClick={() => openDashboard('settings')}>
+              {t('popup.settingsLink')}
+            </button>
             <button type="button" className="fl-link-btn" onClick={() => openDashboard()}>
               {t('dashboard.open')}
             </button>
-            <HelpFeedbackLink />
           </div>
         </footer>
       ) : (

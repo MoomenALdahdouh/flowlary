@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { LANGUAGE_CAPABILITIES, supportsCorrection, supportsTranslation } from '@flowlary/shared'
+import { UI_LOCALE_OPTIONS } from '../../../extension/src/popup/i18n/types.ts'
+import { SUPPORTED_LANGUAGES } from '../../../extension/src/features/translation/languages.ts'
 import { resolveMessage } from '../../../extension/src/popup/i18n/I18nProvider.tsx'
 import { localeDirection } from '../../../extension/src/popup/i18n/types.ts'
 import { deepMerge } from '../../../extension/src/popup/i18n/merge.ts'
@@ -15,6 +17,16 @@ describe('language capabilities', () => {
     expect(supportsCorrection('ar')).toBe(false)
     expect(supportsTranslation('ar')).toBe(true)
     expect(LANGUAGE_CAPABILITIES.ar?.learning).toBe(false)
+  })
+
+  it('does not advertise translation for languages outside English and Arabic', () => {
+    expect(supportsTranslation('fr')).toBe(false)
+    expect(supportsTranslation('ja')).toBe(false)
+  })
+
+  it('exposes only English and Arabic in extension language pickers', () => {
+    expect(UI_LOCALE_OPTIONS.map((item) => item.code)).toEqual(['en', 'ar'])
+    expect(SUPPORTED_LANGUAGES.map((item) => item.code)).toEqual(['en', 'ar'])
   })
 })
 

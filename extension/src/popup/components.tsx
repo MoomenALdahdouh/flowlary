@@ -1,7 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { FLOWLARY_MARK, FLOWLARY_LOGO_GRADIENT_ID } from '@flowlary/shared'
-import { subscribeSystemTheme, syncDocumentTheme, toggleTheme } from '@flowlary/shared/theme'
+import { FLOWLARY_MARK, FLOWLARY_MARK_COLORS, FLOWLARY_LOGO_GRADIENT_ID, FLOWLARY_LOGO_GRADIENT_STOPS } from '@flowlary/shared'
+import { resolveTheme, setThemePreference, subscribeSystemTheme, syncDocumentTheme, type Theme } from '@flowlary/shared/theme'
 import { t } from './i18n/index.ts'
 
 export function PopupLogo({ className }: { className?: string }) {
@@ -9,40 +9,60 @@ export function PopupLogo({ className }: { className?: string }) {
     <svg className={className ?? 'fl-logo'} viewBox="0 0 32 32" aria-hidden="true">
       <defs>
         <linearGradient id={FLOWLARY_LOGO_GRADIENT_ID} x1="4" y1="4" x2="28" y2="28" gradientUnits="userSpaceOnUse">
-          <stop stopColor="var(--fl-brand-cyan, #19c7e8)" />
-          <stop offset="1" stopColor="var(--fl-brand-magenta, #ec4899)" />
+          {FLOWLARY_LOGO_GRADIENT_STOPS.map((stop) => (
+            <stop key={stop.offset} offset={stop.offset} stopColor={stop.color} />
+          ))}
         </linearGradient>
       </defs>
       <rect width="32" height="32" rx={FLOWLARY_MARK.radius} fill={`url(#${FLOWLARY_LOGO_GRADIENT_ID})`} />
-      <path d={FLOWLARY_MARK.f} fill="var(--fl-on-accent, #061018)" />
+      <path d={FLOWLARY_MARK.f} fill={FLOWLARY_MARK_COLORS.onGradient} />
       <rect
         x={FLOWLARY_MARK.caret.x}
         y={FLOWLARY_MARK.caret.y}
         width={FLOWLARY_MARK.caret.width}
         height={FLOWLARY_MARK.caret.height}
         rx={FLOWLARY_MARK.caret.rx}
-        fill="var(--fl-on-accent, #061018)"
+        fill={FLOWLARY_MARK_COLORS.onGradient}
       />
     </svg>
   )
 }
 
 export function ThemeToggle() {
+  const [theme, setTheme] = useState<Theme>(() => resolveTheme())
+
   useEffect(() => {
     syncDocumentTheme()
+    setTheme(resolveTheme())
     return subscribeSystemTheme()
   }, [])
 
+  function choose(next: Theme) {
+    setThemePreference(next)
+    setTheme(next)
+  }
+
   return (
-    <button type="button" className="fl-theme-toggle" aria-label={t('settings.theme')} onClick={() => toggleTheme()}>
-      <svg className="fl-theme-icon fl-theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="12" cy="12" r="4.2" />
-        <path d="M12 3.2v1.8M12 19v1.8M4.9 4.9l1.3 1.3M17.8 17.8l1.3 1.3M3.2 12H5M19 12h1.8M4.9 19.1l1.3-1.3M17.8 6.2l1.3-1.3" />
-      </svg>
-      <svg className="fl-theme-icon fl-theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M15.2 4.2a7.4 7.4 0 1 0 4.6 12.9 6.2 6.2 0 0 1-8.3-8.4 7.3 7.3 0 0 0 3.7-4.5Z" />
-      </svg>
-    </button>
+    <div className="fl-theme-toggle fl-theme-switch" role="group" aria-label={t('settings.theme')}>
+      <button
+        type="button"
+        className="fl-theme-switch-btn"
+        aria-pressed={theme === 'light'}
+        aria-label={t('settings.themeLight')}
+        onClick={() => choose('light')}
+      >
+        {t('settings.themeLight')}
+      </button>
+      <button
+        type="button"
+        className="fl-theme-switch-btn"
+        aria-pressed={theme === 'dark'}
+        aria-label={t('settings.themeDark')}
+        onClick={() => choose('dark')}
+      >
+        {t('settings.themeDark')}
+      </button>
+    </div>
   )
 }
 

@@ -109,7 +109,7 @@ export function useFeatureMutations({ status, setStatus, mutate }: Session) {
       if (!status) return
       const prevMode = status.translation.mode
       const prevLive = status.translation.liveEnabled
-      const nextLive = next === 'direct' ? status.translation.liveEnabled : false
+      const nextLive = status.translation.liveEnabled
       setStatus({
         ...status,
         translation: {

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { FREE_DAILY_CREDITS } from '@flowlary/shared'
 import type { ExtensionStatus } from '../../messaging/types.ts'
 import { SUPPORTED_LANGUAGES } from '../../features/translation/languages.ts'
-import { getSupportedLayouts } from '../../features/layout/layouts/registry.ts'
+import { getProductLayouts } from '../../features/layout/layouts/registry.ts'
 import {
   acceptFlowlaryAi,
   accountLogout,
@@ -18,6 +18,7 @@ import { t } from '../../popup/i18n/index.ts'
 import { correctionAiLabel } from '../../popup/status.ts'
 import { getShortcutLabels } from '../../popup/shortcuts.ts'
 import { DataFlowDiagram, InfoCard, ShortcutKey } from '../../ui/shared.tsx'
+import { ApplyHowSwitch } from '../../ui/ApplyHowSwitch.tsx'
 import { FLOWLARY_SITE_URL } from '../../config/endpoints.ts'
 import { getAccountUrl, openUpgradePage } from '../../config/upgrade.ts'
 import { UsageStatusCard } from '../../ui/UsageStatusCard.tsx'
@@ -81,26 +82,18 @@ export function SettingsPanel({
 
       {tab === 'writing' ? (
       <>
-      <section className="fl-section">
+      <section className="fl-section" data-tour="features">
         <h2 className="fl-section-label">{t('features.section')}</h2>
         <p className="fl-settings-desc">{t('assistant.lead')}</p>
         <div className="fl-settings-block">
-          <p className="fl-settings-row">
-            <span>{t('assistant.helpStyleLabel')}</span>
-            <select
-              aria-label={t('assistant.helpStyleLabel')}
-              value={status.writingPolicy?.helpStyle ?? 'auto'}
-              disabled={busy === 'help-style'}
-              onChange={(e) => {
-                const next = e.target.value as 'auto' | 'suggestions' | 'shortcuts_only'
-                void onMutate('help-style', () => patchWritingPolicy({ helpStyle: next }))
-              }}
-            >
-              <option value="auto">{t('assistant.style.auto')}</option>
-              <option value="suggestions">{t('assistant.style.suggestions')}</option>
-              <option value="shortcuts_only">{t('assistant.style.shortcuts_only')}</option>
-            </select>
-          </p>
+          <p className="fl-settings-desc">{t('settings.modeHint')}</p>
+          <ApplyHowSwitch
+            value={status.writingPolicy?.helpStyle ?? 'auto'}
+            disabled={busy === 'help-style'}
+            onChange={(next) => {
+              void onMutate('help-style', () => patchWritingPolicy({ helpStyle: next }))
+            }}
+          />
           <p className="fl-settings-row">
             <span>{t('features.layout')}</span>
             <ToggleSwitch
@@ -214,7 +207,6 @@ export function SettingsPanel({
       <section className="fl-section">
         <h2 className="fl-section-label">{t('settings.writing')}</h2>
         <div className="fl-settings-block">
-          <p className="fl-settings-desc">{t('settings.modeHint')}</p>
           <p className="fl-settings-row">
             <span>{t('settings.highlights')}</span>
             <ToggleSwitch
@@ -270,7 +262,7 @@ export function SettingsPanel({
       <section className="fl-section">
         <h2 className="fl-section-label">{t('settings.translation')}</h2>
         <div className="fl-settings-block">
-          {status.writingPolicy?.helpStyle === 'auto' || status.translation.mode === 'direct' ? (
+          {status.writingPolicy?.helpStyle !== 'shortcuts_only' ? (
             <p className="fl-settings-row">
               <span>{t('features.liveTranslation')}</span>
               <ToggleSwitch
@@ -412,7 +404,7 @@ export function SettingsPanel({
                 )
               }}
             >
-              {getSupportedLayouts().map((layout) => (
+              {getProductLayouts().map((layout) => (
                 <option key={layout.id} value={layout.id}>
                   {layout.name}
                 </option>
@@ -421,7 +413,7 @@ export function SettingsPanel({
           </p>
           <fieldset className="fl-settings-fieldset">
             <legend>{t('settings.layoutTargets')}</legend>
-            {getSupportedLayouts().map((layout) => {
+            {getProductLayouts().map((layout) => {
               const checked = status.layout.targetLayouts.includes(layout.id)
               return (
                 <label key={layout.id} className="fl-settings-check">

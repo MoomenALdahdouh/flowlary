@@ -2,13 +2,12 @@ import type { ReactNode } from 'react'
 import { BRAND } from '@flowlary/shared'
 import { AccountAvatar, PopupLogo, ThemeToggle } from '../popup/components.tsx'
 import { t } from '../popup/i18n/index.ts'
-import { FLOWLARY_SITE_URL } from '../config/endpoints.ts'
 import type { DashboardSection } from '../config/dashboard.ts'
 import type { DomainState } from '../ui/domainState.ts'
 import { ExtensionConnectionStatus } from './components/ExtensionConnectionStatus.tsx'
 
 export type DashboardNavItem = {
-  id: DashboardSection | 'support'
+  id: DashboardSection | 'support' | 'lab'
   label: string
   href?: string
 }
@@ -91,17 +90,6 @@ export function DashboardShell({
           {domain ? <ExtensionConnectionStatus domain={domain} /> : null}
         </div>
         <div className="wd-topbar-actions">
-          <a
-            className="wd-lab-chip"
-            href={`${FLOWLARY_SITE_URL}/lab`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            {t('dashboard.shell.writingLab')}
-            <span className="fl-fidelity fl-fidelity-live" role="status">
-              {t('fidelity.live')}
-            </span>
-          </a>
           <ThemeToggle />
           <span data-tour="account">
             <AccountAvatar signedIn={signedIn} email={email} onClick={onOpenAccount} />

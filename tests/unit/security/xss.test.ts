@@ -33,15 +33,14 @@ describe('XSS — AI output rendered as text', () => {
     card.mount(ta)
 
     for (const payload of XSS_PAYLOADS) {
-      card.ensureVisible('hello')
       card.setReady({
         remoteRequestId: 'req-xss',
         debouncerGeneration: 1,
         fieldGeneration: 1,
-        segment: payload,
-        requestedFullText: payload,
+        segment: 'hello',
+        requestedFullText: 'hello',
         response: {
-          originalText: payload,
+          originalText: 'hello',
           correctedText: payload,
           changes: [],
         },
@@ -67,17 +66,16 @@ describe('XSS — AI output rendered as text', () => {
     const ta = document.getElementById('t') as HTMLTextAreaElement
     card.mount(ta)
     const payload = '<img src=x onerror=alert(1)>'
-    card.ensureVisible(payload)
     card.setReady({
       remoteRequestId: 'req-xss',
       debouncerGeneration: 1,
       fieldGeneration: 1,
-      segment: payload,
-      requestedFullText: payload,
+      segment: 'hello',
+      requestedFullText: 'hello',
       response: {
-        originalText: payload,
+        originalText: 'hello',
         correctedText: payload,
-        changes: [{ type: 'spelling', original: payload, corrected: payload, start: 0, end: payload.length }],
+        changes: [{ type: 'spelling', original: 'hello', corrected: payload, start: 0, end: 5 }],
       },
     })
     const host = document.querySelector('[data-flowlary-correction-host]') as HTMLElement

@@ -7,7 +7,18 @@ import type { CorrectionResponse } from '@flowlary/shared'
 import { DIRECT_HIGHLIGHT_PREVIEW_MS } from '@flowlary/shared'
 import { recordCorrectionDetected } from '../../features/learning/recordCorrectionLearning.ts'
 import { cancelCorrectionRemote, requestCorrectionRemote } from '../../features/correction/client.ts'
+import { buildLocalCorrectionResponse } from '../../features/correction/localSuggestion.ts'
 import { requestTranslationRemote } from '../../features/translation/client.ts'
+import {
+  isAssistCooldownActive,
+  noteAssistRateLimited,
+} from '../../features/correction/assistCooldown.ts'
+import {
+  composeCorrectionWaitMs,
+  composeTranslationDelayMs,
+  shouldScheduleComposeCorrection,
+} from '../composeLiveAssist.ts'
+import { FeatureModeSwitch } from '../../ui/FeatureModeSwitch.tsx'
 import {
   convertManualText,
   defaultConverterPair,
@@ -84,11 +95,21 @@ type ComposeWorkbenchProps = {
   domain: DomainState
   onAcceptManaged?: () => void
   onOpenAccount?: () => void
+  correctionOnly?: boolean
+  onCorrectionModeChange?: (next: 'box' | 'direct') => void
 }
 
-export function ComposeWorkbench({ status, domain, onAcceptManaged, onOpenAccount }: ComposeWorkbenchProps) {
+export function ComposeWorkbench({
+  status,
+  domain,
+  onAcceptManaged,
+  onOpenAccount,
+  correctionOnly = false,
+  onCorrectionModeChange,
+}: ComposeWorkbenchProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [mode, setMode] = useState<ComposeMode>('correction')
+  const heldCorrectionRef = useRef<CorrectionResponse | null>(null)
   const [input, setInput] = useState('')
   const [phase, setPhase] = useState<ComposePhase>('idle')
   const [result, setResult] = useState<string | null>(null)
@@ -115,6 +136,9 @@ export function ComposeWorkbench({ status, domain, onAcceptManaged, onOpenAccoun
   const isLayoutDirect = mode === 'layout' && layoutMode === 'direct'
   const correctionRunRef = useRef(0)
   const correctionRequestIdRef = useRef<string | null>(null)
+  const lastCorrectionSentRef = useRef({ text: '', at: 0 })
+  const lastTranslationSentRef = useRef({ text: '', at: 0 })
+  const translationCooldownUntilRef = useRef(0)
   const translationRunRef = useRef(0)
   const layoutRunRef = useRef(0)
 
@@ -194,7 +218,10 @@ export function ComposeWorkbench({ status, domain, onAcceptManaged, onOpenAccoun
   const runCorrection = useCallback(
     async (trimmed: string, token: number) => {
       if (token !== correctionRunRef.current) return
-      setPhase('working')
+      const localPreview = buildLocalCorrectionResponse(trimmed)
+      if (!(correctionMode === 'box' && localPreview)) {
+        setPhase('working')
+      }
       setError(null)
       setShowUpgradeCta(false)
 
@@ -207,9 +234,20 @@ export function ComposeWorkbench({ status, domain, onAcceptManaged, onOpenAccoun
         }
         const requestId = crypto.randomUUID()
         correctionRequestIdRef.current = requestId
+        lastCorrectionSentRef.current = { text: trimmed, at: Date.now() }
         const response = await requestCorrectionRemote(requestId, trimmed, 'textarea', undefined)
         if (token !== correctionRunRef.current) return
         if (!response.ok) {
+          if (response.error === 'rate_limited' || response.error === 'AI_RATE_LIMITED') {
+            noteAssistRateLimited()
+          }
+          const local = buildLocalCorrectionResponse(trimmed)
+          if (local && correctionMode === 'box') {
+            setCorrection(local)
+            setResult(local.correctedText)
+            setPhase('done')
+            return
+          }
           setPhase('error')
           setError(humanizePopupError(response.error))
           await maybeOfferUpgrade(response.error)
@@ -219,6 +257,20 @@ export function ComposeWorkbench({ status, domain, onAcceptManaged, onOpenAccoun
           recordCorrectionDetected(requestId, trimmed, response.data)
         }
         if (response.data.correctedText === trimmed || response.data.changes.length === 0) {
+          const held = heldCorrectionRef.current
+          if (held && trimmed === held.correctedText) {
+            setCorrection(held)
+            setResult(held.correctedText)
+            setPhase('done')
+            return
+          }
+          const local = buildLocalCorrectionResponse(trimmed)
+          if (local) {
+            setCorrection(local)
+            setResult(local.correctedText)
+            setPhase('done')
+            return
+          }
           setPhase('idle')
           setResult(null)
           setCorrection(null)
@@ -267,6 +319,7 @@ export function ComposeWorkbench({ status, domain, onAcceptManaged, onOpenAccoun
         if (status.account.signedIn) {
           await accountSync()
         }
+        lastTranslationSentRef.current = { text: trimmed, at: Date.now() }
         const response = await requestTranslationRemote(
           trimmed,
           status.translation.sourceLanguage,
@@ -276,6 +329,9 @@ export function ComposeWorkbench({ status, domain, onAcceptManaged, onOpenAccoun
         )
         if (token !== translationRunRef.current) return
         if (!response.ok) {
+          if (response.code === 'rate_limited' || response.code === 'AI_RATE_LIMITED') {
+            translationCooldownUntilRef.current = Date.now() + 60_000
+          }
           setPhase('error')
           setError(humanizePopupError(response.code))
           await maybeOfferUpgrade(response.code)
@@ -347,6 +403,13 @@ export function ComposeWorkbench({ status, domain, onAcceptManaged, onOpenAccoun
   useEffect(() => {
     if (mode !== 'correction' || blocked) return
     const trimmed = input.trim()
+    const held = heldCorrectionRef.current
+    if (held && trimmed === held.correctedText) {
+      setPhase('done')
+      setCorrection(held)
+      setResult(held.correctedText)
+      return
+    }
     if (trimmed.length < 2) {
       setPhase('idle')
       setResult(null)
@@ -354,9 +417,23 @@ export function ComposeWorkbench({ status, domain, onAcceptManaged, onOpenAccoun
       return
     }
 
+    const local = correctionMode === 'box' ? buildLocalCorrectionResponse(trimmed) : null
+    if (local) {
+      setCorrection(local)
+      setResult(local.correctedText)
+      setPhase('done')
+    }
+
+    const last = lastCorrectionSentRef.current
+    if (!shouldScheduleComposeCorrection(input, last.text)) {
+      return
+    }
+
     const token = ++correctionRunRef.current
-    const delay = correctionMode === 'direct' ? 320 : 420
+    const delay = composeCorrectionWaitMs(input, last.at)
     const timer = window.setTimeout(() => {
+      const latest = lastCorrectionSentRef.current
+      if (!shouldScheduleComposeCorrection(input, latest.text)) return
       void runCorrection(trimmed, token)
     }, delay)
 
@@ -368,7 +445,7 @@ export function ComposeWorkbench({ status, domain, onAcceptManaged, onOpenAccoun
         correctionRequestIdRef.current = null
       }
     }
-  }, [blocked, correctionMode, input, mode, runCorrection])
+  }, [blocked, input, mode, runCorrection])
 
   useEffect(() => {
     if (mode !== 'translation' || blocked) return
@@ -378,10 +455,15 @@ export function ComposeWorkbench({ status, domain, onAcceptManaged, onOpenAccoun
       setResult(null)
       return
     }
+    const now = Date.now()
+    if (now < translationCooldownUntilRef.current) return
+    if (trimmed === lastTranslationSentRef.current.text) return
+    if (now - lastTranslationSentRef.current.at < 2500) return
 
     const token = ++translationRunRef.current
-    const delay = translationMode === 'direct' ? 420 : 520
+    const delay = composeTranslationDelayMs(translationMode)
     const timer = window.setTimeout(() => {
+      if (Date.now() < translationCooldownUntilRef.current) return
       void runTranslation(trimmed, token)
     }, delay)
 
@@ -421,17 +503,23 @@ export function ComposeWorkbench({ status, domain, onAcceptManaged, onOpenAccoun
 
   const applyCorrectionSuggestion = useCallback(() => {
     if (!correction) return
+    heldCorrectionRef.current = correction
     setInput(correction.correctedText)
-    setPhase('idle')
-    setResult(null)
-    setCorrection(null)
+    setResult(correction.correctedText)
+    setPhase('done')
     textareaRef.current?.focus()
   }, [correction])
 
   const run = useCallback(async () => {
     const trimmed = input.trim()
-    if (!trimmed || phase === 'working' || blocked || !isCardMode) return
+    if (!trimmed || phase === 'working' || blocked) return
 
+    if (mode === 'correction') {
+      const token = ++correctionRunRef.current
+      await runCorrection(trimmed, token)
+      return
+    }
+    if (!isCardMode) return
     if (mode === 'translation') {
       const token = ++translationRunRef.current
       await runTranslation(trimmed, token)
@@ -441,7 +529,7 @@ export function ComposeWorkbench({ status, domain, onAcceptManaged, onOpenAccoun
       const token = ++layoutRunRef.current
       await runLayout(trimmed, token)
     }
-  }, [blocked, input, isCardMode, mode, phase, runLayout, runTranslation])
+  }, [blocked, input, isCardMode, mode, phase, runCorrection, runLayout, runTranslation])
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (
@@ -491,26 +579,40 @@ export function ComposeWorkbench({ status, domain, onAcceptManaged, onOpenAccoun
       <div className="fl-compose-head">
         <div>
           <h3 id="fl-compose-title" className="fl-section-label">
-            {t('compose.title')}
+            {correctionOnly ? t('practice.writeHereTitle') : t('compose.title')}
           </h3>
-          <p className="fl-compose-lead">{t('compose.lead')}</p>
+          <p className="fl-compose-lead">
+            {correctionOnly ? t('practice.writeHereLead') : t('compose.lead')}
+          </p>
         </div>
       </div>
 
-      <div className="fl-compose-modes" role="tablist" aria-label={t('compose.modesAria')}>
-        {MODES.map((item) => (
-          <button
-            key={item}
-            type="button"
-            role="tab"
-            aria-selected={mode === item}
-            className={`fl-compose-mode${mode === item ? ' is-active' : ''}`}
-            onClick={() => switchMode(item)}
-          >
-            {t(`compose.mode.${item}`)}
-          </button>
-        ))}
-      </div>
+      {onCorrectionModeChange ? (
+        <FeatureModeSwitch
+          ariaLabel={t('settings.correctionMode')}
+          mode={correctionMode}
+          cardDesc={t('settings.boxModeDesc')}
+          directDesc={t('settings.directModeDesc')}
+          onChange={onCorrectionModeChange}
+        />
+      ) : null}
+
+      {correctionOnly ? null : (
+        <div className="fl-compose-modes" role="tablist" aria-label={t('compose.modesAria')}>
+          {MODES.map((item) => (
+            <button
+              key={item}
+              type="button"
+              role="tab"
+              aria-selected={mode === item}
+              className={`fl-compose-mode${mode === item ? ' is-active' : ''}`}
+              onClick={() => switchMode(item)}
+            >
+              {t(`compose.mode.${item}`)}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="fl-compose-shell">
         <textarea
@@ -519,16 +621,24 @@ export function ComposeWorkbench({ status, domain, onAcceptManaged, onOpenAccoun
           className="fl-compose-input"
           value={input}
           onChange={(event) => {
+            const next = event.target.value
+            const held = heldCorrectionRef.current
+            if (held && next === held.correctedText) {
+              setInput(next)
+              return
+            }
+            heldCorrectionRef.current = null
+            const cooling = isAssistCooldownActive() || Date.now() < translationCooldownUntilRef.current
             if (isCardMode) {
-              resetOutput()
-            } else if (phase === 'done' || phase === 'error') {
+              if (!cooling) resetOutput()
+            } else if ((phase === 'done' || phase === 'error') && !cooling) {
               setPhase('idle')
               setResult(null)
               setCorrection(null)
               setError(null)
               setShowUpgradeCta(false)
             }
-            setInput(event.target.value)
+            setInput(next)
           }}
           onKeyDown={onKeyDown}
           placeholder={placeholder}
@@ -546,65 +656,47 @@ export function ComposeWorkbench({ status, domain, onAcceptManaged, onOpenAccoun
         ) : null}
 
         {showCorrectionPreview && result ? (
-          <div className="fl-compose-result" aria-live="polite">
-            <span className="fl-compose-result-label">
-              {isCorrectionDirect ? t('compose.previewLabel') : t('compose.resultLabel')}
-            </span>
-            {correction ? (
-              <>
-                <CorrectionHighlight
-                  original={correction.originalText}
-                  corrected={correction.correctedText}
-                  changes={correction.changes}
-                  showMistakes
-                />
-                {correction.changes.length > 0 ? (
-                  <ul className="fl-compose-change-list">
-                    {correction.changes.map((change, index) => (
-                      <li key={`${change.original}-${index}`} className={`fl-practice-change fl-teach-${change.type}`}>
-                        <span className={`fl-teach-badge fl-teach-${change.type}`}>
-                          {t(`learning.focus.${change.type}` as 'learning.focus.spelling')}
-                        </span>
-                        <span className="fl-progress-pattern-pair">
-                          <del>{change.original || '∅'}</del>
-                          <ins>{change.corrected || '∅'}</ins>
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-                {isCorrectionBox ? (
-                  <button
-                    type="button"
-                    className="fl-action-btn fl-action-btn-primary fl-action-btn-compact fl-compose-apply"
-                    onClick={applyCorrectionSuggestion}
-                  >
-                    {t('compose.applySuggestion')}
-                  </button>
-                ) : (
-                  <p className="fl-compose-status" role="status">
-                    {t('compose.applyingDirect')}
-                  </p>
-                )}
-              </>
-            ) : (
-              <p className="fl-compose-result-text">{result}</p>
-            )}
-          </div>
+          <button
+            type="button"
+            className={`fl-box-card${heldCorrectionRef.current ? ' is-applied' : ''}`}
+            onClick={isCorrectionBox ? applyCorrectionSuggestion : undefined}
+            disabled={!isCorrectionBox}
+            aria-live="polite"
+          >
+            <div className="fl-box-card-header">
+              <span className="fl-box-card-badge">
+                <span className="fl-box-card-dot" aria-hidden="true" />
+                {t('compose.boxBadge.english')}
+              </span>
+              <span className="fl-box-card-hint">
+                {heldCorrectionRef.current ? t('card.applied') : t('card.clickToAccept')}
+              </span>
+            </div>
+            <CorrectionHighlight
+              className="fl-box-card-text"
+              original={correction?.originalText ?? ''}
+              corrected={correction?.correctedText ?? result}
+              changes={correction?.changes ?? []}
+            />
+          </button>
         ) : null}
 
         {phase === 'done' && result && (isTranslationBox || isLayoutBox) ? (
-          <div className="fl-compose-result" aria-live="polite">
-            <span className="fl-compose-result-label">{t('compose.resultLabel')}</span>
-            <p className="fl-compose-result-text">{result}</p>
-            <button
-              type="button"
-              className="fl-action-btn fl-action-btn-primary fl-action-btn-compact fl-compose-apply"
-              onClick={applySuggestion}
-            >
-              {t('compose.applySuggestion')}
-            </button>
-          </div>
+          <button
+            type="button"
+            className="fl-box-card"
+            onClick={applySuggestion}
+            aria-live="polite"
+          >
+            <div className="fl-box-card-header">
+              <span className="fl-box-card-badge">
+                <span className="fl-box-card-dot" aria-hidden="true" />
+                {isTranslationBox ? t('compose.boxBadge.translation') : t('compose.boxBadge.typing')}
+              </span>
+              <span className="fl-box-card-hint">{t('card.clickToAccept')}</span>
+            </div>
+            <p className="fl-box-card-text">{result}</p>
+          </button>
         ) : null}
 
         {phase === 'error' && error ? (

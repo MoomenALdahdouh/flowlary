@@ -1,4 +1,5 @@
 import {
+  isEnabledUiLocaleCode,
   isUiLocaleCode,
   UI_LOCALES,
   uiLocaleDirection,
@@ -78,6 +79,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, [locale])
 
   const setLocale = useCallback((next: UiLocale) => {
+    if (!isEnabledUiLocaleCode(next)) return
     setLocaleState(next)
     void writeUiLocale(next)
   }, [])

@@ -1,4 +1,9 @@
-import { isUiLocaleCode, uiLocaleDirection, uiLocaleHtmlLang } from '@flowlary/shared'
+import {
+  coerceEnabledUiLocale,
+  isUiLocaleCode,
+  uiLocaleDirection,
+  uiLocaleHtmlLang,
+} from '@flowlary/shared'
 import { STORAGE_KEYS } from '@flowlary/shared'
 import type { UiLocale } from './types.ts'
 
@@ -13,9 +18,9 @@ export async function readUiLocale(): Promise<UiLocale> {
     const raw = result[STORAGE_KEYS.uiLocale]
     if (typeof raw === 'object' && raw !== null && 'value' in raw) {
       const value = (raw as { value: unknown }).value
-      if (isUiLocaleCode(value)) return value
+      if (isUiLocaleCode(value)) return coerceEnabledUiLocale(value)
     }
-    if (isUiLocaleCode(raw)) return raw
+    if (isUiLocaleCode(raw)) return coerceEnabledUiLocale(raw)
   } catch {
     /* ignore */
   }

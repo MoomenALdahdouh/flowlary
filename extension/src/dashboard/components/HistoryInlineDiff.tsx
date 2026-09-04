@@ -25,7 +25,7 @@ export function HistoryInlineDiff({ original, corrected, changes = [] }: History
 
   return (
     <article className="fl-history-diff fl-history-colored">
-      <p className="fl-teach-text" aria-label={`${corrected}. ${original}`}>
+      <p className="fl-teach-text fl-mistake-pair" aria-label={`${corrected}. ${original}`}>
         “
         {tokens.map((token, index) => {
           if (token.type === 'equal') {

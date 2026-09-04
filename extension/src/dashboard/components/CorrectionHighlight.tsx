@@ -26,7 +26,7 @@ export function CorrectionHighlight({
   if (showMistakes) {
     const tokens = buildHistoryDiffTokens(original, corrected, changes)
     return (
-      <p className={`fl-teach-text ${className}`.trim()}>
+      <p className={`fl-teach-text fl-mistake-pair ${className}`.trim()}>
         {tokens.map((token, index) => {
           if (token.type === 'equal') {
             return <span key={`${index}-${token.value}`}>{token.value}</span>

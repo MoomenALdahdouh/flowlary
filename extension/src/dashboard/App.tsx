@@ -66,11 +66,15 @@ function buildNavGroups(nav: {
   account: string
   activity: string
   support: string
+  writingLab: string
 }): DashboardNavGroup[] {
   return [
     {
       label: nav.groupWrite,
-      items: [{ id: 'overview', label: nav.overview }],
+      items: [
+        { id: 'overview', label: nav.overview },
+        { id: 'lab', label: nav.writingLab, href: `${FLOWLARY_SITE_URL}/lab` },
+      ],
     },
     {
       label: nav.groupLearn,
@@ -308,7 +312,7 @@ export function DashboardApp() {
         domain={domain}
         loading={loading}
         busy={busy}
-        {...mutations}
+        onGlobalToggle={mutations.onGlobalToggle}
         onOpenAccount={openAccountEntry}
         onOpenSettings={() => go('settings')}
         onSetupLearning={() => void beginLearningSetup()}
@@ -316,9 +320,6 @@ export function DashboardApp() {
         setupBusy={onboardingBusy || busy === 'learning-dismiss'}
         onOpenProgress={() => go('progress')}
         onOpenPractice={(target) => go('practice', target ? { practiceTarget: target } : undefined)}
-        onOpenReport={() => go('report')}
-        onOpenActivity={() => go('activity')}
-        onReplayTour={() => void startDashboardTour()}
       />
     )
   } else if (section === 'progress') {
@@ -327,7 +328,7 @@ export function DashboardApp() {
         <ProgressPanel
           learningSummary={status?.learning.summary ?? null}
           onOpenActivity={() => go('activity')}
-          onOpenPractice={() => go('practice')}
+          onOpenPractice={(target) => go('practice', target ? { practiceTarget: target } : undefined)}
           advanced={Boolean(
             status?.entitlement.capabilities.includes('progress.advanced') ||
               status?.entitlement.isPro ||
@@ -341,8 +342,10 @@ export function DashboardApp() {
       <DashboardPage title={nav.practice} lead={t('dashboard.practiceLead')}>
         <PracticeSection
           status={status}
+          domain={domain}
           onOpenOverview={() => go('overview')}
           onOpenProgress={() => go('progress')}
+          onCorrectionModeChange={mutations.onCorrectionModeChange}
           fullAccess={Boolean(
             status?.entitlement.capabilities.includes('practice.full') ||
               status?.entitlement.isPro ||
