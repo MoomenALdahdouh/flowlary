@@ -15,6 +15,7 @@ type DailyBriefCardProps = {
   copy: DashboardCopy
   onOpenPractice: (target?: string) => void
   onOpenProgress: () => void
+  onOpenLab: () => void
 }
 
 export function DailyBriefCard({
@@ -23,6 +24,7 @@ export function DailyBriefCard({
   copy,
   onOpenPractice,
   onOpenProgress,
+  onOpenLab,
 }: DailyBriefCardProps) {
   const [brief, setBrief] = useState<DailyLearningBrief | null>(null)
 
@@ -76,7 +78,7 @@ export function DailyBriefCard({
             } else if (brief.recommendedAction.kind === 'view_progress') {
               onOpenProgress()
             } else {
-              window.location.href = '/lab'
+              onOpenLab()
             }
           }}
         >

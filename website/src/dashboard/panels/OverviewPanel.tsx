@@ -1,13 +1,9 @@
-import { useMemo } from 'react'
+import { PenLine, Zap } from 'lucide-react'
 import { InstallFlowlaryButton } from '../../components/Ui.tsx'
-import { useMessages } from '../../i18n/index.tsx'
+import { ChromeIcon } from '../../bolt/components/icons/ChromeIcon.tsx'
 import type { DashboardCopy } from '../types.ts'
 import type { WebLearningBundle } from '../services/learningData.ts'
 import { DailyBriefCard } from '../components/DailyBriefCard.tsx'
-import { LearningCoachCard } from '../components/LearningCoachCard.tsx'
-import { PersonalStatsCard } from '../../components/trust/PersonalStatsCard.tsx'
-import { LearningLoopStrip } from '../components/LearningLoopStrip.tsx'
-import { WritingLabLink } from '../components/WritingLabLink.tsx'
 
 function fill(template: string, vars: Record<string, string | number>): string {
   return template.replace(/\{(\w+)\}/g, (_, key: string) => String(vars[key] ?? ''))
@@ -17,57 +13,93 @@ type OverviewPanelProps = {
   bundle: WebLearningBundle
   accountId: string
   copy: DashboardCopy
-  locale: 'en' | 'ar'
-  isProOrTrial: boolean
   extensionConnected: boolean | null
   creditsRemaining: number | null
   dailyLimit: number
+  creditsUsed?: number
+  planLabel?: string
   usageDescription: string | null
-  onNavigate: (section: 'practice' | 'progress' | 'report', target?: string) => void
+  onNavigate: (section: 'lab' | 'practice' | 'progress' | 'report', target?: string) => void
 }
 
 export function OverviewPanel({
   bundle,
   accountId,
   copy,
-  locale,
-  isProOrTrial,
   extensionConnected,
   creditsRemaining,
   dailyLimit,
+  creditsUsed,
+  planLabel,
   usageDescription,
   onNavigate,
 }: OverviewPanelProps) {
-  const eventCount = useMemo(
-    () => bundle.store.events.filter((e) => e.source === 'writing').length,
-    [bundle.store.events],
-  )
+  const used = creditsUsed ?? (creditsRemaining != null ? Math.max(0, dailyLimit - creditsRemaining) : 0)
+  const usagePct = dailyLimit > 0 ? Math.min(100, Math.round((used / dailyLimit) * 100)) : 0
+  const eventCount = bundle.store.events.length
 
   return (
-    <div className="wd-panel-stack">
-      <header className="wd-panel-head">
-        <h2>{copy.overview.title}</h2>
-        <p className="wd-lead">{copy.overview.lead}</p>
+    <div className="wd-panel-stack wd-home">
+      <header className="wd-home-head">
+        <div>
+          <h2>{copy.overview.title}</h2>
+          <p className="wd-lead">{copy.overview.welcome}</p>
+        </div>
+        <button type="button" className="fl-nav-cta" onClick={() => onNavigate('lab')}>
+          <PenLine className="h-4 w-4" aria-hidden="true" />
+          {copy.overview.startWriting}
+        </button>
       </header>
 
-      <LearningLoopStrip />
-
-      <article className="wd-card wd-card-focus">
-        <h3>{copy.overview.writingLab}</h3>
-        <WritingLabLink />
+      <article className={`wd-card wd-home-ext${extensionConnected ? ' is-on' : ''}`}>
+        <div className="wd-home-install-icon" aria-hidden="true">
+          <ChromeIcon className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="wd-home-install-title">{copy.overview.extension}</p>
+          <p className="wd-muted">
+            {extensionConnected ? copy.overview.extensionConnected : copy.overview.extensionNotDetected}
+          </p>
+        </div>
+        {extensionConnected ? (
+          <span className="wd-home-badge">{copy.overview.connectedBadge}</span>
+        ) : (
+          <InstallFlowlaryButton variant="secondary" />
+        )}
       </article>
 
-      {usageDescription ? (
-        <article className="wd-card wd-card-compact">
-          <h3>{copy.overview.planUsage}</h3>
-          <p>{usageDescription}</p>
+      <div className="wd-overview-split">
+        <article className="wd-card">
+          <div className="wd-home-usage-head">
+            <div className="wd-home-usage-label">
+              <Zap className="h-4 w-4" aria-hidden="true" />
+              {copy.overview.planUsage}
+            </div>
+            {planLabel ? <span className="wd-home-plan">{planLabel}</span> : null}
+          </div>
+          <p className="wd-home-usage-count">
+            <span>{used}</span>
+            <span className="wd-muted"> / {dailyLimit}</span>
+          </p>
+          <div className="wd-home-meter" aria-hidden="true">
+            <div className="wd-home-meter-fill" style={{ width: `${usagePct}%` }} />
+          </div>
           {creditsRemaining != null ? (
-            <p className="wd-muted">
-              {fill(copy.overview.creditsRemaining, { remaining: creditsRemaining, limit: dailyLimit })}
-            </p>
+            <p className="wd-muted">{fill(copy.overview.creditsRemaining, { remaining: creditsRemaining, limit: dailyLimit })}</p>
+          ) : usageDescription ? (
+            <p className="wd-muted">{usageDescription}</p>
           ) : null}
+          <p className="wd-muted">{copy.overview.layoutNote}</p>
         </article>
-      ) : null}
+
+        <article className="wd-card">
+          <p className="wd-home-usage-label">{copy.overview.writingEvents}</p>
+          <p className="wd-home-usage-count">
+            <span>{eventCount}</span>
+          </p>
+          <p className="wd-muted">{fill(copy.overview.eventsSynced, { count: eventCount })}</p>
+        </article>
+      </div>
 
       <DailyBriefCard
         bundle={bundle}
@@ -75,51 +107,10 @@ export function OverviewPanel({
         copy={copy}
         onOpenPractice={(target) => onNavigate('practice', target)}
         onOpenProgress={() => onNavigate('progress')}
+        onOpenLab={() => onNavigate('lab')}
       />
 
-      <section className="wd-section" aria-labelledby="wd-learn-heading">
-        <h3 id="wd-learn-heading" className="wd-section-title">
-          {copy.nav.groupLearn}
-        </h3>
-        <div className="wd-section-stack">
-          <LearningCoachCard
-            bundle={bundle}
-            accountId={accountId}
-            copy={copy}
-            isProOrTrial={isProOrTrial}
-            locale={locale}
-            onOpenPractice={(target) => onNavigate('practice', target)}
-            onOpenReport={() => onNavigate('report')}
-          />
-        </div>
-      </section>
-
-      <PersonalStatsCard />
-
-      <article className="wd-card">
-        <h3>{copy.overview.extension}</h3>
-        <p>
-          {extensionConnected == null
-            ? copy.common.loading
-            : extensionConnected
-              ? copy.overview.extensionConnected
-              : copy.overview.extensionNotDetected}
-        </p>
-        {eventCount > 0 ? (
-          <p className="wd-muted">{fill(copy.overview.eventsSynced, { count: eventCount })}</p>
-        ) : null}
-        {!extensionConnected ? (
-          <div className="wd-actions">
-            <InstallFlowlaryButton variant="secondary" />
-          </div>
-        ) : null}
-      </article>
-
-      <article className="wd-card wd-card-muted">
-        <h3>{copy.overview.historyTitle}</h3>
-        <p className="wd-muted">{copy.overview.historyBody}</p>
-        <p className="wd-muted wd-extension-note">{copy.overview.historyAction}</p>
-      </article>
+      <p className="wd-home-history">{copy.overview.historyBody}</p>
     </div>
   )
 }

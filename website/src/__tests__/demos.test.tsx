@@ -15,8 +15,9 @@ function renderRoute(path: string) {
 describe('product demonstrations', () => {
   it('home hero uses a real popup preview and product experience', () => {
     const html = renderRoute('/')
-    expect(html).toContain('Keep writing.')
-    expect(html).toContain('switch tools.')
+    expect(html).toContain('Write where you are.')
+    expect(html).toContain('Help stays in the field.')
+    expect(html).toContain('kr-hero-frame')
     expect(html).toContain('Three problems.')
     expect(html).toContain('One field.')
     expect(html).toContain('fl-fidelity-simulated')

@@ -15,6 +15,7 @@ import {
   type LearningEventAction,
 } from '@flowlary/shared'
 import { countWords } from '@flowlary/shared'
+import { canStoreProduct } from '../cookies/consent.ts'
 
 const STORE_PREFIX = 'flowlary.web.account.'
 
@@ -101,7 +102,7 @@ export function readWebLearningStore(accountId: string): LearningEventStoreV1 {
 }
 
 export function writeWebLearningStore(accountId: string, store: LearningEventStoreV1): void {
-  if (!accountId) return
+  if (!accountId || !canStoreProduct()) return
   localStorage.setItem(storageKey(accountId), JSON.stringify(store))
 }
 

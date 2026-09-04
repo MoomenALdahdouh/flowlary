@@ -34,7 +34,7 @@ export const privacyEn: LegalDocumentContent = {
       blocks: [
         {
           type: 'p',
-          text: 'Flowlary is offered as an independent product at flowlary.com. The legal entity name, registered address, and data-protection contact details for the operator are not published in this repository and must be confirmed before treating this page as complete for regulatory filings.',
+          text: 'Flowlary is operated as an independent writing companion at flowlary.com. Privacy and data-protection requests can be submitted from the Contact page using Privacy requests. If you have an account, we reply using the email on that account.',
         },
       ],
     },
@@ -223,7 +223,7 @@ export const privacyEn: LegalDocumentContent = {
       blocks: [
         {
           type: 'p',
-          text: 'Flowlary does not use a site-wide cookie consent banner in the current implementation because we do not run third-party analytics cookies on the marketing site. See the Cookie Policy for details on local storage, extension storage, and payment-partner cookies.',
+          text: 'The marketing site shows a cookie bar on first visit. You can accept all, reject optional storage, or choose settings. Needed storage covers sign-in and device identity. Language, colors, and learning storage are optional. Flowlary does not run advertising or analytics cookies on the marketing site. See the Cookie Policy for keys, extension storage, and Paddle checkout cookies.',
         },
       ],
     },
@@ -625,17 +625,17 @@ export const cookiesEn: LegalDocumentContent = {
   intro: [
     {
       type: 'p',
-      text: 'This page explains how Flowlary uses cookies and similar browser storage. Flowlary does not run third-party analytics cookies on the marketing website in the current implementation.',
+      text: 'This page explains how Flowlary uses cookies and similar browser storage. The first visit shows a cookie bar so you can accept, reject optional storage, or open settings. Flowlary does not run advertising or analytics cookies on the marketing website.',
     },
   ],
   sections: [
     {
       id: 'needed',
-      title: '1. Is a separate cookie policy needed?',
+      title: '1. Cookie bar',
       blocks: [
         {
           type: 'p',
-          text: 'Flowlary uses essential browser storage for preferences and product function. We also describe extension storage here because store listings and privacy disclosures reference it. We do not show a cookie consent banner today because we do not use non-essential tracking cookies on the marketing site.',
+          text: 'Flowlary uses browser storage for sign-in, language, colors, and learning on this device. A cookie bar appears on first visit. Needed storage stays on so the site can work. Language, colors, and learning storage are optional until you accept them or turn them on in Settings.',
         },
       ],
     },
@@ -646,9 +646,14 @@ export const cookiesEn: LegalDocumentContent = {
         {
           type: 'ul',
           items: [
-            'flowlary-theme: remembers light or dark appearance.',
-            'flowlary-locale: remembers your language choice when you change it.',
-            'flowlary.web.account.{id}.ai.consent: stores your Writing Lab AI consent choice per account in localStorage.',
+            'flowlary-cookie-consent: your accept, reject, or settings choice.',
+            'flowlary.web.session: keeps you signed in across tabs (needed).',
+            'flowlary.auth.next: remembers where to go after sign-in (session only).',
+            'flowlary.web.install_id / flowlary.web.install_token: device identity for the Flowlary API (needed).',
+            'flowlary-theme: light, dark, or system colors (optional preference).',
+            'flowlary-locale: English or Arabic (optional preference).',
+            'flowlary.web.account.{id}.ai.consent: Writing Lab AI consent per account (optional product).',
+            'flowlary.web.account.{id}.learning.*: practice, progress, and saved learning on this device (optional product).',
           ],
         },
       ],
@@ -680,7 +685,8 @@ export const cookiesEn: LegalDocumentContent = {
         {
           type: 'ul',
           items: [
-            'Clear site data in your browser to reset theme and locale preferences.',
+            'Use Cookie settings in the footer to accept, reject, or change optional storage.',
+            'Clear site data in your browser to reset theme, locale, session, and learning storage.',
             'Clear extension data or uninstall the extension to reset extension storage.',
             'Use browser settings to block third-party cookies; checkout may require allowing Paddle domains.',
           ],

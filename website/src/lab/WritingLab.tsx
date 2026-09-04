@@ -18,7 +18,8 @@ import {
   type WebAccountView,
   type WebEntitlementView,
 } from '../account/client.ts'
-import { Button, InstallFlowlaryButton } from '../components/Ui.tsx'
+import { InstallFlowlaryButton } from '../components/Ui.tsx'
+import { Link } from 'react-router-dom'
 import { useMessages, useI18n } from '../i18n/index.tsx'
 import { readWebLearningStore } from './webLearningStore.ts'
 import {
@@ -56,7 +57,15 @@ function createBatchId(): string {
   return `wl-${Date.now()}`
 }
 
-export function WritingLab() {
+export function WritingLab({
+  embedded = false,
+  onOpenProgress,
+  onOpenPractice,
+}: {
+  embedded?: boolean
+  onOpenProgress?: () => void
+  onOpenPractice?: (targetId?: string) => void
+}) {
   const t = useMessages()
   const copy = t.writingLab
   const { locale } = useI18n()
@@ -281,27 +290,57 @@ export function WritingLab() {
 
   const openPracticeForPattern = useCallback(async (pattern: WebRecurringPattern) => {
     const targetId = practiceTargetIdForPattern(pattern)
+    if (onOpenPractice) {
+      onOpenPractice(targetId)
+      return
+    }
     const connected = extensionBridgeReady ?? (await probeExtensionBridge())
     if (connected) {
       publishOpenDashboard('practice', targetId)
       return
     }
     setExtensionBridgeReady(false)
-  }, [extensionBridgeReady])
+  }, [extensionBridgeReady, onOpenPractice])
 
   const writingChanges = response?.changes ?? []
+  const gateMessage = renderGateMessage()
+  const charLabel = copy.charCount
+    .replace('{count}', String(input.length))
+    .replace('{max}', String(WEB_CORRECTION_MAX_CHARS))
+
+  function typeCard(type: CorrectionChange['type']) {
+    if (type === 'spelling') return 'border-amber-200 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10'
+    if (type === 'grammar') return 'border-sky-200 bg-sky-50 dark:border-sky-500/30 dark:bg-sky-500/10'
+    if (type === 'wording') return 'border-teal-200 bg-teal-50 dark:border-teal-500/30 dark:bg-teal-500/10'
+    return 'border-violet-200 bg-violet-50 dark:border-violet-500/30 dark:bg-violet-500/10'
+  }
 
   return (
-    <div className="writing-lab" id="writing-lab">
-      <div className="writing-lab-card">
-        <div className="writing-lab-editor">
+    <div className="writing-lab grid gap-0 lg:grid-cols-5" id="writing-lab">
+      <div className="writing-lab-card border-0 bg-transparent shadow-none lg:col-span-3 lg:border-e lg:border-slate-200 dark:lg:border-slate-700">
+        <div className="p-5 sm:p-6">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{copy.editorTitle}</h3>
+            <button
+              type="button"
+              className="text-xs font-semibold text-sky-600 hover:text-sky-500 dark:text-sky-400"
+              onClick={() => {
+                setInput(copy.sampleText)
+                setPhase('idle')
+                setResponse(null)
+                setError(null)
+              }}
+            >
+              {copy.insertSample}
+            </button>
+          </div>
           <label className="visually-hidden" htmlFor="writing-lab-input">
             {copy.inputAria}
           </label>
           <textarea
             id="writing-lab-input"
             ref={textareaRef}
-            className="writing-lab-textarea"
+            className="field-input min-h-[12rem] resize-y"
             placeholder={copy.placeholder}
             value={input}
             onChange={(event) => {
@@ -315,35 +354,42 @@ export function WritingLab() {
             aria-describedby="writing-lab-disclaimer"
             disabled={phase === 'working'}
           />
-          <div className={`writing-lab-actions${phase === 'working' ? ' is-ai-working' : ''}`}>
-            <p id="writing-lab-disclaimer" className="writing-lab-disclaimer">
+          <div className={`mt-4 flex flex-wrap items-center justify-between gap-3${phase === 'working' ? ' is-ai-working' : ''}`}>
+            <p id="writing-lab-disclaimer" className="max-w-md text-xs text-slate-500 dark:text-slate-400">
               {account ? copy.disclaimerSignedIn : copy.disclaimerSignedOut}
             </p>
-            <Button
-              type="button"
-              variant="primary"
-              className="btn-hero"
-              disabled={!canAnalyze && gate !== 'requires_auth'}
-              aria-busy={phase === 'working'}
-              onClick={() => {
-                if (gate === 'requires_auth') {
-                  window.location.assign('/account?next=lab')
-                  return
-                }
-                void analyze()
-              }}
-            >
-              {phase === 'working' ? copy.analyzing : copy.analyze}
-            </Button>
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] text-slate-400">{charLabel}</span>
+              <button
+                type="button"
+                className="btn-primary text-sm"
+                disabled={!canAnalyze && gate !== 'requires_auth'}
+                aria-busy={phase === 'working'}
+                onClick={() => {
+                  if (gate === 'requires_auth') {
+                    if (embedded) return
+                    window.location.assign('/account?next=lab')
+                    return
+                  }
+                  void analyze()
+                }}
+              >
+                {phase === 'working' ? copy.analyzing : copy.analyze}
+              </button>
+            </div>
           </div>
         </div>
+      </div>
+
+      <aside className="border-t border-slate-200 p-5 dark:border-slate-700 sm:p-6 lg:col-span-2 lg:border-t-0">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{copy.resultsTitle}</h3>
 
         {gate === 'requires_consent' ? (
-          <div className="writing-lab-consent">
-            <p>{copy.consentBody}</p>
-            <Button
+          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950">
+            <p className="text-sm text-slate-600 dark:text-slate-300">{copy.consentBody}</p>
+            <button
               type="button"
-              variant="secondary"
+              className="btn-secondary mt-4 text-sm"
               onClick={() => {
                 if (!account) return
                 acceptWebAiConsent(account.id)
@@ -351,126 +397,126 @@ export function WritingLab() {
               }}
             >
               {copy.consentAccept}
-            </Button>
+            </button>
           </div>
         ) : null}
 
-        {renderGateMessage() ? (
-          <p className="writing-lab-gate" role="status">
-            {renderGateMessage()}
+        {gateMessage ? (
+          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300" role="status">
+            <p>{gateMessage}</p>
             {gate === 'requires_auth' ? (
-              <>
-                {' '}
-                <Button variant="secondary" to="/account?next=lab">
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Link to="/account?next=lab" className="btn-primary text-sm">
                   {copy.signInCta}
-                </Button>
-              </>
+                </Link>
+                <Link to="/account?mode=register&next=lab" className="btn-secondary text-sm">
+                  {copy.createAccountCta}
+                </Link>
+              </div>
             ) : null}
             {gate === 'credits_exhausted' ? (
-              <>
-                {' '}
-                <Button variant="secondary" to="/pricing">
-                  {copy.upgradeCta}
-                </Button>
-              </>
+              <Link to="/pricing" className="btn-secondary mt-4 inline-flex text-sm">
+                {copy.upgradeCta}
+              </Link>
             ) : null}
+          </div>
+        ) : null}
+
+        {phase === 'error' && error ? (
+          <p className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
+            {error}
           </p>
         ) : null}
 
-        {phase === 'error' && error ? <p className="writing-lab-error">{error}</p> : null}
+        {phase === 'idle' && gate === 'ready' && !response ? (
+          <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">{copy.resultsEmpty}</p>
+        ) : null}
 
         {phase === 'done' && response ? (
-          <div className="writing-lab-results">
+          <div className="writing-lab-results mt-4 space-y-5 border-0 p-0">
             {learningSyncStatus === 'synced' ? (
-              <p className="writing-lab-disclaimer" role="status">
+              <p className="text-xs text-emerald-600 dark:text-emerald-400" role="status">
                 {copy.learningSynced}
               </p>
             ) : learningSyncStatus === 'already_recorded' ? (
-              <p className="writing-lab-disclaimer" role="status">
+              <p className="text-xs text-slate-500" role="status">
                 {copy.learningAlreadyRecorded}
               </p>
             ) : learningSyncStatus === 'pending' ? (
-              <p className="writing-lab-disclaimer" role="status">
+              <p className="text-xs text-slate-500" role="status">
                 {copy.learningPending}
               </p>
             ) : null}
-            <section aria-labelledby="writing-lab-your-writing">
-              <h3 id="writing-lab-your-writing" className="writing-lab-section-title">
-                {copy.yourWriting}
-              </h3>
-              <p className="writing-lab-original">{response.originalText}</p>
-            </section>
 
             {response.correctedText && response.correctedText !== response.originalText ? (
               <section aria-labelledby="writing-lab-corrected">
-                <h3 id="writing-lab-corrected" className="writing-lab-section-title">
+                <h4 id="writing-lab-corrected" className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
                   {copy.correctedWriting}
-                </h3>
-                <p className="writing-lab-original">{response.correctedText}</p>
+                </h4>
+                <p className="rounded-xl border border-slate-200 bg-white p-3 text-sm leading-relaxed text-slate-800 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+                  {response.correctedText}
+                </p>
               </section>
             ) : null}
 
             <section aria-labelledby="writing-lab-corrections">
-              <h3 id="writing-lab-corrections" className="writing-lab-section-title">
+              <h4 id="writing-lab-corrections" className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
                 {copy.corrections}
-              </h3>
+              </h4>
               {writingChanges.length === 0 ? (
-                <p className="writing-lab-empty">{copy.noCorrections}</p>
+                <p className="text-sm text-slate-500">{copy.noCorrections}</p>
               ) : (
-                <ul className="writing-lab-corrections">
+                <ul className="space-y-3">
                   {response.changes.map((change, index) => {
                     const explanation = response.explanations?.[index]
                     const recurring = recurringForIndex(index)
                     return (
-                      <li key={`${change.type}-${change.start}-${change.original}`} className={`writing-lab-correction is-${change.type}`}>
-                        <div className="writing-lab-correction-head">
-                          <span className="writing-lab-category">
-                            {categoryLabel(change.type, copy.categories)}
-                          </span>
-                        </div>
-                        <p className="writing-lab-pair">
-                          <span className="from">&quot;{change.original}&quot;</span>
-                          <span className="arrow">→</span>
+                      <li
+                        key={`${change.type}-${change.start}-${change.original}`}
+                        className={`rounded-xl border p-3 ${typeCard(change.type)}`}
+                      >
+                        <span className="text-[11px] font-semibold uppercase tracking-wide">
+                          {categoryLabel(change.type, copy.categories)}
+                        </span>
+                        <p className="mt-1 text-sm text-slate-800 dark:text-slate-100">
+                          <span className="text-slate-400 line-through">&quot;{change.original}&quot;</span>
+                          <span className="mx-1 text-slate-400">→</span>
                           <span>&quot;{change.corrected}&quot;</span>
                         </p>
                         {explanation ? (
-                          <Button
+                          <button
                             type="button"
-                            variant="link"
-                            className="btn-sm"
+                            className="mt-2 text-xs font-semibold text-sky-600 dark:text-sky-400"
                             aria-expanded={expanded === index}
                             onClick={() => setExpanded(expanded === index ? null : index)}
                           >
                             {expanded === index ? copy.hideExplanation : copy.understandThis}
-                          </Button>
+                          </button>
                         ) : null}
                         {expanded === index && explanation ? (
-                          <div className="writing-lab-explanation">
+                          <div className="mt-2 text-sm text-slate-600 dark:text-slate-300">
                             <p>{localizedExplanation(explanation).summary}</p>
                             {localizedExplanation(explanation).why ? (
-                              <p>{localizedExplanation(explanation).why}</p>
+                              <p className="mt-1">{localizedExplanation(explanation).why}</p>
                             ) : null}
                           </div>
                         ) : null}
                         {recurring && recurring.count >= 2 ? (
-                          <>
-                            <p className="writing-lab-meta">
+                          <div className="mt-3">
+                            <p className="text-xs text-slate-500">
                               {copy.recurringSeen.replace('{count}', String(recurring.count))}
                             </p>
-                            <div className="writing-lab-bridge">
-                              <Button
-                                type="button"
-                                variant="secondary"
-                                className="btn-sm"
-                                onClick={() => void openPracticeForPattern(recurring)}
-                              >
-                                {extensionBridgeReady === false ? copy.practiceInExtension : copy.practiceThis}
-                              </Button>
-                              {extensionBridgeReady === false ? (
-                                <p className="writing-lab-meta">{copy.installForPractice}</p>
-                              ) : null}
-                            </div>
-                          </>
+                            <button
+                              type="button"
+                              className="btn-secondary mt-2 text-xs"
+                              onClick={() => void openPracticeForPattern(recurring)}
+                            >
+                              {extensionBridgeReady === false ? copy.practiceInExtension : copy.practiceThis}
+                            </button>
+                            {extensionBridgeReady === false ? (
+                              <p className="mt-1 text-xs text-slate-500">{copy.installForPractice}</p>
+                            ) : null}
+                          </div>
                         ) : null}
                       </li>
                     )
@@ -481,51 +527,42 @@ export function WritingLab() {
 
             {summary ? (
               <section aria-labelledby="writing-lab-noticed">
-                <h3 id="writing-lab-noticed" className="writing-lab-section-title">
+                <h4 id="writing-lab-noticed" className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
                   {copy.whatFlowlaryNoticed}
-                </h3>
-                <div className="writing-lab-notice">
+                </h4>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
                   {summary.correctionCount > 0 ? (
-                    <p>
-                      {copy.correctionsFound.replace('{count}', String(summary.correctionCount))}
-                    </p>
+                    <p>{copy.correctionsFound.replace('{count}', String(summary.correctionCount))}</p>
                   ) : null}
                   {summary.topRecurring ? (
                     <>
-                      <p>{copy.recurringBefore}</p>
-                      <p>
-                        {copy.recurringSeen.replace('{count}', String(summary.topRecurring.count))}
-                      </p>
-                      <div className="writing-lab-bridge">
-                        <InstallFlowlaryButton className="btn-sm" />
-                      </div>
+                      <p className="mt-2">{copy.recurringBefore}</p>
+                      <p>{copy.recurringSeen.replace('{count}', String(summary.topRecurring.count))}</p>
                     </>
                   ) : summary.personalizationReady && summary.focusArea ? (
-                    <p>
-                      {copy.focusHint.replace('{area}', copy.categories[summary.focusArea])}
-                    </p>
+                    <p className="mt-2">{copy.focusHint.replace('{area}', copy.categories[summary.focusArea])}</p>
                   ) : (
-                    <p>{copy.keepWriting}</p>
+                    <p className="mt-2">{copy.keepWriting}</p>
                   )}
                 </div>
               </section>
             ) : null}
 
-            <section aria-labelledby="writing-lab-bridge">
-              <h3 id="writing-lab-bridge" className="writing-lab-section-title">
-                {copy.continueLearning}
-              </h3>
-              <div className="writing-lab-bridge">
-                <InstallFlowlaryButton />
-                <Button variant="secondary" to="/account">
+            <div className="flex flex-wrap gap-2">
+              <InstallFlowlaryButton variant="secondary" className="text-sm" />
+              {onOpenProgress ? (
+                <button type="button" className="btn-secondary text-sm" onClick={onOpenProgress}>
                   {copy.viewProgress}
-                </Button>
-              </div>
-              <p className="writing-lab-disclaimer">{copy.extensionBridge}</p>
-            </section>
+                </button>
+              ) : (
+                <Link to="/dashboard#progress" className="btn-secondary text-sm">
+                  {copy.viewProgress}
+                </Link>
+              )}
+            </div>
           </div>
         ) : null}
-      </div>
+      </aside>
     </div>
   )
 }

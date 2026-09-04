@@ -1,5 +1,5 @@
-import { FeaturesShowcase } from '../components/features/FeaturesShowcase.tsx'
+import FeaturesOverview from '../bolt/pages/features/FeaturesOverview'
 
 export function FeaturesPage() {
-  return <FeaturesShowcase />
+  return <FeaturesOverview />
 }

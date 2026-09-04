@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { FLOWLARY_PRICING, FREE_DAILY_CREDITS, PRO_DAILY_CREDITS } from '@flowlary/shared'
 import { Button, InstallFlowlaryButton } from '../components/Ui.tsx'
 import { useMessages } from '../i18n/index.tsx'
@@ -92,9 +92,9 @@ export function AccountPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [authMode, setAuthMode] = useState<'login' | 'register'>(() =>
-    search.get('mode') === 'register' || search.get('intent') === 'student' ? 'register' : 'login',
-  )
+  const [termsAccepted, setTermsAccepted] = useState(false)
+  const authMode: 'login' | 'register' =
+    search.get('mode') === 'register' || search.get('intent') === 'student' ? 'register' : 'login'
   const [busy, setBusy] = useState<'login' | 'register' | 'logout' | 'checkout' | 'portal' | 'restore' | null>(null)
   const [sessionChecking, setSessionChecking] = useState(true)
   const [error, setError] = useState<AccountClientError | null>(null)
@@ -106,7 +106,7 @@ export function AccountPage() {
   const [activating, setActivating] = useState(waitingForWebhook)
   const [billingConfig, setBillingConfig] = useState<BillingConfigView | null>(null)
   const [billingMessage, setBillingMessage] = useState<string | null>(null)
-  const [fieldError, setFieldError] = useState<'email' | 'password' | 'confirmPassword' | null>(null)
+  const [fieldError, setFieldError] = useState<'email' | 'password' | 'confirmPassword' | 'terms' | null>(null)
 
   async function applyAccount(
     nextAccount: WebAccountView,
@@ -216,6 +216,7 @@ export function AccountPage() {
 
   function afterAuthenticated(registered: boolean, currentAccount?: WebAccountView | null) {
     setPassword('')
+    setConfirmPassword('')
     if (next) storePendingNext(next)
     if (registered) {
       setJustRegistered(true)
@@ -228,13 +229,13 @@ export function AccountPage() {
     }
     const active = currentAccount ?? account
     const pending = next ?? readPendingNext()
-    if (pending === 'lab' && active?.emailVerified !== false) {
+    if (pending && active?.emailVerified !== false) {
+      if (pending === 'checkout') {
+        void onUpgrade()
+        return
+      }
       clearPendingNext()
-      navigate('/lab', { replace: true })
-      return
-    }
-    if (pending === 'checkout' && active?.emailVerified !== false) {
-      void onUpgrade()
+      navigate(resolvePostAuthDestination(pending), { replace: true })
       return
     }
     if (search.get('mode') || search.get('next')) {
@@ -253,13 +254,13 @@ export function AccountPage() {
     syncStoredSessionToExtension(loaded.account)
     if (loaded.account.emailVerified === false) return
     const pending = readPendingNext() ?? next
-    if (pending === 'lab') {
-      clearPendingNext()
-      navigate('/lab', { replace: true })
-      return
-    }
     if (pending === 'checkout') {
       void onUpgrade()
+      return
+    }
+    if (pending) {
+      clearPendingNext()
+      navigate(resolvePostAuthDestination(pending), { replace: true })
       return
     }
     setJustRegistered(true)
@@ -306,6 +307,10 @@ export function AccountPage() {
       setFieldError('confirmPassword')
       return
     }
+    if (!termsAccepted) {
+      setFieldError('terms')
+      return
+    }
     setBusy('register')
     setError(null)
     setFieldError(null)
@@ -320,7 +325,6 @@ export function AccountPage() {
       setError(result.error)
       if (result.error === 'invalid_email') setFieldError('email')
       if (result.error === 'invalid_password') setFieldError('password')
-      if (result.error === 'duplicate') setAuthMode('login')
     }
     setBusy(null)
   }
@@ -337,7 +341,7 @@ export function AccountPage() {
     setRestoreError(false)
     await logoutWebAccount()
     setBusy(null)
-    setAuthMode('login')
+    navigate('/account', { replace: true })
   }
 
   async function onUpgrade() {
@@ -427,21 +431,39 @@ export function AccountPage() {
   const needsVerification = Boolean(account) && account?.emailVerified === false
   const showVerificationGate = needsVerification && justRegistered
   const inputsDisabled = busy === 'login' || busy === 'register' || restoring
-  const submitDisabled =
-    inputsDisabled ||
-    (authMode === 'register' &&
-      (password.length < 8 || confirmPassword.length < 8 || password !== confirmPassword))
+  const submitDisabled = inputsDisabled || (authMode === 'register' && !termsAccepted)
 
-  const authFooter = (
-    <p className="ac-extension-link">
-      <Button variant="ghost" to="/guide">
-        {copy.installExtensionCta}
-      </Button>
-      <Button variant="ghost" to="/pricing">
-        {copy.viewPlans}
-      </Button>
-    </p>
-  )
+  const pendingDestination = next ?? readPendingNext()
+  const pendingTo =
+    pendingDestination && pendingDestination !== 'checkout'
+      ? resolvePostAuthDestination(pendingDestination)
+      : null
+  const registerNote =
+    authMode !== 'register'
+      ? undefined
+      : studentIntent
+        ? copy.student.verificationOpensNote
+        : pendingDestination === 'lab'
+          ? copy.nextLab
+          : pendingDestination === 'checkout'
+            ? copy.nextCheckout
+            : pendingDestination === 'feedback' ||
+                pendingDestination === 'feedback-features' ||
+                pendingDestination === 'feedback-support'
+              ? copy.nextFeedback
+              : undefined
+
+  const authFooter =
+    authMode === 'register' ? undefined : (
+      <p className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm">
+        <Link to="/guide" className="font-semibold text-sky-600 hover:underline dark:text-sky-400">
+          {copy.installExtensionCta}
+        </Link>
+        <Link to="/pricing" className="font-semibold text-sky-600 hover:underline dark:text-sky-400">
+          {copy.viewPlans}
+        </Link>
+      </p>
+    )
 
   return (
     <>
@@ -516,7 +538,7 @@ export function AccountPage() {
               <p className="ac-hint ac-welcome-note">{copy.trustLine}</p>
             )}
             <div className="ac-welcome-actions">
-              <Button to="/lab">{copy.startWriting}</Button>
+              <Button to={pendingTo ?? '/dashboard#lab'}>{pendingTo ? copy.continuePending : copy.startWriting}</Button>
               <InstallFlowlaryButton variant="secondary" />
             </div>
           </article>
@@ -529,21 +551,23 @@ export function AccountPage() {
           title={authMode === 'register' ? copy.createTitle : copy.formTitle}
           titleHighlight={authMode === 'register' ? copy.createTitleHighlight : copy.loginTitleHighlight}
           lead={authMode === 'register' ? copy.createLead : copy.formLead}
-          note={
-            studentIntent && authMode === 'register' ? copy.student.verificationOpensNote : undefined
-          }
+          note={registerNote}
           benefits={authMode === 'register' ? copy.companionPoints : undefined}
+          benefitsTitle={copy.createPerksTitle}
+          wide={authMode === 'register'}
           trustLine={copy.trustLine}
           footer={authFooter}
         >
           <AccountAuthForm
             copy={copy}
             authMode={authMode}
+            search={search}
             email={email}
             password={password}
             confirmPassword={confirmPassword}
             showPassword={showPassword}
             showConfirmPassword={showConfirmPassword}
+            termsAccepted={termsAccepted}
             fieldError={fieldError}
             error={error}
             errorMessage={error ? errorCopy(error, copy) : null}
@@ -551,11 +575,6 @@ export function AccountPage() {
             inputsDisabled={inputsDisabled}
             submitDisabled={submitDisabled}
             retryable={error ? isRetryable(error) : false}
-            onAuthModeChange={(mode) => {
-              setError(null)
-              setFieldError(null)
-              setAuthMode(mode)
-            }}
             onEmailChange={(value) => {
               setEmail(value)
               if (fieldError === 'email') setFieldError(null)
@@ -570,6 +589,10 @@ export function AccountPage() {
             }}
             onTogglePassword={() => setShowPassword((value) => !value)}
             onToggleConfirmPassword={() => setShowConfirmPassword((value) => !value)}
+            onTermsChange={(value) => {
+              setTermsAccepted(value)
+              if (fieldError === 'terms') setFieldError(null)
+            }}
             onSubmit={() => {
               if (authMode === 'register') void onRegister()
               else void onLogin()

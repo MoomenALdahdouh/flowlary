@@ -37,14 +37,14 @@ export function resolvePublicApiUrl(): string {
 /** Set only when a real Chrome Web Store listing is published. */
 export const CHROME_WEB_STORE_URL: string | null = null
 
-import { UI_LOCALE_CODES, type UiLocaleCode } from '@flowlary/shared'
+import { ENABLED_UI_LOCALE_CODES, UI_LOCALE_CODES, type UiLocaleCode } from '@flowlary/shared'
 
 export const DEFAULT_LOCALE = 'en' as const satisfies UiLocaleCode
 export const SUPPORTED_LOCALES = UI_LOCALE_CODES
 export type Locale = UiLocaleCode
 
 /** Public website UI — Arabic and English only. */
-export const ENABLED_LOCALES: readonly Locale[] = ['en', 'ar']
+export const ENABLED_LOCALES: readonly Locale[] = ENABLED_UI_LOCALE_CODES
 
 export const TRANSLATION_LANGUAGES = ['English', 'Arabic'] as const
 

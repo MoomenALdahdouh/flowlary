@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useMessages } from '../i18n/index.tsx'
 import {
   hasStoredWebSession,
   loadWebAccount,
-  logoutWebAccount,
   type WebAccountView,
 } from '../account/client.ts'
 import { probeExtensionBridge } from '../account/extensionBridge.ts'
@@ -50,11 +49,6 @@ export function DashboardSupportPage() {
 
   const flatNav = useMemo(() => navGroups.flatMap((group) => group.items), [navGroups])
 
-  const onSignOut = useCallback(async () => {
-    await logoutWebAccount()
-    window.location.assign('/account')
-  }, [])
-
   if (sessionChecking && hasStoredWebSession()) {
     return (
       <section className="section ac-section ac-section-dashboard">
@@ -73,7 +67,6 @@ export function DashboardSupportPage() {
     <section className="section ac-section ac-section-dashboard">
       <div className="container ac-dash-wide">
         <DashboardShell
-          title={messages.account.dashboardKicker}
           navGroups={navGroups}
           nav={flatNav}
           section="support"
@@ -81,15 +74,8 @@ export function DashboardSupportPage() {
             if (id !== 'support') window.location.assign(`/dashboard#${id}`)
           }}
           extensionConnected={extensionConnected}
-          onSignOut={() => void onSignOut()}
         >
-          <div className="wd-panel-stack">
-            <header className="wd-panel-head">
-              <h2>{messages.accountSupport.pageTitle}</h2>
-              <p className="wd-lead">{messages.accountSupport.pageLead}</p>
-            </header>
-            <SupportTicketsPanel />
-          </div>
+          <SupportTicketsPanel />
         </DashboardShell>
       </div>
     </section>

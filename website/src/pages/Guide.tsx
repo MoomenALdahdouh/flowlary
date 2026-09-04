@@ -1,5 +1,5 @@
-import { GuideShowcase } from '../components/guide/GuideShowcase.tsx'
+import InstallGuide from '../bolt/pages/InstallGuide'
 
 export function GuidePage() {
-  return <GuideShowcase />
+  return <InstallGuide />
 }

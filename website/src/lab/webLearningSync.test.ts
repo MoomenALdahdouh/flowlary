@@ -9,6 +9,7 @@ import {
 } from './webLearningSync.ts'
 import * as learningEventsClient from '../account/learningEventsClient.ts'
 import { recordWebCorrectionLearning, readWebLearningStore } from './webLearningStore.ts'
+import { acceptAllCookies } from '../cookies/consent.ts'
 
 const sampleResponse: CorrectionResponse = {
   originalText: 'Yesterday I go to university.',
@@ -27,6 +28,7 @@ const sampleResponse: CorrectionResponse = {
 describe('webLearningSync', () => {
   beforeEach(() => {
     localStorage.clear()
+    acceptAllCookies()
     resetWebLearningSyncForTests()
     vi.restoreAllMocks()
   })
@@ -81,6 +83,7 @@ describe('webLearningSync', () => {
 describe('legacy local migration inputs', () => {
   beforeEach(() => {
     localStorage.clear()
+    acceptAllCookies()
     resetWebLearningSyncForTests()
     vi.restoreAllMocks()
   })
@@ -113,6 +116,7 @@ describe('legacy local migration inputs', () => {
 describe('queue persistence', () => {
   beforeEach(() => {
     localStorage.clear()
+    acceptAllCookies()
     resetWebLearningSyncForTests()
   })
 

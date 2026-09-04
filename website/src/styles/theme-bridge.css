@@ -1,0 +1,89 @@
+/* Align Bolt dark utilities with brand navy / sky. */
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+  scrollbar-color: var(--fl-surface-3) var(--fl-bg);
+}
+
+html[data-theme='dark'] ::selection {
+  background: color-mix(in srgb, var(--fl-accent) 38%, transparent);
+  color: var(--fl-text);
+}
+
+html[data-theme='dark'] :is(.dark\:bg-slate-950, .bg-slate-950) {
+  background-color: var(--fl-bg);
+}
+
+html[data-theme='dark'] :is(.dark\:bg-slate-900, .bg-slate-900) {
+  background-color: var(--fl-surface);
+}
+
+html[data-theme='dark'] :is(.dark\:bg-slate-800) {
+  background-color: var(--fl-surface-2);
+}
+
+html[data-theme='dark'] :is(.dark\:from-slate-900, .from-slate-900) {
+  --tw-gradient-from: var(--fl-bg-soft);
+  --tw-gradient-to: rgb(16 24 42 / 0);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+html[data-theme='dark'] :is(.dark\:to-slate-950, .to-slate-950) {
+  --tw-gradient-to: var(--fl-bg);
+}
+
+html[data-theme='dark'] :is(.dark\:to-slate-900, .to-slate-900) {
+  --tw-gradient-to: var(--fl-surface);
+}
+
+html[data-theme='dark'] :is(.dark\:border-slate-800, .dark\:border-slate-700, .border-slate-700) {
+  border-color: var(--fl-border-strong);
+}
+
+html[data-theme='dark'] .cta-ink {
+  background-color: #080d18;
+}
+
+html[data-theme='dark'] header.fixed {
+  background-color: var(--fl-header-bg);
+  border-bottom-color: var(--fl-border);
+}
+
+html[data-theme='dark'] footer {
+  background-color: var(--fl-footer-bg);
+  border-top-color: var(--fl-border);
+}
+
+html[data-theme='dark'] .btn-primary {
+  background-color: #0ea5e9;
+  color: #fff;
+  box-shadow: 0 12px 28px rgba(14, 165, 233, 0.22);
+}
+
+html[data-theme='dark'] .btn-primary:hover:not(:disabled) {
+  background-color: #38bdf8;
+}
+
+html[data-theme='dark'] .btn-secondary {
+  background-color: var(--fl-surface-2);
+  border-color: var(--fl-border-strong);
+  color: var(--fl-text);
+}
+
+html[data-theme='dark'] .field-input {
+  background-color: var(--fl-input-bg);
+  border-color: var(--fl-border-strong);
+  color: var(--fl-text);
+}
+
+html[data-theme='dark'] .field-input:focus {
+  border-color: var(--fl-accent);
+  background-color: var(--fl-surface);
+  box-shadow: 0 0 0 3px var(--fl-accent-soft);
+}
+
+html[data-theme='dark'] .card,
+html[data-theme='dark'] .card-surface {
+  background-color: var(--fl-surface);
+  border-color: var(--fl-border);
+}

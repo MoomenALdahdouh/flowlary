@@ -30,6 +30,7 @@ type PracticePanelProps = {
   copy: DashboardCopy
   initialTargetPatternId?: string
   onRefresh: () => void
+  onOpenLab: () => void
 }
 
 type View = 'home' | 'session' | 'complete'
@@ -51,6 +52,7 @@ export function PracticePanel({
   copy,
   initialTargetPatternId,
   onRefresh,
+  onOpenLab,
 }: PracticePanelProps) {
   const home = useMemo(() => computeWebPracticeHome(bundle), [bundle])
   const [view, setView] = useState<View>('home')
@@ -256,7 +258,7 @@ export function PracticePanel({
       {recommendation.state === 'none' ? (
         <article className="wd-card wd-empty">
           <p>{copy.practice.none}</p>
-          <WritingLabLink />
+          <WritingLabLink compact onOpen={onOpenLab} />
         </article>
       ) : recommendation.state === 'emerging' ? (
         <article className="wd-card">

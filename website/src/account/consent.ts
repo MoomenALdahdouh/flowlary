@@ -1,3 +1,5 @@
+import { canStoreProduct } from '../cookies/consent.ts'
+
 const WEB_CONSENT_KEY = 'flowlary.web.ai.consent'
 
 function scopedKey(accountId: string): string {
@@ -38,6 +40,7 @@ export function readWebAiConsent(accountId?: string | null): boolean {
 }
 
 export function acceptWebAiConsent(accountId: string): void {
+  if (!canStoreProduct()) return
   localStorage.setItem(scopedKey(accountId), '1')
   try {
     localStorage.removeItem(WEB_CONSENT_KEY)

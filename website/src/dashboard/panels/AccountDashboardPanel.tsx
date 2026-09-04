@@ -153,11 +153,11 @@ export function AccountDashboardPanel({
         </div>
       </article>
 
-      <div className="wd-actions">
+      <article className="wd-card wd-card-muted">
         <Button variant="ghost" onClick={onLogout}>
           {accountCopy.signOut}
         </Button>
-      </div>
+      </article>
     </div>
   )
 }

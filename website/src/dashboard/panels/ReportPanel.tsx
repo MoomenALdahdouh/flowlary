@@ -13,6 +13,7 @@ type ReportPanelProps = {
   locale: 'en' | 'ar'
   isProOrTrial: boolean
   onOpenPractice: (target?: string) => void
+  onOpenLab: () => void
 }
 
 export function ReportPanel({
@@ -22,6 +23,7 @@ export function ReportPanel({
   locale,
   isProOrTrial,
   onOpenPractice,
+  onOpenLab,
 }: ReportPanelProps) {
   const [report, setReport] = useState<FullLearningReport | null>(null)
   const [loading, setLoading] = useState(true)
@@ -68,7 +70,7 @@ export function ReportPanel({
       {report?.state === 'no_data' ? (
         <article className="wd-card wd-empty">
           <p>{copy.report.empty}</p>
-          <WritingLabLink />
+          <WritingLabLink compact onOpen={onOpenLab} />
         </article>
       ) : null}
 

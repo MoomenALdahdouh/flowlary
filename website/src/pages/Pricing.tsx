@@ -1,5 +1,5 @@
-import { PricingShowcase } from '../components/pricing/PricingShowcase.tsx'
+import Pricing from '../bolt/pages/Pricing'
 
 export function PricingPage() {
-  return <PricingShowcase />
+  return <Pricing />
 }

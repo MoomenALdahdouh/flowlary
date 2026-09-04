@@ -6,6 +6,7 @@ import {
   readWebLearningStore,
   recordWebCorrectionLearning,
 } from './webLearningStore.ts'
+import { acceptAllCookies } from '../cookies/consent.ts'
 import { computeWebRecurringPatterns } from './webLearningInsights.ts'
 
 const sampleResponse: CorrectionResponse = {
@@ -32,6 +33,7 @@ const sampleResponse: CorrectionResponse = {
 describe('webLearningStore', () => {
   beforeEach(() => {
     localStorage.clear()
+    acceptAllCookies()
   })
 
   it('excludes layout changes from learning inputs', () => {
@@ -61,6 +63,8 @@ describe('webLearningStore', () => {
 
 describe('computeWebRecurringPatterns', () => {
   it('returns a pattern after two distinct batches', () => {
+    localStorage.clear()
+    acceptAllCookies()
     recordWebCorrectionLearning('acc-a', 'batch-1', sampleResponse.originalText, sampleResponse)
     recordWebCorrectionLearning('acc-a', 'batch-2', sampleResponse.originalText, sampleResponse)
     const patterns = computeWebRecurringPatterns(readWebLearningStore('acc-a').events)

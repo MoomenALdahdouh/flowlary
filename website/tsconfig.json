@@ -24,5 +24,15 @@
     "../extension/src/core/engine/layoutSequence.ts",
     "../extension/src/features/layout/layouts/registry.ts"
   ],
-  "exclude": ["src/__tests__"]
+  "exclude": [
+    "src/__tests__",
+    "src/bolt/demos-a",
+    "src/bolt/pages/account",
+    "src/bolt/pages/legal",
+    "src/bolt/pages/blog",
+    "src/bolt/pages/WritingLab.tsx",
+    "src/bolt/pages/Support.tsx",
+    "src/bolt/pages/Contact.tsx",
+    "src/bolt/pages/Feedback.tsx"
+  ]
 }

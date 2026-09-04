@@ -1,5 +1,5 @@
-import { SpeedBoxShowcase } from '../../components/features/SpeedBoxShowcase.tsx'
+import SpeedBox from '../../bolt/pages/features/SpeedBox'
 
 export function SpeedBoxPage() {
-  return <SpeedBoxShowcase />
+  return <SpeedBox />
 }

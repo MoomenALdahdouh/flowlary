@@ -76,6 +76,18 @@ export async function fetchFeatureRequests() {
   return request<{ ok: boolean; items: FeatureRequestPublicView[] }>('/api/feedback/feature-requests')
 }
 
+export type PublicFeatureRequestStat = {
+  id: string
+  title: string
+  voteCount: number
+  status: string
+  roadmapBucket?: string
+}
+
+export async function fetchPublicFeatureRequests() {
+  return request<{ ok: boolean; items: PublicFeatureRequestStat[] }>('/api/public/feature-requests', {}, false)
+}
+
 export async function createFeatureRequest(input: Record<string, unknown>) {
   return request<{ ok: boolean; item: FeatureRequestPublicView }>('/api/feedback/feature-request', {
     method: 'POST',

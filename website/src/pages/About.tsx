@@ -1,5 +1,5 @@
-import { AboutShowcase } from '../components/about/AboutShowcase.tsx'
+import About from '../bolt/pages/About'
 
 export function AboutPage() {
-  return <AboutShowcase />
+  return <About />
 }

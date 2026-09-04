@@ -6,8 +6,11 @@ import {
 } from '../Ui.tsx'
 import { useMessages } from '../../i18n/index.tsx'
 import { Reveal } from '../Reveal.tsx'
-import { HeroLandingPreview, TryProductStory } from '../experience/OneFieldExperience.tsx'
-import { FinalCtaFieldPreview } from '../experience/FinalCtaFieldPreview.tsx'
+import { TryProductStory } from '../experience/OneFieldExperience.tsx'
+import { KeyboardRepairHero } from './KeyboardRepairHero.tsx'
+import { InFieldCycleDemo } from './InFieldCycleDemo.tsx'
+import { LiveTranslationDemo } from '../demos/LiveTranslationDemo.tsx'
+import { SpeedBoxDemo } from '../demos/SpeedBoxDemo.tsx'
 import { ActiveFieldWalkthrough } from '../experience/ActiveFieldWalkthrough.tsx'
 import { CapabilitiesShowcase } from '../experience/CapabilitiesShowcase.tsx'
 import { EcosystemShowcase } from '../experience/EcosystemShowcase.tsx'
@@ -99,41 +102,64 @@ export function HomeHeroSection() {
   const copy = t.marketingHome.hero
 
   return (
-    <section className="xp-hero" aria-labelledby="xp-hero-title">
-      <div className="container">
-        <div className="xp-hero-copy xp-hero-centered">
-          <p className="xp-hero-badge">
-            <span className="xp-hero-badge-dot" aria-hidden="true" />
-            {copy.badge}
-          </p>
-          <h1 id="xp-hero-title" className="mh-display xp-hero-title">
-            <HeroTitle title={copy.title} highlight={copy.titleHighlight} />
-          </h1>
-          <p className="mh-hero-lead">{copy.lead}</p>
-          <div className="mh-cta-row xp-hero-cta">
-            <InstallFlowlaryButton
-              className="btn-hero btn-chrome"
-              label={t.cta.installFree}
-              showChromeIcon
-            />
-            <Button variant="secondary" to="/try" className="btn-hero">
-              {t.cta.tryDemo}
-              <span className="btn-hero-arrow" aria-hidden="true">
-                →
-              </span>
-            </Button>
+    <>
+      <section className="xp-hero" aria-labelledby="xp-hero-title">
+        <div className="container xp-hero-split">
+          <div className="xp-hero-copy">
+            <p className="xp-hero-badge">
+              <span className="xp-hero-badge-dot" aria-hidden="true" />
+              {copy.badge}
+            </p>
+            <h1 id="xp-hero-title" className="mh-display xp-hero-title">
+              <HeroTitle title={copy.title} highlight={copy.titleHighlight} />
+            </h1>
+            <p className="mh-hero-lead">{copy.lead}</p>
+            <div className="mh-cta-row xp-hero-cta">
+              <InstallFlowlaryButton
+                className="btn-hero btn-chrome"
+                label={t.cta.installFree}
+                showChromeIcon
+              />
+              <Button variant="secondary" to="/try" className="btn-hero">
+                {t.cta.tryDemo}
+                <span className="btn-hero-arrow" aria-hidden="true">
+                  →
+                </span>
+              </Button>
+            </div>
+            <ul className="xp-hero-proofs">
+              {copy.proofs.map((item) => (
+                <li key={item}>
+                  <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path
+                      d="M3.2 8.2 6.4 11.2 12.8 4.8"
+                      stroke="currentColor"
+                      strokeWidth="1.7"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="xp-hero-preview-wrap">
+            <KeyboardRepairHero />
           </div>
         </div>
-        <div className="xp-hero-preview-wrap">
-          <HeroLandingPreview />
+      </section>
+      <section className="xp-proof-strip" aria-label={copy.note}>
+        <div className="container">
+          {copy.stats.map((stat) => (
+            <div key={stat.label} className="xp-proof-item">
+              <p className="xp-proof-value">{stat.value}</p>
+              <p className="xp-proof-label">{stat.label}</p>
+            </div>
+          ))}
         </div>
-        <p className="xp-hero-scroll" aria-hidden="true">
-          <span>{copy.scrollHint}</span>
-          <span className="xp-hero-scroll-line" />
-          <span className="xp-hero-scroll-mouse" />
-        </p>
-      </div>
-    </section>
+      </section>
+    </>
   )
 }
 
@@ -341,28 +367,176 @@ export function HomeTrySection() {
 export function HomeFinalCta() {
   const t = useMessages()
   const copy = t.marketingHome.final
+  const bolt = t.marketingHome.bolt
   return (
-    <section className="xp-section xp-final-cta-band" aria-labelledby="mh-final-title">
+    <section className="xp-section xp-bolt-cta" aria-labelledby="mh-final-title">
       <div className="container">
         <p className="xp-final-kicker">{copy.kicker}</p>
         <h2 id="mh-final-title" className="xp-final-title">
           <span className="xp-final-title-line">{copy.titleLine1}</span>
           <span className="xp-final-title-line xp-gradient-text">{copy.titleLine2}</span>
         </h2>
-        <p className="xp-final-lead">{copy.leadLine1}</p>
-        <p className="xp-final-lead">{copy.leadLine2}</p>
-        <FinalCtaFieldPreview />
+        <p className="xp-bolt-cta-lead">{bolt.ctaLead}</p>
         <div className="xp-final-cta-row">
           <InstallFlowlaryButton
             className="btn-hero btn-chrome xp-final-install"
             label={copy.installLabel}
             showChromeIcon
           />
-          <Button variant="link" to="/try">
+          <Button variant="secondary" to="/try" className="btn-hero xp-bolt-cta-secondary">
             {copy.tryLabel}
           </Button>
         </div>
         <p className="xp-final-fine-print">{copy.finePrint}</p>
+      </div>
+    </section>
+  )
+}
+
+export function HomeInFieldSection() {
+  const copy = useMessages().marketingHome.bolt
+  return (
+    <section className="xp-section xp-infield-band" aria-labelledby="xp-infield-title">
+      <div className="container">
+        <Reveal>
+          <SectionHeading
+            kicker={copy.inFieldKicker}
+            title={copy.inFieldTitle}
+            lead={copy.inFieldLead}
+            titleId="xp-infield-title"
+            align="center"
+          />
+        </Reveal>
+        <Reveal>
+          <div className="xp-infield-stage">
+            <InFieldCycleDemo />
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  )
+}
+
+export function HomeSignatureSection() {
+  const copy = useMessages().marketingHome.bolt
+  return (
+    <section className="xp-section xp-signature-band" aria-labelledby="xp-signature-title">
+      <div className="container xp-signature-grid">
+        <Reveal>
+          <p className="xp-hero-badge">{copy.signatureKicker}</p>
+          <h2 id="xp-signature-title" className="mh-title">
+            {copy.signatureTitle}
+          </h2>
+          <p className="mh-lead">{copy.signatureLead}</p>
+          <ul className="xp-signature-points">
+            {copy.signaturePoints.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+          <Button variant="link" to="/features/keyboard-layout">
+            {copy.signatureCta}
+            <span className="btn-hero-arrow" aria-hidden="true">
+              →
+            </span>
+          </Button>
+        </Reveal>
+        <Reveal>
+          <KeyboardRepairHero />
+        </Reveal>
+      </div>
+    </section>
+  )
+}
+
+export function HomeLiveSpeedSection() {
+  const copy = useMessages().marketingHome.bolt
+  return (
+    <>
+      <section className="xp-section" aria-labelledby="xp-live-title">
+        <div className="container xp-split">
+          <Reveal>
+            <p className="xp-hero-badge">{copy.liveKicker}</p>
+            <h2 id="xp-live-title" className="mh-title">
+              {copy.liveTitle}
+            </h2>
+            <p className="mh-lead">{copy.liveLead}</p>
+            <ul className="xp-signature-points">
+              {copy.livePoints.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </Reveal>
+          <Reveal>
+            <LiveTranslationDemo />
+          </Reveal>
+        </div>
+      </section>
+      <section className="xp-section xp-speed-band" aria-labelledby="xp-speed-title">
+        <div className="container xp-split is-flip">
+          <Reveal>
+            <SpeedBoxDemo />
+          </Reveal>
+          <Reveal>
+            <p className="xp-hero-badge">{copy.speedKicker}</p>
+            <h2 id="xp-speed-title" className="mh-title">
+              {copy.speedTitle}
+            </h2>
+            <p className="mh-lead">{copy.speedLead}</p>
+          </Reveal>
+        </div>
+      </section>
+    </>
+  )
+}
+
+export function HomePlacesSection() {
+  const copy = useMessages().marketingHome.bolt
+  return (
+    <section className="xp-section" aria-labelledby="xp-places-title">
+      <div className="container">
+        <Reveal>
+          <SectionHeading
+            kicker={copy.placesKicker}
+            title={copy.placesTitle}
+            lead={copy.placesLead}
+            titleId="xp-places-title"
+            align="center"
+          />
+        </Reveal>
+        <div className="xp-places-grid">
+          {copy.places.map((place) => (
+            <article key={place.title} className="xp-place-card">
+              <h3>{place.title}</h3>
+              <p>{place.body}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+export function HomeTrustSection() {
+  const copy = useMessages().marketingHome.bolt
+  return (
+    <section className="xp-section xp-trust-band" aria-labelledby="xp-trust-title">
+      <div className="container">
+        <Reveal>
+          <SectionHeading
+            kicker={copy.trustKicker}
+            title={copy.trustTitle}
+            titleId="xp-trust-title"
+            align="center"
+          />
+        </Reveal>
+        <div className="xp-trust-grid">
+          {copy.trust.map((item) => (
+            <article key={item.title} className="xp-trust-card">
+              <h3>{item.title}</h3>
+              <p>{item.body}</p>
+            </article>
+          ))}
+        </div>
       </div>
     </section>
   )

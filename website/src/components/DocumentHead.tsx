@@ -1,14 +1,14 @@
 import { uiLocaleOgLocale } from '@flowlary/shared'
 import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
-import { canonicalUrl, resolveMeta } from '../seo.ts'
+import { canonicalUrl, DEFAULT_OG_IMAGE, resolveLocalizedMeta } from '../seo.ts'
 import { structuredDataJson } from './JsonLd.tsx'
 import { useI18n } from '../i18n/index.tsx'
 
 export function DocumentHead() {
   const { pathname } = useLocation()
   const { locale, messages } = useI18n()
-  const meta = resolveMeta(pathname)
+  const meta = resolveLocalizedMeta(pathname, messages.pages)
   const url = canonicalUrl(meta.path)
 
   useEffect(() => {
@@ -19,9 +19,11 @@ export function DocumentHead() {
     upsertMeta('property', 'og:description', meta.description)
     upsertMeta('property', 'og:url', url)
     upsertMeta('property', 'og:locale', uiLocaleOgLocale(locale))
+    upsertMeta('property', 'og:image', meta.image ?? DEFAULT_OG_IMAGE)
     upsertMeta('property', 'og:image:alt', messages.brand.tagline)
     upsertMeta('name', 'twitter:title', meta.title)
     upsertMeta('name', 'twitter:description', meta.description)
+    upsertMeta('name', 'twitter:image', meta.image ?? DEFAULT_OG_IMAGE)
     upsertMeta('name', 'twitter:image:alt', messages.brand.tagline)
     if (meta.robots) upsertMeta('name', 'robots', meta.robots)
     upsertJsonLd()

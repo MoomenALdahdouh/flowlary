@@ -3,6 +3,7 @@ import { Button } from '../components/Ui.tsx'
 import { AccountAuthLayout } from '../components/account/AccountAuthLayout.tsx'
 import { useMessages } from '../i18n/index.tsx'
 import { API_URL } from '../config.ts'
+import { Mail } from 'lucide-react'
 
 export function ForgotPasswordPage() {
   const t = useMessages()
@@ -42,12 +43,7 @@ export function ForgotPasswordPage() {
       lead={copy.forgotPasswordLead}
       trustLine={copy.trustLine}
     >
-      <article className="ac-auth-card">
-        <header className="ac-card-head">
-          <h2 className="ac-card-title">{copy.forgotPasswordTitle}</h2>
-          <p className="ac-card-subtitle">{copy.forgotPasswordLead}</p>
-        </header>
-
+      <article>
         {sent ? (
           <div className="ac-alert is-ok" role="status">
             <p>{copy.forgotPasswordSent}</p>
@@ -56,18 +52,22 @@ export function ForgotPasswordPage() {
           <form className="ac-form" noValidate onSubmit={onSubmit}>
             <label className="ac-field" htmlFor="fp-email">
               <span>{copy.emailLabel}</span>
-              <input
-                id="fp-email"
-                type="email"
-                name="email"
-                autoComplete="email"
-                inputMode="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                required
-                disabled={busy}
-                aria-describedby={error ? 'fp-error' : undefined}
-              />
+              <span className="relative block">
+                <Mail className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                <input
+                  id="fp-email"
+                  className="field-input ps-10"
+                  type="email"
+                  name="email"
+                  autoComplete="email"
+                  inputMode="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  required
+                  disabled={busy}
+                  aria-describedby={error ? 'fp-error' : undefined}
+                />
+              </span>
             </label>
             {error ? (
               <div className="ac-alert" id="fp-error" role="alert">

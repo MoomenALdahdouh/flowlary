@@ -5,6 +5,7 @@ import { App } from '../App.tsx'
 import { API_URL, SITE_URL } from '../config.ts'
 import { en } from '../i18n/en.ts'
 import { ROUTES } from '../routes.ts'
+import { BLOG_POSTS } from '../bolt/data/site.tsx'
 
 function renderRoute(path: string) {
   return renderToString(
@@ -19,6 +20,7 @@ function hrefs(html: string): string[] {
 }
 
 const INTERNAL = new Set<string>(ROUTES)
+const BLOG_POST_PATHS = new Set(BLOG_POSTS.map((post) => `/blog/${post.slug}`))
 const SUPPORT_HASHES = new Set(['contact', 'troubleshooting', 'get-flowlary', ...en.support.topics.map((topic) => topic.id)])
 const PRODUCT_HASHES = new Set(['control', 'actions', 'repair', 'learn'])
 const EXTERNAL = new Set([SITE_URL, API_URL])
@@ -31,6 +33,8 @@ function assertInternalHref(href: string, html: string) {
   }
 
   const url = new URL(href, SITE_URL)
+  if (BLOG_POST_PATHS.has(url.pathname)) return
+  if (/\.(svg|png|jpe?g|webp|gif|ico)$/i.test(url.pathname)) return
   expect(INTERNAL.has(url.pathname), `unknown path ${href}`).toBe(true)
 
   const id = url.hash.replace(/^#/, '')

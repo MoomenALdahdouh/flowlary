@@ -1,5 +1,5 @@
-import { LiveTranslationShowcase } from '../../components/features/LiveTranslationShowcase.tsx'
+import LiveTranslation from '../../bolt/pages/features/LiveTranslation'
 
 export function LiveTranslationPage() {
-  return <LiveTranslationShowcase />
+  return <LiveTranslation />
 }

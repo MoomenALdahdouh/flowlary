@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
-import { Reveal } from '../Reveal.tsx'
+import { Link } from 'react-router-dom'
+import { Check } from 'lucide-react'
+import { useMessages } from '../../i18n/index.tsx'
 
 type AccountAuthLayoutProps = {
   kicker: string
@@ -8,8 +10,10 @@ type AccountAuthLayoutProps = {
   lead?: string
   note?: ReactNode
   benefits?: readonly string[]
+  benefitsTitle?: string
   trustLine?: string
   footer?: ReactNode
+  wide?: boolean
   children: ReactNode
 }
 
@@ -20,31 +24,6 @@ function splitTitle(title: string, highlight?: string) {
   return { before: parts[0], highlight, after: parts.slice(1).join(highlight) }
 }
 
-function BenefitIcon({ index }: { index: number }) {
-  if (index === 0) {
-    return (
-      <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-        <path d="M4 14.5 11.5 7 14 9.5 6.5 17H4v-2.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-      </svg>
-    )
-  }
-  if (index === 1) {
-    return (
-      <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-        <circle cx="7" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.35" />
-        <circle cx="13" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.35" />
-        <path d="M3.5 15.5c.6-2.2 2.2-3.5 4.5-3.5s3.9 1.3 4.5 3.5" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" />
-      </svg>
-    )
-  }
-  return (
-    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <rect x="3.5" y="5.5" width="13" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.35" />
-      <path d="M7.5 14.5 10 12l2.5 2.5" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
 export function AccountAuthLayout({
   kicker,
   title,
@@ -52,62 +31,75 @@ export function AccountAuthLayout({
   lead,
   note,
   benefits,
+  benefitsTitle,
   trustLine,
   footer,
+  wide = false,
   children,
 }: AccountAuthLayoutProps) {
+  const t = useMessages()
   const titleParts = splitTitle(title, titleHighlight)
-  const trustChips = trustLine
-    ? trustLine
-        .split('·')
-        .map((item) => item.trim())
-        .filter(Boolean)
-    : []
 
   return (
-    <div className="ac-page xp-account ac-page-signed-out">
-      <section className="ac-section ac-hero">
-        <div className="container ac-layout-grid">
-          <Reveal className="ac-layout-copy">
-            <p className="xp-hero-badge">
-              <span className="xp-hero-badge-dot" aria-hidden="true" />
-              {kicker}
-            </p>
-            <h1 className="ac-layout-title mh-display xp-hero-title">
-              {titleParts.before}
-              {titleParts.highlight ? (
-                <span className="xp-gradient-text">{titleParts.highlight}</span>
-              ) : null}
-              {titleParts.after}
-            </h1>
-            {lead ? <p className="ac-lead ac-layout-lead">{lead}</p> : null}
-            {trustChips.length ? (
-              <ul className="ac-trust-chips" aria-label={trustLine}>
-                {trustChips.map((chip) => (
-                  <li key={chip}>{chip}</li>
-                ))}
-              </ul>
-            ) : null}
-            {benefits?.length ? (
-              <ul className="ac-benefit-cards">
-                {benefits.map((item, index) => (
-                  <li key={item} className="ac-benefit-card">
-                    <span className="ac-benefit-icon" aria-hidden="true">
-                      <BenefitIcon index={index} />
+    <div
+      className={`flex min-h-[calc(100vh-4rem)] justify-center bg-gradient-to-b from-slate-50 to-white px-5 dark:from-slate-900 dark:to-slate-950 ${
+        wide ? 'items-start py-10 sm:py-14' : 'items-center py-12 sm:py-16'
+      }`}
+    >
+      <div className={`w-full ${wide ? 'max-w-5xl' : 'max-w-[26rem]'}`}>
+        <header className={`mb-6 ${wide ? 'max-w-xl' : 'text-center'}`}>
+          <p className="text-xs font-semibold uppercase tracking-wider text-sky-600">{kicker}</p>
+          <h1 className="mt-2 text-balance text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
+            {titleParts.before}
+            {titleParts.highlight ? <span className="text-gradient xp-gradient-text">{titleParts.highlight}</span> : null}
+            {titleParts.after}
+          </h1>
+          {lead ? <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">{lead}</p> : null}
+          {trustLine ? <p className="mt-2 text-xs text-slate-500">{trustLine}</p> : null}
+        </header>
+
+        {note ? (
+          <div className="mb-5 max-w-xl rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-slate-700 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-slate-200">
+            {note}
+          </div>
+        ) : null}
+
+        <div className={wide ? 'grid items-stretch gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(17rem,0.9fr)]' : ''}>
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/40 dark:border-slate-700 dark:bg-slate-950 sm:p-7">
+            {children}
+          </div>
+
+          {wide && benefits?.length ? (
+            <aside className="flex flex-col rounded-2xl border border-slate-200 bg-slate-50 p-6 dark:border-slate-700 dark:bg-slate-900/80 lg:sticky lg:top-24">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">{benefitsTitle ?? t.account.createPerksTitle}</h2>
+              <ul className="mt-4 space-y-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                {benefits.map((item) => (
+                  <li key={item} className="flex gap-3">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-600 dark:bg-sky-500/15 dark:text-sky-400">
+                      <Check className="h-3.5 w-3.5" aria-hidden="true" />
                     </span>
                     <span>{item}</span>
                   </li>
                 ))}
               </ul>
-            ) : null}
-            {note ? <div className="ac-student-register-note">{note}</div> : null}
-          </Reveal>
-          <div className="ac-layout-panel">
-            <Reveal>{children}</Reveal>
-            {footer ? <div className="ac-layout-footer">{footer}</div> : null}
-          </div>
+              <div className="mt-auto border-t border-slate-200 pt-5 dark:border-slate-700">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t.account.authLinksLabel}</p>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{t.account.installQuiet}</p>
+                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm font-semibold">
+                  <Link to="/guide" className="text-sky-600 hover:underline dark:text-sky-400">
+                    {t.account.installExtensionCta}
+                  </Link>
+                  <Link to="/pricing" className="text-sky-600 hover:underline dark:text-sky-400">
+                    {t.account.viewPlans}
+                  </Link>
+                </div>
+              </div>
+            </aside>
+          ) : null}
         </div>
-      </section>
+
+        {footer ? <div className="mt-6 text-center text-sm text-slate-500">{footer}</div> : null}
+      </div>
     </div>
   )
 }

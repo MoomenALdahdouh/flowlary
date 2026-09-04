@@ -1,5 +1,95 @@
 @import '@flowlary/shared/tokens.css';
 
+/*
+  Website brand: sky (#0ea5e9) + teal (#14b8a6).
+  Dark mode uses the same pair on a navy canvas (#0b1120), not a second black.
+*/
+
+:root,
+html[data-theme='light'],
+html[data-theme='dark'] {
+  --fl-brand-cyan: #0ea5e9;
+  --fl-brand-cyan-soft: rgba(14, 165, 233, 0.16);
+  --fl-brand-magenta: #14b8a6;
+  --fl-brand-magenta-soft: rgba(20, 184, 166, 0.16);
+  --fl-brand-lavender: var(--fl-brand-magenta-soft);
+  --fl-gradient-brand: linear-gradient(90deg, #0ea5e9, #14b8a6);
+  --fl-gradient-cta: linear-gradient(90deg, #0ea5e9, #14b8a6);
+  --xp-accent-cyan: #0ea5e9;
+  --xp-accent-magenta: #14b8a6;
+  --xp-accent-purple: #14b8a6;
+  --xp-accent-green: #14b8a6;
+  --fl-accent-secondary: #0ea5e9;
+}
+
+html[data-theme='light'] {
+  --fl-accent: #0ea5e9;
+  --fl-accent-hover: #0284c7;
+  --fl-accent-pressed: #0369a1;
+  --fl-accent-soft: rgba(14, 165, 233, 0.12);
+  --fl-accent-glow: rgba(14, 165, 233, 0.1);
+  --fl-on-accent: #ffffff;
+  --fl-bg: #f7f8fc;
+  --fl-bg-soft: #f1f5f9;
+  --fl-bg-raised: #ffffff;
+  --fl-surface: #ffffff;
+  --fl-surface-2: #f8fafc;
+  --fl-surface-3: #eef2f7;
+  --fl-text: #0f172a;
+  --fl-muted: #475569;
+  --fl-faint: #64748b;
+  --fl-fg: var(--fl-text);
+  --fl-border: rgba(15, 23, 42, 0.1);
+  --fl-border-strong: rgba(15, 23, 42, 0.16);
+  --fl-border-accent: rgba(14, 165, 233, 0.4);
+  --fl-input-bg: #ffffff;
+  --fl-footer-bg: #f1f5f9;
+  --fl-header-bg: rgba(247, 248, 252, 0.82);
+  --fl-atmosphere-1: rgba(14, 165, 233, 0.14);
+  --fl-atmosphere-2: rgba(20, 184, 166, 0.1);
+  --fl-atmosphere-cool: rgba(14, 165, 233, 0.06);
+}
+
+html[data-theme='dark'] {
+  --fl-accent: #38bdf8;
+  --fl-accent-hover: #7dd3fc;
+  --fl-accent-pressed: #0ea5e9;
+  --fl-accent-soft: rgba(56, 189, 248, 0.14);
+  --fl-accent-glow: rgba(14, 165, 233, 0.12);
+  --fl-on-accent: #0b1120;
+  --fl-bg: #0b1120;
+  --fl-bg-soft: #10182a;
+  --fl-bg-raised: #151d30;
+  --fl-surface: #131c31;
+  --fl-surface-2: #1a2438;
+  --fl-surface-3: #243044;
+  --fl-text: #f8fafc;
+  --fl-muted: #b6c3d6;
+  --fl-faint: #93a4bb;
+  --fl-text-disabled: #6b7c94;
+  --fl-fg: var(--fl-text);
+  --fl-border: rgba(148, 163, 184, 0.16);
+  --fl-border-strong: rgba(186, 198, 214, 0.22);
+  --fl-border-accent: rgba(56, 189, 248, 0.45);
+  --fl-input-bg: #10182a;
+  --fl-control-bg: rgba(19, 28, 49, 0.88);
+  --fl-footer-bg: #080d18;
+  --fl-header-bg: rgba(11, 17, 32, 0.78);
+  --fl-header-bg-strong: rgba(11, 17, 32, 0.92);
+  --fl-overlay: rgba(8, 13, 24, 0.72);
+  --fl-hover-fill: rgba(56, 189, 248, 0.08);
+  --fl-band: #080d18;
+  --fl-product-bg: #131c31;
+  --fl-product-surface: #1a2438;
+  --fl-atmosphere-1: rgba(14, 165, 233, 0.14);
+  --fl-atmosphere-2: rgba(45, 212, 191, 0.1);
+  --fl-atmosphere-cool: rgba(56, 189, 248, 0.06);
+  --fl-hero-glow: rgba(14, 165, 233, 0.08);
+  --fl-glass-1: rgba(16, 24, 42, 0.72);
+  --fl-glass-2: rgba(16, 24, 42, 0.86);
+  --fl-glass-border: 1px solid rgba(148, 163, 184, 0.16);
+}
+
 html[dir='rtl'] {
   --fl-start: right;
   --fl-font-display: var(--fl-font-arabic);

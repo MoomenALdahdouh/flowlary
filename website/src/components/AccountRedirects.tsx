@@ -1,7 +1,8 @@
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 
 export function AccountSupportRedirect() {
-  return <Navigate to="/dashboard/support" replace />
+  const { search } = useLocation()
+  return <Navigate to={`/dashboard/support${search}`} replace />
 }
 
 export function AccountDashboardRedirect() {

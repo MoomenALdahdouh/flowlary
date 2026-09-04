@@ -1,9 +1,14 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { acceptWebAiConsent, clearWebAiConsent, readWebAiConsent } from './consent.ts'
+import { acceptAllCookies } from '../cookies/consent.ts'
 
 describe('website AI consent isolation', () => {
   afterEach(() => {
     localStorage.clear()
+  })
+
+  beforeEach(() => {
+    acceptAllCookies()
   })
 
   it('does not share consent between accounts', () => {

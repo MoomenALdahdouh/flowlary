@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react'
+import PageHeader from '../../bolt/components/ui/PageHeader'
+import { useMessages } from '../../i18n/index.tsx'
 
 type LegalPageShellProps = {
   kicker: string
@@ -12,10 +14,16 @@ type LegalPageShellProps = {
 }
 
 function splitTitle(title: string, highlight?: string) {
-  if (!highlight) return { before: title, highlight: '', after: '' }
+  if (!highlight) return title
   const parts = title.split(highlight)
-  if (parts.length === 1) return { before: title, highlight: '', after: '' }
-  return { before: parts[0], highlight, after: parts.slice(1).join(highlight) }
+  if (parts.length === 1) return title
+  return (
+    <>
+      {parts[0]}
+      <span className="text-gradient">{highlight}</span>
+      {parts.slice(1).join(highlight)}
+    </>
+  )
 }
 
 export function LegalPageShell({
@@ -28,39 +36,22 @@ export function LegalPageShell({
   effectiveLabelText,
   children,
 }: LegalPageShellProps) {
-  const titleParts = splitTitle(title, titleHighlight)
-
+  const t = useMessages()
   return (
-    <div className="lg-page xp-legal">
-      <header className="lg-hero xp-hero">
-        <div className="container lg-hero-inner">
-          <p className="xp-hero-badge">
-            <span className="xp-hero-badge-dot" aria-hidden="true" />
-            {kicker}
-          </p>
-          <h1 className="lg-hero-title mh-display xp-hero-title">
-            {titleParts.before}
-            {titleParts.highlight ? (
-              <span className="xp-gradient-text">{titleParts.highlight}</span>
-            ) : null}
-            {titleParts.after}
-          </h1>
-          <p className="lg-hero-lead mh-hero-lead">{lead}</p>
-          <div className="lg-hero-meta">
-            <span className="lg-effective-pill">
-              <svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true">
-                <rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.25" />
-                <path d="M5 1.5v2.5M11 1.5v2.5M2 6.5h12" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
-              </svg>
-              <span>
-                <strong>{effectiveLabelText}</strong>
-                <time dateTime={effectiveIso}>{effectiveLabel}</time>
-              </span>
-            </span>
-          </div>
-        </div>
-      </header>
-      <section className="lg-body">{children}</section>
+    <div className="lg-page">
+      <PageHeader
+        label={kicker}
+        title={splitTitle(title, titleHighlight)}
+        subtitle={lead}
+        breadcrumbs={[{ label: t.pages.home, to: '/' }, { label: title }]}
+        meta={
+          <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+            <strong className="font-semibold text-slate-500 dark:text-slate-400">{effectiveLabelText}</strong>
+            <time dateTime={effectiveIso}>{effectiveLabel}</time>
+          </span>
+        }
+      />
+      <section className="py-16 lg:py-20">{children}</section>
     </div>
   )
 }

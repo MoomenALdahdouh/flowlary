@@ -21,9 +21,9 @@ describe('Phase 1C design foundation', () => {
   it('keeps brand accent and canvas colors', () => {
     expect(tokens).toContain('--fl-accent: #14d4ea')
     expect(tokens).toContain('--fl-accent: #0891b2')
-    expect(tokens).toContain('--fl-bg: #050508')
+    expect(tokens).toContain('--fl-bg: #0b1120')
     expect(tokens).toContain('--fl-bg: #f7fafc')
-    expect(tokens).toContain('--fl-text: #f3f6fb')
+    expect(tokens).toContain('--fl-text: #f1f5f9')
     expect(tokens).toContain('--fl-text: #0f172a')
     expect(tokens).toContain('--fl-on-accent: #061018')
     expect(tokens).toContain('--fl-on-accent: #ffffff')

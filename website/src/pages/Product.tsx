@@ -1,5 +1,5 @@
-import { ProductShowcase } from '../components/product/ProductShowcase.tsx'
+import HowItWorks from '../bolt/pages/HowItWorks'
 
 export function ProductPage() {
-  return <ProductShowcase />
+  return <HowItWorks />
 }

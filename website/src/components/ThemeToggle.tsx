@@ -1,47 +1,103 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { Check, Monitor, Moon, Sun } from 'lucide-react'
 import { useMessages } from '../i18n/index.tsx'
 import {
   readStoredThemePreference,
+  setThemePreference,
   subscribeSystemTheme,
   syncDocumentTheme,
-  toggleTheme,
   type ThemePreference,
 } from '../theme.ts'
 
-export function ThemeToggle() {
-  const t = useMessages()
-  const [preference, setPreference] = useState<ThemePreference>(() => readStoredThemePreference() ?? 'system')
-
+export function ThemeBoot() {
   useEffect(() => {
     syncDocumentTheme()
     return subscribeSystemTheme()
   }, [])
+  return null
+}
 
-  function onToggle() {
-    toggleTheme()
+const OPTIONS: { value: ThemePreference; Icon: typeof Sun; labelKey: 'themeLight' | 'themeDark' | 'themeSystem'; shortKey: 'themeLightShort' | 'themeDarkShort' | 'themeSystemShort' }[] = [
+  { value: 'light', Icon: Sun, labelKey: 'themeLight', shortKey: 'themeLightShort' },
+  { value: 'dark', Icon: Moon, labelKey: 'themeDark', shortKey: 'themeDarkShort' },
+  { value: 'system', Icon: Monitor, labelKey: 'themeSystem', shortKey: 'themeSystemShort' },
+]
+
+export function ThemeToggle() {
+  const t = useMessages()
+  const [preference, setPreference] = useState<ThemePreference>(() => readStoredThemePreference() ?? 'system')
+  const [open, setOpen] = useState(false)
+  const root = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    syncDocumentTheme()
     setPreference(readStoredThemePreference() ?? 'system')
+    return subscribeSystemTheme()
+  }, [])
+
+  useEffect(() => {
+    if (!open) return
+    function onPointer(event: MouseEvent) {
+      if (root.current && !root.current.contains(event.target as Node)) setOpen(false)
+    }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onPointer)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onPointer)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  function choose(next: ThemePreference) {
+    setThemePreference(next)
+    setPreference(next)
+    setOpen(false)
   }
 
-  const label =
-    preference === 'system'
-      ? t.a11y.themeSystem ?? t.a11y.theme
-      : preference === 'light'
-        ? t.a11y.themeLight ?? t.a11y.theme
-        : t.a11y.themeDark ?? t.a11y.theme
+  const current = OPTIONS.find((option) => option.value === preference) ?? OPTIONS[2]
+  const CurrentIcon = current.Icon
 
   return (
-    <button type="button" className="theme-toggle" aria-label={label} onClick={onToggle}>
-      <svg className="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="12" cy="12" r="4.2" />
-        <path d="M12 3.2v1.8M12 19v1.8M4.9 4.9l1.3 1.3M17.8 17.8l1.3 1.3M3.2 12H5M19 12h1.8M4.9 19.1l1.3-1.3M17.8 6.2l1.3-1.3" />
-      </svg>
-      <svg className="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M15.2 4.2a7.4 7.4 0 1 0 4.6 12.9 6.2 6.2 0 0 1-8.3-8.4 7.3 7.3 0 0 0 3.7-4.5Z" />
-      </svg>
-      <svg className="theme-icon theme-icon-system" viewBox="0 0 24 24" aria-hidden="true">
-        <rect x="3.5" y="5" width="17" height="11" rx="1.8" />
-        <path d="M8.5 19h7" />
-      </svg>
-    </button>
+    <div ref={root} className="theme-toggle fl-nav-icon relative" role="group" aria-label={t.a11y.theme}>
+      <button
+        type="button"
+        className="fl-nav-icon__btn"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={t.a11y[current.labelKey]}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <CurrentIcon className="h-4 w-4" aria-hidden="true" />
+      </button>
+      {open ? (
+        <div className="fl-nav-menu" role="listbox" aria-label={t.a11y.theme}>
+          <p className="fl-nav-menu__kicker">{t.a11y.theme}</p>
+          {OPTIONS.map((option) => {
+            const Icon = option.Icon
+            const selected = preference === option.value
+            return (
+              <button
+                key={option.value}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                aria-label={t.a11y[option.labelKey]}
+                className="fl-nav-menu__item"
+                onClick={() => choose(option.value)}
+              >
+                <span className="inline-flex items-center gap-2">
+                  <Icon className="h-4 w-4" aria-hidden="true" />
+                  {t.a11y[option.labelKey]}
+                </span>
+                {selected ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : null}
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
+    </div>
   )
 }

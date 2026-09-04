@@ -1,9 +1,12 @@
 import { useCallback, useMemo, useState, type KeyboardEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { Search } from 'lucide-react'
 import { SHORTCUTS } from '../../config.ts'
-import { Button, ConversionPanel, InstallFlowlaryButton, SectionHeading } from '../Ui.tsx'
-import { Reveal } from '../Reveal.tsx'
+import { InstallFlowlaryButton } from '../Ui.tsx'
+import { useActiveSection } from '../../hooks/useActiveSection.ts'
 import { useMessages } from '../../i18n/index.tsx'
+import PageHeader from '../../bolt/components/ui/PageHeader'
+import CTASection from '../../bolt/components/ui/CTASection'
 
 const TOPIC_IDS = [
   'get-flowlary',
@@ -30,37 +33,78 @@ const FEATURE_DETAIL_PATHS: Record<string, string> = {
   'speed-box': '/features/speed-box',
 }
 
-function splitTitle(title: string, highlight?: string) {
-  if (!highlight) return { before: title, highlight: '', after: '' }
-  const parts = title.split(highlight)
-  if (parts.length === 1) return { before: title, highlight: '', after: '' }
-  return { before: parts[0], highlight, after: parts.slice(1).join(highlight) }
-}
-
 function splitKeys(combo: string): string[] {
   return combo.split(/(?=[⌘⇧⌥⌃])|\+/).filter(Boolean)
 }
 
 function KeyCombo({ mac, other }: { mac: string; other: string }) {
   return (
-    <span className="sp-keys" aria-label={`${other} / ${mac}`}>
+    <span className="inline-flex flex-wrap items-center gap-1" aria-label={`${other} / ${mac}`}>
       {splitKeys(other).map((key) => (
-        <kbd key={`o-${key}`}>{key}</kbd>
+        <kbd
+          key={`o-${key}`}
+          className="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[11px] text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+        >
+          {key}
+        </kbd>
       ))}
       <span className="visually-hidden"> or </span>
       {splitKeys(mac).map((key) => (
-        <kbd key={`m-${key}`}>{key}</kbd>
+        <kbd
+          key={`m-${key}`}
+          className="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[11px] text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+        >
+          {key}
+        </kbd>
       ))}
     </span>
+  )
+}
+
+function HelpCard({
+  id,
+  title,
+  body,
+  items,
+  action,
+}: {
+  id: string
+  title: string
+  body: string
+  items?: readonly string[]
+  action?: { to: string; label: string }
+}) {
+  return (
+    <article
+      id={id}
+      className="scroll-mt-28 rounded-2xl border border-slate-200 bg-white p-6 transition-all hover:border-sky-200 hover:shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:hover:border-sky-500/40"
+      aria-labelledby={`sp-${id}-title`}
+    >
+      <h2 id={`sp-${id}-title`} className="text-lg font-semibold text-slate-900 dark:text-white">
+        {title}
+      </h2>
+      <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{body}</p>
+      {items?.length ? (
+        <ul className="mt-4 list-disc space-y-2 ps-5 text-sm text-slate-600 dark:text-slate-300">
+          {items.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      ) : null}
+      {action ? (
+        <Link to={action.to} className="btn-secondary mt-5 text-sm">
+          {action.label}
+        </Link>
+      ) : null}
+    </article>
   )
 }
 
 export function SupportCenter() {
   const t = useMessages()
   const s = t.support
-  const titleParts = splitTitle(s.title, s.titleHighlight)
   const [query, setQuery] = useState('')
-  const [activeTopic, setActiveTopic] = useState<string>('get-flowlary')
+  const { activeId: activeTopic, activate } = useActiveSection(TOPIC_IDS)
 
   const normalizedQuery = query.trim().toLowerCase()
 
@@ -86,10 +130,13 @@ export function SupportCenter() {
     )
   }, [normalizedQuery, s.issues])
 
-  const scrollTo = useCallback((id: string) => {
-    setActiveTopic(id)
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }, [])
+  const scrollTo = useCallback(
+    (id: string) => {
+      activate(id)
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    },
+    [activate],
+  )
 
   function onNavKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return
@@ -112,8 +159,7 @@ export function SupportCenter() {
     !normalizedQuery ||
     [s.account.title, s.account.body, ...s.account.items].join(' ').toLowerCase().includes(normalizedQuery)
   const showAi =
-    !normalizedQuery ||
-    [s.ai.title, s.ai.managed].join(' ').toLowerCase().includes(normalizedQuery)
+    !normalizedQuery || [s.ai.title, s.ai.managed].join(' ').toLowerCase().includes(normalizedQuery)
   const showTrial =
     !normalizedQuery ||
     [s.trial.title, s.trial.body, ...s.trial.items].join(' ').toLowerCase().includes(normalizedQuery)
@@ -128,346 +174,301 @@ export function SupportCenter() {
   const showPrivacy =
     !normalizedQuery || [s.privacyHelp.title, s.privacyHelp.body].join(' ').toLowerCase().includes(normalizedQuery)
   const showPlans = showTrial || showPro || showStudent || showBilling
+  const noResults =
+    Boolean(normalizedQuery) &&
+    !showInstall &&
+    filteredFeatures.length === 0 &&
+    filteredIssues.length === 0 &&
+    !showAccount &&
+    !showAi &&
+    !showTrial &&
+    !showPro &&
+    !showStudent &&
+    !showBilling &&
+    !showPrivacy
 
   return (
-    <div className="pp-page sp-page xp-support">
-      <header className="sp-hero xp-hero" aria-labelledby="support-hero-title">
-        <div className="container sp-hero-inner">
-          <Reveal>
-            <p className="xp-hero-badge">
-              <span className="xp-hero-badge-dot" aria-hidden="true" />
-              {s.kicker}
+    <>
+      <PageHeader
+        label={s.kicker}
+        title={s.title}
+        subtitle={s.lead}
+        breadcrumbs={[{ label: t.pages.home, to: '/' }, { label: t.nav.support }]}
+        meta={
+          <div className="max-w-2xl space-y-4">
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              {s.tutorialBanner}{' '}
+              <Link className="font-semibold text-sky-600 dark:text-sky-400" to="/guide">
+                {s.tutorialBannerAction}
+              </Link>
             </p>
-            <h1 id="support-hero-title" className="sp-hero-title mh-display xp-hero-title">
-              {titleParts.before}
-              {titleParts.highlight ? (
-                <span className="xp-gradient-text">{titleParts.highlight}</span>
-              ) : null}
-              {titleParts.after}
-            </h1>
-            <p className="sp-hero-lead mh-hero-lead">{s.lead}</p>
-            <div className="sp-tutorial-banner">
-              <p>
-                {s.tutorialBanner}{' '}
-                <Link className="text-link" to="/guide">
-                  {s.tutorialBannerAction}
-                </Link>
-              </p>
-            </div>
-            <div className="sp-search-wrap">
+            <div className="relative">
+              <Search className="pointer-events-none absolute start-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <label className="visually-hidden" htmlFor="support-search">
                 {s.searchAria}
               </label>
-              <div className="sp-search-field">
-                <svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true">
-                  <circle cx="7" cy="7" r="4.25" stroke="currentColor" strokeWidth="1.25" />
-                  <path d="M10.2 10.2 13.5 13.5" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
-                </svg>
-                <input
-                  id="support-search"
-                  type="search"
-                  className="sp-search"
-                  placeholder={s.searchPlaceholder}
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  autoComplete="off"
-                />
-              </div>
+              <input
+                id="support-search"
+                type="search"
+                className="field-input rounded-full py-4 ps-11"
+                placeholder={s.searchPlaceholder}
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                autoComplete="off"
+              />
             </div>
-          </Reveal>
-        </div>
-      </header>
+          </div>
+        }
+      />
 
-      <nav className="sp-topic-nav" aria-label={s.navAria}>
-        <div className="container">
-          <div className="sp-nav" role="tablist">
-            {s.topics.map((topic, index) => (
-              <button
-                key={topic.id}
-                type="button"
-                role="tab"
-                className={`sp-nav-btn${activeTopic === topic.id ? ' is-active' : ''}`}
-                aria-selected={activeTopic === topic.id}
-                onClick={() => scrollTo(topic.id)}
-                onKeyDown={(event) => onNavKeyDown(event, index)}
-              >
-                {topic.title}
-              </button>
-            ))}
+      <nav
+        className="sticky top-16 z-20 border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90"
+        aria-label={s.navAria}
+      >
+        <div className="container-flow overflow-x-auto py-3">
+          <div className="flex min-w-max gap-2" role="tablist">
+            {s.topics.map((topic, index) => {
+              const active = activeTopic === topic.id
+              return (
+                <button
+                  key={topic.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  aria-current={active ? 'true' : undefined}
+                  onClick={() => scrollTo(topic.id)}
+                  onKeyDown={(event) => onNavKeyDown(event, index)}
+                  className={`rounded-full px-4 py-2 text-xs font-semibold transition-colors ${
+                    active
+                      ? 'bg-sky-500 text-white shadow-sm shadow-sky-500/30'
+                      : 'border border-slate-200 bg-white text-slate-600 hover:border-sky-200 hover:text-sky-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-sky-500/40 dark:hover:text-sky-400'
+                  }`}
+                >
+                  {topic.title}
+                </button>
+              )
+            })}
           </div>
         </div>
       </nav>
 
-      {showInstall ? (
-        <section className="sp-section" id="get-flowlary" aria-labelledby="sp-install-title">
-          <div className="container">
-            <Reveal>
-              <SectionHeading
-                kicker={s.kicker}
-                title={s.install.title}
-                lead={s.install.lead}
-                titleId="sp-install-title"
-              />
-              <div className="sp-install-grid">
-                <article className="sp-card">
-                  <h3>{s.install.title}</h3>
-                  <p>{s.install.body}</p>
-                  <div className="sp-card-actions btn-row">
+      <div className="bg-slate-50 py-14 dark:bg-slate-950 lg:py-20">
+        <div className="container-flow max-w-4xl space-y-12">
+          {showInstall ? (
+            <section id="get-flowlary" className="scroll-mt-28 space-y-4" aria-labelledby="sp-install-title">
+              <div>
+                <h2 id="sp-install-title" className="text-2xl font-bold text-slate-900 dark:text-white">
+                  {s.install.title}
+                </h2>
+                <p className="mt-2 text-slate-600 dark:text-slate-300">{s.install.lead}</p>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <article className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-white">{s.install.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{s.install.body}</p>
+                  <div className="mt-5">
                     <InstallFlowlaryButton />
                   </div>
                 </article>
-                <article className="sp-card">
-                  <h3>{s.shortcutsTitle}</h3>
-                  <div className="sp-shortcuts">
-                    <div className="sp-shortcut">
-                      <span>{s.shortcutTranslate}</span>
+                <article className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-white">{s.shortcutsTitle}</h3>
+                  <div className="mt-4 space-y-3">
+                    <div className="flex items-center justify-between gap-3 text-sm">
+                      <span className="text-slate-600 dark:text-slate-300">{s.shortcutTranslate}</span>
                       <KeyCombo {...SHORTCUTS.translate} />
                     </div>
-                    <div className="sp-shortcut">
-                      <span>{s.shortcutLayout}</span>
+                    <div className="flex items-center justify-between gap-3 text-sm">
+                      <span className="text-slate-600 dark:text-slate-300">{s.shortcutLayout}</span>
                       <KeyCombo {...SHORTCUTS.fixLayout} />
                     </div>
-                    <div className="sp-shortcut">
-                      <span>{s.shortcutSpeed}</span>
+                    <div className="flex items-center justify-between gap-3 text-sm">
+                      <span className="text-slate-600 dark:text-slate-300">{s.shortcutSpeed}</span>
                       <KeyCombo {...SHORTCUTS.speedBox} />
                     </div>
                   </div>
                 </article>
               </div>
-            </Reveal>
-          </div>
-        </section>
-      ) : null}
+            </section>
+          ) : null}
 
-      {filteredFeatures.length > 0 ? (
-        <section className="sp-section" aria-labelledby="sp-features-title">
-          <div className="container">
-            <Reveal>
-              <SectionHeading
-                kicker={s.kicker}
-                title={s.featuresTitle}
-                lead={s.featuresLead}
-                titleId="sp-features-title"
-              />
-              <div className="sp-help-list">
+          {filteredFeatures.length > 0 ? (
+            <section aria-labelledby="sp-features-title" className="space-y-4">
+              <div>
+                <h2 id="sp-features-title" className="text-2xl font-bold text-slate-900 dark:text-white">
+                  {s.featuresTitle}
+                </h2>
+                <p className="mt-2 text-slate-600 dark:text-slate-300">{s.featuresLead}</p>
+              </div>
+              <div className="space-y-4">
                 {filteredFeatures.map((item) => {
                   const detailPath = FEATURE_DETAIL_PATHS[item.id]
                   return (
-                    <details key={item.id} className="sp-help-item" id={item.id} open={Boolean(normalizedQuery)}>
-                      <summary>{item.title}</summary>
-                      <div className="sp-help-body">
-                        <p>{item.summary}</p>
-                        {detailPath ? (
-                          <div className="sp-card-actions btn-row">
-                            <Button variant="link" to={detailPath}>
-                              {s.featureDetailAction}
-                            </Button>
-                          </div>
-                        ) : null}
-                      </div>
-                    </details>
+                    <article
+                      key={item.id}
+                      id={item.id}
+                      className="scroll-mt-28 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900"
+                    >
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{item.title}</h3>
+                      <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{item.summary}</p>
+                      <dl className="mt-4 space-y-3 text-sm">
+                        <div>
+                          <dt className="font-semibold text-slate-800 dark:text-slate-100">{s.howLabel.replace(':', '')}</dt>
+                          <dd className="mt-1 text-slate-600 dark:text-slate-300">{item.how}</dd>
+                        </div>
+                        <div>
+                          <dt className="font-semibold text-slate-800 dark:text-slate-100">{s.limitLabel.replace(':', '')}</dt>
+                          <dd className="mt-1 text-slate-600 dark:text-slate-300">{item.limit}</dd>
+                        </div>
+                        <div>
+                          <dt className="font-semibold text-slate-800 dark:text-slate-100">{s.actionLabel.replace(':', '')}</dt>
+                          <dd className="mt-1 text-slate-600 dark:text-slate-300">{item.action}</dd>
+                        </div>
+                      </dl>
+                      {detailPath ? (
+                        <Link to={detailPath} className="mt-5 inline-block text-sm font-semibold text-sky-600 dark:text-sky-400">
+                          {s.featureDetailAction}
+                        </Link>
+                      ) : null}
+                    </article>
                   )
                 })}
               </div>
-            </Reveal>
-          </div>
-        </section>
-      ) : null}
+            </section>
+          ) : null}
 
-      {showAccount ? (
-        <section className="sp-section" id="account" aria-labelledby="sp-account-title">
-          <div className="container">
-            <Reveal>
-              <article className="sp-card">
-                <h2 id="sp-account-title">{s.account.title}</h2>
-                <p>{s.account.body}</p>
-                <ul className="sp-list">
-                  {s.account.items.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-                <div className="sp-card-actions btn-row">
-                  <Button to="/account">{t.nav.account}</Button>
-                </div>
-              </article>
-            </Reveal>
-          </div>
-        </section>
-      ) : null}
+          {showAccount ? (
+            <HelpCard
+              id="account"
+              title={s.account.title}
+              body={s.account.body}
+              items={s.account.items}
+              action={{ to: '/account', label: t.nav.account }}
+            />
+          ) : null}
 
-      {showAi ? (
-        <section className="sp-section" id="ai" aria-labelledby="sp-ai-title">
-          <div className="container">
-            <Reveal>
-              <article className="sp-card">
-                <h2 id="sp-ai-title">{s.ai.title}</h2>
-                <p>{s.ai.managed}</p>
-              </article>
-            </Reveal>
-          </div>
-        </section>
-      ) : null}
+          {showAi ? <HelpCard id="ai" title={s.ai.title} body={s.ai.managed} /> : null}
 
-      {showPlans ? (
-        <section className="sp-section sp-plans-band" aria-labelledby="sp-plans-title">
-          <div className="container">
-            <Reveal>
-              <h2 id="sp-plans-title" className="visually-hidden">
-                Plans and billing
+          {showPlans ? (
+            <section aria-labelledby="sp-plans-title" className="space-y-4">
+              <h2 id="sp-plans-title" className="text-2xl font-bold text-slate-900 dark:text-white">
+                {s.billing.title}
               </h2>
-              <div className="sp-plans-grid">
-                {showTrial ? (
-                  <PlanHelpCard id="trial" title={s.trial.title} body={s.trial.body} items={s.trial.items} />
-                ) : null}
-                {showPro ? (
-                  <PlanHelpCard id="pro" title={s.pro.title} body={s.pro.body} items={s.pro.items} />
-                ) : null}
+              <div className="grid gap-4 md:grid-cols-2">
+                {showTrial ? <HelpCard id="trial" title={s.trial.title} body={s.trial.body} items={s.trial.items} /> : null}
+                {showPro ? <HelpCard id="pro" title={s.pro.title} body={s.pro.body} items={s.pro.items} /> : null}
                 {showStudent ? (
-                  <PlanHelpCard
-                    id="student"
-                    title={s.student.title}
-                    body={s.student.body}
-                    items={s.student.items}
-                  />
+                  <HelpCard id="student" title={s.student.title} body={s.student.body} items={s.student.items} />
                 ) : null}
                 {showBilling ? (
-                  <PlanHelpCard
+                  <HelpCard
                     id="billing"
                     title={s.billing.title}
                     body={s.billing.body}
                     items={s.billing.items}
+                    action={{ to: '/pricing', label: t.nav.pricing }}
                   />
                 ) : null}
               </div>
-            </Reveal>
-          </div>
-        </section>
-      ) : null}
+            </section>
+          ) : null}
 
-      {showPrivacy ? (
-        <section className="sp-section" id="privacy" aria-labelledby="sp-privacy-title">
-          <div className="container">
-            <Reveal>
-              <article className="sp-card">
-                <h2 id="sp-privacy-title">{s.privacyHelp.title}</h2>
-                <p>{s.privacyHelp.body}</p>
-                <div className="sp-card-actions btn-row">
-                  <Button variant="secondary" to="/privacy">
-                    {s.privacyHelp.linkLabel}
-                  </Button>
-                </div>
-              </article>
-            </Reveal>
-          </div>
-        </section>
-      ) : null}
+          {showPrivacy ? (
+            <HelpCard
+              id="privacy"
+              title={s.privacyHelp.title}
+              body={s.privacyHelp.body}
+              action={{ to: '/privacy', label: s.privacyHelp.linkLabel }}
+            />
+          ) : null}
 
-      {filteredIssues.length > 0 ? (
-        <section className="sp-section" id="troubleshooting" aria-labelledby="sp-issues-title">
-          <div className="container">
-            <Reveal>
-              <SectionHeading kicker={s.kicker} title={s.troubleshootingTitle} titleId="sp-issues-title" />
-              <div className="sp-issues">
+          {filteredIssues.length > 0 ? (
+            <section id="troubleshooting" className="scroll-mt-28 space-y-4" aria-labelledby="sp-issues-title">
+              <h2 id="sp-issues-title" className="text-2xl font-bold text-slate-900 dark:text-white">
+                {s.troubleshootingTitle}
+              </h2>
+              <div className="space-y-3">
                 {filteredIssues.map((item) => (
-                  <details key={item.title} className="sp-help-item" open={Boolean(normalizedQuery)}>
-                    <summary>{item.title}</summary>
-                    <div className="sp-help-body">
-                      <div className="sp-help-meta">
-                        <p>
-                          <strong>{s.causeLabel.replace(':', '')}</strong>
-                          {item.cause}
-                        </p>
-                        <p>
-                          <strong>{s.checkLabel.replace(':', '')}</strong>
-                          {item.check}
-                        </p>
-                        <p>
-                          <strong>{s.nextLabel.replace(':', '')}</strong>
-                          {item.next}
-                        </p>
+                  <article
+                    key={item.title}
+                    className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900"
+                  >
+                    <h3 className="text-base font-semibold text-slate-900 dark:text-white">{item.title}</h3>
+                    <dl className="mt-3 space-y-2 text-sm">
+                      <div>
+                        <dt className="font-semibold text-slate-800 dark:text-slate-100">{s.causeLabel.replace(':', '')}</dt>
+                        <dd className="mt-0.5 text-slate-600 dark:text-slate-300">{item.cause}</dd>
                       </div>
-                    </div>
-                  </details>
+                      <div>
+                        <dt className="font-semibold text-slate-800 dark:text-slate-100">{s.checkLabel.replace(':', '')}</dt>
+                        <dd className="mt-0.5 text-slate-600 dark:text-slate-300">{item.check}</dd>
+                      </div>
+                      <div>
+                        <dt className="font-semibold text-slate-800 dark:text-slate-100">{s.nextLabel.replace(':', '')}</dt>
+                        <dd className="mt-0.5 text-slate-600 dark:text-slate-300">{item.next}</dd>
+                      </div>
+                    </dl>
+                  </article>
                 ))}
               </div>
-            </Reveal>
-          </div>
-        </section>
-      ) : null}
+            </section>
+          ) : null}
 
-      {normalizedQuery &&
-      !showInstall &&
-      filteredFeatures.length === 0 &&
-      filteredIssues.length === 0 &&
-      !showAccount &&
-      !showAi &&
-      !showTrial &&
-      !showPro &&
-      !showStudent &&
-      !showBilling &&
-      !showPrivacy ? (
-        <div className="container">
-          <p className="sp-empty" role="status">
-            {s.noResults}
-          </p>
+          {noResults ? (
+            <p className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900" role="status">
+              {s.noResults}
+            </p>
+          ) : null}
+
+          <section aria-labelledby="sp-hub-title" className="space-y-4">
+            <div>
+              <h2 id="sp-hub-title" className="text-2xl font-bold text-slate-900 dark:text-white">
+                {s.hubTitle}
+              </h2>
+              <p className="mt-2 text-slate-600 dark:text-slate-300">{s.hubLead}</p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {s.hubActions.map((item) => (
+                <Link
+                  key={item.id}
+                  to={item.href}
+                  className="rounded-2xl border border-slate-200 bg-white p-5 transition-all hover:border-sky-200 hover:shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:hover:border-sky-500/40"
+                >
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{item.title}</h3>
+                  <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{item.body}</p>
+                </Link>
+              ))}
+            </div>
+          </section>
+
+          <section
+            id="contact"
+            className="scroll-mt-28 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900 sm:p-8"
+          >
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{s.contactTitle}</h2>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{s.contactBody}</p>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Link to="/contact" className="btn-primary text-sm">
+                {s.contactAction}
+              </Link>
+              <Link to="/privacy" className="btn-secondary text-sm">
+                {t.cta.readPrivacy}
+              </Link>
+              <Link to="/account" className="btn-secondary text-sm">
+                {t.nav.account}
+              </Link>
+            </div>
+          </section>
         </div>
-      ) : null}
+      </div>
 
-      <section className="sp-section" id="contact">
-        <div className="container">
-          <Reveal>
-            <article className="sp-card sp-contact-band">
-              <h2>{s.contactTitle}</h2>
-              <p>{s.contactBody}</p>
-              <div className="sp-contact-actions btn-row">
-                <Button to="/contact">{s.contactAction}</Button>
-                <Button variant="secondary" to="/privacy">
-                  {t.cta.readPrivacy}
-                </Button>
-                <Button variant="secondary" to="/account">
-                  {t.nav.account}
-                </Button>
-              </div>
-            </article>
-          </Reveal>
-        </div>
-      </section>
-
-      <ConversionPanel
-        titleId="support-final-title"
+      <CTASection
         title={s.final.title}
-        lead={s.final.lead}
-        primary={<InstallFlowlaryButton />}
-        secondary={
-          <Button variant="secondary" to="/try">
-            {s.final.secondary}
-          </Button>
-        }
+        subtitle={s.final.lead}
+        primaryTo="/guide"
+        primaryLabel={t.cta.install}
+        secondaryTo="/try"
+        secondaryLabel={s.final.secondary}
       />
-    </div>
-  )
-}
-
-function PlanHelpCard({
-  id,
-  title,
-  body,
-  items,
-}: {
-  id: string
-  title: string
-  body: string
-  items: readonly string[]
-}) {
-  return (
-    <article className="sp-card sp-plan-card" id={id} aria-labelledby={`sp-${id}-title`}>
-      <h2 id={`sp-${id}-title`}>{title}</h2>
-      <p>{body}</p>
-      <ul className="sp-list">
-        {items.map((item) => (
-          <li key={item}>{item}</li>
-        ))}
-      </ul>
-    </article>
+    </>
   )
 }

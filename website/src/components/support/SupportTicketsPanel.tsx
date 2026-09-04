@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import type { SupportTicketMessageView, SupportTicketPublicView } from '@flowlary/shared'
 import { SUPPORT_ISSUE_TYPES } from '@flowlary/shared'
+import { BookOpen, LifeBuoy, Lightbulb, MessageSquarePlus, MessagesSquare } from 'lucide-react'
 import { useI18n, useMessages } from '../../i18n/index.tsx'
 import { hasStoredWebSession } from '../../account/client.ts'
 import { Button } from '../Ui.tsx'
@@ -25,6 +26,10 @@ function formatRelativeTime(ts: number, locale: string): string {
 
 function statusLabel(status: SupportTicketPublicView['status'], copy: Record<string, string>): string {
   return copy[status] ?? status
+}
+
+function ticketHref(id: string) {
+  return `/dashboard/support?ticket=${encodeURIComponent(id)}`
 }
 
 export function SupportTicketsPanel() {
@@ -147,12 +152,22 @@ export function SupportTicketsPanel() {
     await loadDetail(detail.id)
   }
 
+  const helpLinks = [
+    { to: '/support', title: s.helpCenter, hint: s.helpCenterHint, icon: BookOpen },
+    { to: '/feedback?tab=features', title: s.suggestFeature, hint: s.suggestHint, icon: Lightbulb },
+    { to: '/feedback', title: s.giveFeedback, hint: s.feedbackHint, icon: MessageSquarePlus },
+  ]
+
   if (!signedIn) {
     return (
-      <div className="fl-surface-1 sp-tickets-panel">
-        <h2>{s.signInTitle}</h2>
-        <p className="muted">{s.signInBody}</p>
-        <Button to="/account">{s.signInCta}</Button>
+      <div className="wd-panel-stack">
+        <article className="wd-card wd-empty">
+          <h2>{s.signInTitle}</h2>
+          <p className="wd-muted">{s.signInBody}</p>
+          <div className="wd-actions">
+            <Button to="/account">{s.signInCta}</Button>
+          </div>
+        </article>
       </div>
     )
   }
@@ -160,26 +175,26 @@ export function SupportTicketsPanel() {
   if (selectedId && detail) {
     const canReply = ['OPEN', 'INVESTIGATING', 'WAITING_FOR_USER'].includes(detail.status)
     return (
-      <div className="sp-tickets-panel">
-        <button type="button" className="sp-back-link" onClick={() => setSearchParams({})}>
+      <div className="wd-panel-stack wd-support">
+        <button type="button" className="wd-text-btn" onClick={() => setSearchParams({})}>
           {s.backToList}
         </button>
-        <header className="sp-ticket-header fl-surface-1">
-          <p className="kicker">{s.requestLabel.replace('{number}', detail.displayNumber)}</p>
+        <article className="wd-card">
+          <p className="wd-data-label">{s.requestLabel.replace('{number}', detail.displayNumber)}</p>
           <h2>{detail.subject}</h2>
-          <p>
-            <span className={`sp-status sp-status-${detail.status.toLowerCase()}`}>{statusLabel(detail.status, s.status)}</span>
-            <span className="muted"> · {s.updated.replace('{time}', formatRelativeTime(detail.updatedAt, locale))}</span>
+          <p className="wd-support-meta">
+            <span className={`wd-support-status is-${detail.status.toLowerCase()}`}>{statusLabel(detail.status, s.status)}</span>
+            <span className="wd-muted">{s.updated.replace('{time}', formatRelativeTime(detail.updatedAt, locale))}</span>
           </p>
-        </header>
+        </article>
         {error ? (
-          <p className="fl-alert fl-alert-error" role="alert">
+          <p className="wd-error" role="alert">
             {error}
           </p>
         ) : null}
-        <div className="sp-thread" role="log" aria-live="polite" aria-label={s.threadAria}>
+        <div className="wd-support-thread" role="log" aria-live="polite" aria-label={s.threadAria}>
           {messages.map((item) => (
-            <article key={item.id} className={`sp-message sp-message-${item.author} fl-surface-1`}>
+            <article key={item.id} className={`wd-card wd-support-msg is-${item.author}`}>
               <header>
                 <strong>{item.author === 'support' ? s.supportAuthor : s.youAuthor}</strong>
                 <time dateTime={new Date(item.createdAt).toISOString()}>{formatRelativeTime(item.createdAt, locale)}</time>
@@ -189,12 +204,12 @@ export function SupportTicketsPanel() {
           ))}
         </div>
         {canReply ? (
-          <div className="sp-reply fl-surface-1">
-            <label className="fb-field">
+          <article className="wd-card">
+            <label className="wd-field">
               <span>{s.replyLabel}</span>
               <textarea value={reply} onChange={(e) => setReply(e.target.value)} rows={4} maxLength={4000} />
             </label>
-            <div className="btn-row">
+            <div className="wd-actions">
               <Button type="button" disabled={loading || !reply.trim()} onClick={() => void handleReply()}>
                 {s.sendReply}
               </Button>
@@ -202,42 +217,52 @@ export function SupportTicketsPanel() {
                 {s.markResolved}
               </Button>
             </div>
-          </div>
+          </article>
         ) : (
-          <p className="muted">{s.closedNote}</p>
+          <p className="wd-muted">{s.closedNote}</p>
         )}
       </div>
     )
   }
 
   return (
-    <div className="sp-tickets-panel">
-      <div className="sp-tickets-head">
+    <div className="wd-panel-stack wd-support">
+      <header className="wd-home-head">
         <div>
-          <h2>{s.title}</h2>
-          <p className="muted">{s.lead}</p>
+          <h2>{s.pageTitle}</h2>
+          <p className="wd-lead">{s.pageLead}</p>
         </div>
-        <Button type="button" onClick={() => setShowNew((v) => !v)}>
-          {s.contactCta}
-        </Button>
-      </div>
+        {tickets.length > 0 && !showNew ? (
+          <Button type="button" onClick={() => setShowNew(true)}>
+            {s.contactCta}
+          </Button>
+        ) : null}
+      </header>
 
       {createdTicket ? (
-        <p className="fl-alert fl-alert-success" role="status">
+        <p className="wd-settings-status is-ok" role="status">
           {s.createdSuccess.replace('{number}', createdTicket.displayNumber)}
         </p>
       ) : null}
 
       {error ? (
-        <p className="fl-alert fl-alert-error" role="alert">
+        <p className="wd-error" role="alert">
           {error}
         </p>
       ) : null}
 
       {showNew ? (
-        <section className="fl-surface-1 sp-new-ticket" aria-labelledby="sp-new-title">
-          <h3 id="sp-new-title">{s.newTitle}</h3>
-          <label className="fb-field">
+        <section className="wd-card" aria-labelledby="sp-new-title">
+          <header className="wd-settings-card-head">
+            <span className="wd-settings-icon" aria-hidden="true">
+              <LifeBuoy className="h-4 w-4" />
+            </span>
+            <div>
+              <h3 id="sp-new-title">{s.newTitle}</h3>
+              <p className="wd-muted">{s.lead}</p>
+            </div>
+          </header>
+          <label className="wd-field">
             <span>{s.issueTypeLabel}</span>
             <select value={issueType} onChange={(e) => setIssueType(e.target.value)}>
               {issueOptions.map((item) => (
@@ -247,20 +272,20 @@ export function SupportTicketsPanel() {
               ))}
             </select>
           </label>
-          <label className="fb-field">
+          <label className="wd-field">
             <span>{s.subjectLabel}</span>
             <input value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={120} />
           </label>
-          <label className="fb-field">
+          <label className="wd-field">
             <span>{s.messageLabel}</span>
             <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={5} maxLength={4000} />
           </label>
-          <label className="fb-check">
+          <label className="wd-check">
             <input type="checkbox" checked={includeDiagnostics} onChange={(e) => setIncludeDiagnostics(e.target.checked)} />
             <span>{s.diagnosticsLabel}</span>
           </label>
-          {includeDiagnostics ? <p className="muted fb-diagnostics-note">{s.diagnosticsNote}</p> : null}
-          <div className="btn-row">
+          {includeDiagnostics ? <p className="wd-muted">{s.diagnosticsNote}</p> : null}
+          <div className="wd-actions">
             <Button type="button" disabled={loading || !subject.trim() || !message.trim()} onClick={() => void handleCreate()}>
               {s.sendTicket}
             </Button>
@@ -271,39 +296,56 @@ export function SupportTicketsPanel() {
         </section>
       ) : null}
 
-      {loading && tickets.length === 0 ? (
-        <p role="status">{s.loading}</p>
-      ) : tickets.length === 0 ? (
-        <div className="fl-surface-1 sp-empty">
-          <p>{s.empty}</p>
+      {loading && tickets.length === 0 && !showNew ? (
+        <p className="wd-muted" role="status">
+          {s.loading}
+        </p>
+      ) : tickets.length === 0 && !showNew ? (
+        <article className="wd-card wd-support-empty">
+          <span className="wd-settings-icon" aria-hidden="true">
+            <MessagesSquare className="h-4 w-4" />
+          </span>
+          <h3>{s.emptyTitle}</h3>
+          <p className="wd-muted">{s.emptyBody}</p>
+          <p className="wd-muted">{s.lead}</p>
           <Button type="button" onClick={() => setShowNew(true)}>
             {s.contactCta}
           </Button>
-        </div>
-      ) : (
-        <ul className="sp-ticket-list">
+        </article>
+      ) : tickets.length > 0 ? (
+        <ul className="wd-support-list">
           {tickets.map((ticket) => (
             <li key={ticket.id}>
-              <Link to={`/account/support?ticket=${encodeURIComponent(ticket.id)}`} className="sp-ticket-card fl-surface-1">
-                <div className="sp-ticket-card-head">
+              <Link to={ticketHref(ticket.id)} className="wd-card wd-support-ticket">
+                <div className="wd-support-ticket-head">
                   <strong>#{ticket.displayNumber}</strong>
-                  <span className={`sp-status sp-status-${ticket.status.toLowerCase()}`}>{statusLabel(ticket.status, s.status)}</span>
+                  <span className={`wd-support-status is-${ticket.status.toLowerCase()}`}>{statusLabel(ticket.status, s.status)}</span>
                 </div>
                 <p>{ticket.subject}</p>
-                <p className="muted">{s.updated.replace('{time}', formatRelativeTime(ticket.updatedAt, locale))}</p>
+                <p className="wd-muted">{s.updated.replace('{time}', formatRelativeTime(ticket.updatedAt, locale))}</p>
               </Link>
             </li>
           ))}
         </ul>
-      )}
+      ) : null}
 
-      <p className="muted sp-help-links">
-        <Link to="/support">{s.helpCenter}</Link>
-        {' · '}
-        <Link to="/feedback?tab=features">{s.suggestFeature}</Link>
-        {' · '}
-        <Link to="/feedback">{s.giveFeedback}</Link>
-      </p>
+      <section className="wd-support-help" aria-labelledby="wd-support-help-title">
+        <h3 id="wd-support-help-title">{s.helpTitle}</h3>
+        <div className="wd-support-help-grid">
+          {helpLinks.map((item) => {
+            const Icon = item.icon
+            return (
+              <Link key={item.to} to={item.to} className="wd-card wd-support-help-card">
+                <span className="wd-settings-icon" aria-hidden="true">
+                  <Icon className="h-4 w-4" />
+                </span>
+                <strong>{item.title}</strong>
+                <span className="wd-muted">{item.hint}</span>
+              </Link>
+            )
+          })}
+        </div>
+      </section>
     </div>
   )
 }

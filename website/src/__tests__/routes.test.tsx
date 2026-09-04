@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { App } from '../App.tsx'
 import { ROUTES } from '../routes.ts'
 
-const AUTH_GATED_ROUTES = new Set(['/dashboard', '/dashboard/support'])
+const AUTH_GATED_ROUTES = new Set(['/dashboard', '/dashboard/support', '/lab'])
 
 function renderRoute(path: string) {
   return renderToString(
@@ -25,38 +25,46 @@ describe('marketing routes', () => {
   it('dashboard routes redirect signed-out users to account', () => {
     const dashboard = renderRoute('/dashboard')
     const support = renderRoute('/dashboard/support')
+    const lab = renderRoute('/lab')
     expect(dashboard).not.toContain('flowlary-api.zaixos.com')
     expect(support).not.toContain('flowlary-api.zaixos.com')
+    expect(lab).not.toContain('flowlary-api.zaixos.com')
   })
 
   it('home communicates the product experience story', () => {
     const html = renderRoute('/')
-    expect(html).toContain('Keep writing.')
-    expect(html).toContain('switch tools.')
+    expect(html).toContain('Write where you are.')
+    expect(html).toContain('Help stays in the field.')
     expect(html).toContain('Three problems.')
     expect(html).toContain('One field.')
-    expect(html).toContain('One Field. Everything.')
-    expect(html).toContain('Two surfaces.')
-    expect(html).toContain('One continuous experience.')
+    expect(html).toContain('Help stays where you type')
+    expect(html).toContain('hp-proof-rail')
+    expect(html).toContain('Keyboard layout repair')
+    expect(html).toContain('One companion.')
     expect(html).toContain('Simulated')
     expect(html).toContain('Live')
     expect(html).toContain('Add to Chrome')
+    expect(html).not.toContain('اكتب حيث أنت')
     expect(html).toContain('Stop switching.')
     expect(html).toContain('Start flowing.')
     expect(html).not.toContain('Your writing becomes your English lesson.')
     expect(html.toLowerCase()).not.toContain('coming soon')
     expect(html).toContain('theme-toggle')
+    expect(html).toContain('fl-nav-seg')
+    expect(html).toContain('fl-nav-cta')
+    expect(html).toContain('fl-nav-icon-link')
+    expect(html).toContain('fl-section')
+    expect(html).toContain('fl-scroll-progress')
+    expect(html).toContain('reveal-clip')
+    expect(html).toContain('reveal-start')
     expect(html).toMatch(/System theme|Color theme|Light theme|Dark theme/)
   })
 
   it('legacy home hashes redirect to canonical routes', () => {
     const tryHtml = renderRoute('/try')
-    const labHtml = renderRoute('/lab')
     expect(tryHtml).toContain('Try ')
     expect(tryHtml).toContain('Flowlary</span>')
     expect(tryHtml).toContain('fl-fidelity-simulated')
-    expect(labHtml).toContain('Writing Lab')
-    expect(labHtml).toContain('fl-fidelity-live')
   })
 
   it('404 renders for unknown paths', () => {
@@ -68,7 +76,7 @@ describe('marketing routes', () => {
     const html = renderRoute('/account')
     expect(html).toContain('<h1')
     expect(html).toContain('Welcome ')
-    expect(html).toContain('Sign in to continue learning with Flowlary.')
+    expect(html).toContain('Sign in to access Writing Lab, progress, and your dashboard.')
     expect(html).not.toContain('temporarily unavailable')
     expect(html).not.toContain('api.flowlary.com')
     expect(html).not.toContain('Pro activated')
@@ -76,9 +84,25 @@ describe('marketing routes', () => {
     expect(html).not.toContain('ZAIXOS')
   })
 
-  it('blog is an honest empty state', () => {
+  it('register page is a real create-account form', () => {
+    const html = renderRoute('/account?mode=register')
+    expect(html).toContain('Create your')
+    expect(html).toContain('account</span>')
+    expect(html).toContain('Free to start. No credit card required.')
+    expect(html).toContain('href="/terms"')
+    expect(html).toContain('href="/privacy"')
+    expect(html).toContain('What this account unlocks')
+    expect(html).toContain('Confirm password')
+    expect(html).not.toContain('temporarily unavailable')
+  })
+
+  it('blog publishes product stories', () => {
     const html = renderRoute('/blog')
-    expect(html).toContain('No articles have been published yet')
+    expect(html).toContain('Bilingual writing life')
+    expect(html).toContain('wrong-keyboard-gibberish')
+    expect(html).toContain('/blog/wrong-keyboard.jpg')
+    expect(html).toContain('stay-in-the-inbox')
+    expect(html).not.toContain('No articles have been published yet')
     expect(html).not.toContain('Lorem ipsum')
   })
 
@@ -103,7 +127,11 @@ describe('marketing routes', () => {
     expect(html).toContain('forever')
     expect(html).toContain('Compare Free and Pro')
     expect(html).toContain('id="students"')
+    expect(html).toContain('intent=student')
+    expect(html).toContain('Verify your school email')
+    expect(html).toContain('pr-billing-toggle')
     expect(html).toContain('$4.99')
+    expect(html).toContain('$39')
     expect(html).not.toMatch(/BYOK|Paddle/i)
   })
 
@@ -156,6 +184,21 @@ describe('marketing routes', () => {
     expect(html).toContain('href="/support#troubleshooting"')
   })
 
+  it('feedback is a real hub, not a fake form', () => {
+    const html = renderRoute('/feedback')
+    expect(html).toContain('Tell us what to ')
+    expect(html).toContain('improve')
+    expect(html).toContain('How we use what you send')
+    expect(html).toContain('How is Flowlary working')
+    expect(html).toContain('Send feedback')
+    expect(html).toContain('Create account')
+    expect(html).toContain('href="/feedback?tab=features"')
+    expect(html).toContain('href="/feedback?tab=support"')
+    expect(html).toContain('What happens next')
+    expect(html).toContain('Do I need an account?')
+    expect(html).not.toContain('coming later')
+  })
+
   it('product page explains surfaces', () => {
     const html = renderRoute('/product')
     expect(html).toContain('How Flowlary works as')
@@ -170,9 +213,9 @@ describe('marketing routes', () => {
     expect(html).toContain('Simulated experience')
   })
 
-  it('lab page is clearly live', () => {
+  it('lab route sends people into the dashboard writing lab', () => {
     const html = renderRoute('/lab')
-    expect(html).toContain('fl-fidelity-live')
-    expect(html).toContain('Uses Flowlary AI on the web')
+    expect(html).not.toContain('flowlary-api.zaixos.com')
+    expect(html.toLowerCase()).not.toContain('postpond')
   })
 })

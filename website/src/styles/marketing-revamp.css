@@ -175,9 +175,10 @@
   color: var(--fl-text);
 }
 
-.theme-toggle {
-  width: 2.4rem;
-  height: 2.4rem;
+.theme-toggle:not(.fl-nav-seg):not(.fl-nav-icon) {
+  width: auto;
+  height: auto;
+  min-height: 2.4rem;
   border: 1px solid var(--fl-border);
   border-radius: 999px;
   background: color-mix(in srgb, var(--fl-bg-soft) 70%, var(--fl-surface));

@@ -99,53 +99,18 @@ export function ProgressChartBlock({
   daily: ProgressDayPoint[]
   weekly: ProgressWeekBar[]
   skills: ProgressSkillSpark[]
-  range: '7d' | '30d'
-  onRangeChange: (range: '7d' | '30d') => void
-  labels: { chart7d: string; chart30d: string }
+  range: '7d' | '30d' | 'all'
+  onRangeChange: (range: '7d' | '30d' | 'all') => void
+  labels: { chart7d: string; chart30d: string; chartAll: string; chartRate: string; chartByType: string }
 }) {
   const slice = range === '7d' ? daily.slice(-7) : daily
   const linePoints = slice.map((point) => ({ label: point.label, value: point.rate }))
   return (
     <div className="wd-charts">
-      <div className="wd-chart-tabs" role="tablist">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={range === '7d'}
-          className={range === '7d' ? 'is-active' : ''}
-          onClick={() => onRangeChange('7d')}
-        >
-          {labels.chart7d}
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={range === '30d'}
-          className={range === '30d' ? 'is-active' : ''}
-          onClick={() => onRangeChange('30d')}
-        >
-          {labels.chart30d}
-        </button>
-      </div>
-      <LineChart points={linePoints} label="Error rate" />
-      <StackedBars rows={weekly} />
-      <div className="wd-skill-sparks">
-        {skills.map((skill) => (
-          <div key={skill.type} className="wd-skill-spark">
-            <span>{skill.type}</span>
-            <Sparkline
-              values={skill.spark}
-              color={
-                skill.type === 'spelling'
-                  ? 'var(--fl-teach-spelling)'
-                  : skill.type === 'grammar'
-                    ? 'var(--fl-teach-grammar)'
-                    : 'var(--fl-teach-wording)'
-              }
-            />
-            <strong>{skill.count}</strong>
-          </div>
-        ))}
+      <LineChart points={linePoints} label={labels.chartRate} />
+      <div>
+        <p className="wd-chart-caption">{labels.chartByType}</p>
+        <StackedBars rows={weekly} />
       </div>
     </div>
   )

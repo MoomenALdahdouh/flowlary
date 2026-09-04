@@ -1,63 +1,95 @@
 import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Button } from '../components/Ui.tsx'
-import { useMessages } from '../i18n/index.tsx'
+import { BookOpen, FileText, Home, LayoutDashboard, LifeBuoy, PenLine, Settings, TrendingUp, User } from 'lucide-react'
+import { LocaleSwitcher } from '../bolt/components/layout/Navbar.tsx'
+import { ThemeToggle } from '../components/ThemeToggle.tsx'
+import { useI18n, useMessages } from '../i18n/index.tsx'
 import { ConnectionStatus } from './components/ConnectionStatus.tsx'
-import { FidelityBadge } from '../components/Ui.tsx'
+
+const ICONS: Record<string, ReactNode> = {
+  overview: <LayoutDashboard className="h-4 w-4" />,
+  lab: <PenLine className="h-4 w-4" />,
+  practice: <BookOpen className="h-4 w-4" />,
+  progress: <TrendingUp className="h-4 w-4" />,
+  report: <FileText className="h-4 w-4" />,
+  settings: <Settings className="h-4 w-4" />,
+  account: <User className="h-4 w-4" />,
+  support: <LifeBuoy className="h-4 w-4" />,
+}
+
+function NavItem({
+  item,
+  active,
+  onSectionChange,
+}: {
+  item: { id: string; label: string; href?: string }
+  active: boolean
+  onSectionChange: (id: string) => void
+}) {
+  const className = `wd-nav-item${active ? ' is-active' : ''}${item.id === 'lab' ? ' wd-nav-item--lab' : ''}`
+  if (item.href) {
+    return (
+      <Link className={className} to={item.href} aria-current={active ? 'page' : undefined}>
+        {ICONS[item.id]}
+        {item.label}
+      </Link>
+    )
+  }
+  return (
+    <button
+      type="button"
+      className={className}
+      aria-current={active ? 'page' : undefined}
+      onClick={() => onSectionChange(item.id)}
+    >
+      {ICONS[item.id]}
+      {item.label}
+    </button>
+  )
+}
 
 export function DashboardShell({
-  title,
   navGroups,
   nav,
   section,
   onSectionChange,
   extensionConnected,
-  onSignOut,
   children,
 }: {
-  title: string
+  title?: string
   navGroups: { label: string; items: { id: string; label: string; href?: string }[] }[]
   nav: { id: string; label: string; href?: string }[]
   section: string
   onSectionChange: (id: string) => void
   extensionConnected: boolean | null
-  onSignOut: () => void
+  onSignOut?: () => void
   children: ReactNode
 }) {
   const t = useMessages()
+  const { locale, setLocale } = useI18n()
   const shell = t.dashboard.shell
   const { pathname } = useLocation()
-  const onSupportRoute = pathname.startsWith('/dashboard/support')
 
   function isActive(item: { id: string; href?: string }) {
-    if (item.href) return onSupportRoute
-    return !onSupportRoute && section === item.id
+    if (item.href) return pathname === item.href || pathname.startsWith(`${item.href}/`)
+    return !pathname.startsWith('/dashboard/support') && section === item.id
   }
 
-  function navClick(item: { id: string; href?: string }) {
-    if (item.href) return
-    onSectionChange(item.id)
-  }
+  const utilities = (
+    <>
+      <ConnectionStatus connected={extensionConnected} />
+      <div className="wd-nav-utils">
+        <LocaleSwitcher locale={locale} setLocale={setLocale} />
+        <ThemeToggle />
+      </div>
+    </>
+  )
 
   return (
     <div className="wd-workspace">
-      <header className="wd-topbar">
-        <div className="wd-topbar-start">
-          <p className="wd-topbar-kicker">{title}</p>
-          <ConnectionStatus connected={extensionConnected} />
-        </div>
-        <div className="wd-topbar-actions">
-          <Link className="wd-lab-chip" to="/lab">
-            {shell.writingLab}
-            <FidelityBadge mode="live" />
-          </Link>
-          <Button variant="ghost" onClick={onSignOut}>
-            {shell.signOut}
-          </Button>
-        </div>
-      </header>
       <div className="wd-shell">
         <aside className="wd-nav" aria-label={shell.navAria}>
+          <p className="wd-nav-brand">{t.brand.name}</p>
           <nav className="wd-nav-groups">
             {navGroups.map((group) => (
               <div key={group.label} className="wd-nav-group">
@@ -65,55 +97,27 @@ export function DashboardShell({
                 <ul>
                   {group.items.map((item) => (
                     <li key={item.id}>
-                      {item.href ? (
-                        <Link
-                          className={isActive(item) ? 'is-active' : ''}
-                          to={item.href}
-                          aria-current={isActive(item) ? 'page' : undefined}
-                        >
-                          {item.label}
-                        </Link>
-                      ) : (
-                        <button
-                          type="button"
-                          className={isActive(item) ? 'is-active' : ''}
-                          aria-current={isActive(item) ? 'page' : undefined}
-                          onClick={() => navClick(item)}
-                        >
-                          {item.label}
-                        </button>
-                      )}
+                      <NavItem item={item} active={isActive(item)} onSectionChange={onSectionChange} />
                     </li>
                   ))}
                 </ul>
               </div>
             ))}
           </nav>
-          <nav className="wd-nav-mobile" aria-label={shell.navAria}>
-            {nav.map((item) =>
-              item.href ? (
-                <Link
-                  key={item.id}
-                  className={isActive(item) ? 'is-active' : ''}
-                  to={item.href}
-                  aria-current={isActive(item) ? 'page' : undefined}
-                >
-                  {item.label}
-                </Link>
-              ) : (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={isActive(item) ? 'is-active' : ''}
-                  aria-current={isActive(item) ? 'page' : undefined}
-                  onClick={() => navClick(item)}
-                >
-                  {item.label}
-                </button>
-              ),
-            )}
-          </nav>
+          <div className="wd-nav-foot">
+            {utilities}
+            <Link to="/" className="wd-nav-item wd-nav-item--quiet">
+              <Home className="h-4 w-4" />
+              {t.pages.home}
+            </Link>
+          </div>
         </aside>
+        <nav className="wd-nav-mobile" aria-label={shell.navAria}>
+          {nav.map((item) => (
+            <NavItem key={item.id} item={item} active={isActive(item)} onSectionChange={onSectionChange} />
+          ))}
+        </nav>
+        <div className="wd-mobile-bar">{utilities}</div>
         <main className="wd-main">{children}</main>
       </div>
     </div>

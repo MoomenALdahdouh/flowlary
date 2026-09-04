@@ -7,6 +7,7 @@ import {
   type UiLocaleCode,
 } from '@flowlary/shared'
 import { DEFAULT_LOCALE, ENABLED_LOCALES, type Locale } from '../config.ts'
+import { canStorePreferences } from '../cookies/consent.ts'
 import { ar } from './ar.ts'
 import { de } from './de.ts'
 import { el } from './el.ts'
@@ -77,6 +78,7 @@ export function readStoredLocale(): Locale {
 
 function persistLocale(locale: Locale): void {
   try {
+    if (!canStorePreferences()) return
     window.localStorage.setItem(LOCALE_STORAGE_KEY, locale)
   } catch {
     /* ignore */
@@ -91,14 +93,25 @@ const I18nContext = createContext<I18nValue>({
   setLocale: () => undefined,
 })
 
-export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE)
+export function I18nProvider({
+  children,
+  initialLocale = DEFAULT_LOCALE,
+}: {
+  children: ReactNode
+  initialLocale?: Locale
+}) {
+  const [locale, setLocaleState] = useState<Locale>(initialLocale)
 
   useLayoutEffect(() => {
+    if (initialLocale !== DEFAULT_LOCALE) {
+      setLocaleState(initialLocale)
+      applyDocumentLocale(initialLocale)
+      return
+    }
     const next = readStoredLocale()
     setLocaleState(next)
     applyDocumentLocale(next)
-  }, [])
+  }, [initialLocale])
 
   useLayoutEffect(() => {
     applyDocumentLocale(locale)

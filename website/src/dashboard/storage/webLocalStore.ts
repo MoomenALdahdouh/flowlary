@@ -13,6 +13,7 @@ import {
   normalizePracticeSessionStore,
 } from '../learning/practice/sessions.ts'
 import { normalizeLearningProfile } from './profile.ts'
+import { canStoreProduct } from '../../cookies/consent.ts'
 
 const PREFIX = 'flowlary.web.account.'
 
@@ -31,6 +32,7 @@ function readJson<T>(key: string): T | null {
 }
 
 function writeJson(key: string, value: unknown): void {
+  if (!canStoreProduct()) return
   localStorage.setItem(key, JSON.stringify(value))
 }
 

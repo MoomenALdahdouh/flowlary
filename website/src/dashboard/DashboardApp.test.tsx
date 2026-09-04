@@ -101,6 +101,9 @@ describe('DashboardApp learning loading', () => {
     hookState.bundle = null
     const html = renderDashboard('#settings')
     expect(html).toContain('Learning settings')
+    expect(html).toContain('Practice profile')
+    expect(html).toContain('Spelling')
+    expect(html).toContain('Backup and restore')
     expect(html).not.toContain('aria-busy="true"')
   })
 
@@ -122,12 +125,27 @@ describe('DashboardApp learning loading', () => {
     expect(html).toContain('Try again')
   })
 
+  it('renders Writing Lab inside the dashboard without waiting on learning', () => {
+    hookState.loading = true
+    hookState.bundle = null
+    const html = renderDashboard('#lab')
+    expect(html).toContain('Writing Lab')
+    expect(html).toContain('writing-lab')
+    expect(html).not.toContain('wd-skeleton')
+  })
+
   it('renders Overview when remote learning succeeds', () => {
     hookState.loading = false
     hookState.bundle = emptyBundle
     const html = renderDashboard('#overview')
     expect(html).toContain('Overview')
+    expect(html).toContain('Writing Lab')
+    expect(html).toContain('Start writing')
+    expect(html).toContain('Plan and usage')
+    expect(html).toContain('Daily brief')
     expect(html).not.toContain('wd-skeleton')
+    expect(html).not.toContain('Open Flowlary in Chrome and go to History')
+    expect(html).not.toContain('href="/lab"')
   })
 
   it('shows retry without pretending remote success when data is degraded', () => {

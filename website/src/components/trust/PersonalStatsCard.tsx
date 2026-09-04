@@ -18,12 +18,6 @@ export function PersonalStatsCard() {
     [copy.writingChecks, stats.writingChecksUsed],
     [copy.corrections, stats.corrections],
     [copy.translations, stats.translations],
-    [copy.layoutChecks, stats.layoutChecks],
-    [copy.learningEvents, stats.learningEvents],
-    [copy.practiceSessions, stats.practiceSessions],
-    [copy.activeDays, stats.activeDays],
-    [copy.meaningfulUse, stats.meaningfulUseCount],
-    [copy.firstWin, stats.firstWinCompleted ? 'Yes' : 'No'],
     [copy.creditsToday, stats.creditsUsedToday],
   ] as const
 

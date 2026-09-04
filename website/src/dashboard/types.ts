@@ -1,5 +1,6 @@
 export type DashboardSection =
   | 'overview'
+  | 'lab'
   | 'practice'
   | 'progress'
   | 'report'
@@ -8,6 +9,7 @@ export type DashboardSection =
 
 export const DASHBOARD_SECTIONS: { id: DashboardSection; labelKey: keyof DashboardCopy['nav'] }[] = [
   { id: 'overview', labelKey: 'overview' },
+  { id: 'lab', labelKey: 'writingLab' },
   { id: 'practice', labelKey: 'practice' },
   { id: 'progress', labelKey: 'progress' },
   { id: 'report', labelKey: 'report' },
@@ -17,11 +19,14 @@ export const DASHBOARD_SECTIONS: { id: DashboardSection; labelKey: keyof Dashboa
 
 export const DASHBOARD_NAV_GROUPS: {
   labelKey: keyof DashboardCopy['nav']
-  items: { id: DashboardSection | 'support'; labelKey: keyof DashboardCopy['nav']; route?: string }[]
+  items: { id: DashboardSection | 'support' | 'lab'; labelKey: keyof DashboardCopy['nav']; route?: string }[]
 }[] = [
   {
     labelKey: 'groupWrite',
-    items: [{ id: 'overview', labelKey: 'overview' }],
+    items: [
+      { id: 'overview', labelKey: 'overview' },
+      { id: 'lab', labelKey: 'writingLab' },
+    ],
   },
   {
     labelKey: 'groupLearn',
@@ -53,6 +58,7 @@ export type DashboardCopy = {
     settings: string
     account: string
     support: string
+    writingLab: string
   }
   shell: {
     navAria: string
@@ -71,6 +77,7 @@ export type DashboardCopy = {
   }
   overview: {
     title: string
+    welcome: string
     lead: string
     journey: string
     dailyBrief: string
@@ -87,6 +94,9 @@ export type DashboardCopy = {
     historyAction: string
     planUsage: string
     creditsRemaining: string
+    layoutNote: string
+    connectedBadge: string
+    writingEvents: string
   }
   practice: {
     title: string
@@ -130,6 +140,36 @@ export type DashboardCopy = {
     loading: string
     chart7d: string
     chart30d: string
+    chartAll: string
+    chartRate: string
+    chartByType: string
+    chartEmpty: string
+    viewList: string
+    viewByType: string
+    mistakesLogged: string
+    wordsInRange: string
+    needsPractice: string
+    needsPracticeVsLast: string
+    improvingVsLast: string
+    steadyVsLast: string
+    focusTitle: string
+    focusBody: string
+    focusSteady: string
+    focusImproving: string
+    focusRising: string
+    topPhrase: string
+    tipSpelling: string
+    tipGrammar: string
+    tipWording: string
+    suggested: string
+    applied: string
+    appliedCount: string
+    listen: string
+    openHistory: string
+    repeatsNote: string
+    filterAll: string
+    recent: string
+    practiceCta: string
   }
   report: {
     title: string
@@ -152,21 +192,45 @@ export type DashboardCopy = {
   settings: {
     title: string
     lead: string
+    writingToolsNote: string
     learningProfile: string
+    profileHint: string
     level: string
+    levelHint: string
+    levelUnset: string
+    levels: {
+      beginner: string
+      elementary: string
+      intermediate: string
+      upper_intermediate: string
+      advanced: string
+    }
     focusAreas: string
+    focusHint: string
+    focusSpellingHint: string
+    focusGrammarHint: string
+    focusWordingHint: string
     save: string
     saved: string
+    unsaved: string
     clearLocal: string
     clearLocalConfirm: string
+    clearHint: string
+    dataTitle: string
     exportData: string
     importData: string
+    exportHint: string
+    importHint: string
     exportReady: string
     importReady: string
     importInvalid: string
     replaceProfile: string
     exportImportNote: string
+    dangerTitle: string
+    dangerLead: string
     resetProfile: string
+    resetHint: string
+    resetConfirm: string
   }
   coach: {
     title: string
@@ -198,6 +262,7 @@ export function parseDashboardSection(hash: string): DashboardSection {
   const id = hash.replace(/^#/, '').split('?')[0] ?? ''
   if (
     id === 'overview' ||
+    id === 'lab' ||
     id === 'practice' ||
     id === 'progress' ||
     id === 'report' ||

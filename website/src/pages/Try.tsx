@@ -1,5 +1,5 @@
-import { TryShowcase } from '../components/try/TryShowcase.tsx'
+import BoltTryPage from '../bolt/pages/TryPage'
 
 export function TryPage() {
-  return <TryShowcase />
+  return <BoltTryPage />
 }

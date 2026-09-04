@@ -1,6 +1,8 @@
 import type { AppRoute } from './routes.ts'
 import { SITE_NAME, SITE_URL } from './config.ts'
 import { structuredDataJson } from './components/JsonLd.tsx'
+import { BLOG_POSTS } from './bolt/data/site.tsx'
+import type { Messages } from './i18n/en.ts'
 
 export type PageMeta = {
   title: string
@@ -8,6 +10,7 @@ export type PageMeta = {
   path: string
   ogType?: 'website' | 'article'
   robots?: 'noindex, nofollow'
+  image?: string
 }
 
 export const DEFAULT_OG_IMAGE = `${SITE_URL}/og.svg`
@@ -116,8 +119,7 @@ export const PAGE_META: Record<AppRoute, PageMeta> = {
     path: '/feedback',
     title: `Feedback · ${SITE_NAME}`,
     description:
-      'Share feedback, suggest features, vote on ideas, and contact Flowlary support from your signed-in account.',
-    robots: 'noindex, nofollow',
+      'Rate Flowlary, suggest features, vote on ideas, and open a tracked support request.',
   },
   '/admin/feedback': {
     path: '/admin/feedback',
@@ -135,7 +137,8 @@ export const PAGE_META: Record<AppRoute, PageMeta> = {
   '/blog': {
     path: '/blog',
     title: `Blog · ${SITE_NAME}`,
-    description: 'Flowlary product notes. No articles have been published yet.',
+    description:
+      'Stories about bilingual writing, keyboard mix-ups, in-field help, and how Flowlary stays in the field you already type in.',
   },
   '/account': {
     path: '/account',
@@ -180,6 +183,19 @@ export function canonicalUrl(path: string): string {
 
 export function resolveMeta(pathname: string): PageMeta {
   const normalized = pathname.endsWith('/') && pathname !== '/' ? pathname.slice(0, -1) : pathname
+  if (normalized.startsWith('/blog/')) {
+    const slug = normalized.slice('/blog/'.length)
+    const post = BLOG_POSTS.find((item) => item.slug === slug)
+    if (post) {
+      return {
+        path: normalized,
+        title: `${SITE_NAME} · Blog`,
+        description: 'A Flowlary story about bilingual writing and help in the field.',
+        ogType: 'article',
+        image: `${SITE_URL}${post.cover}`,
+      }
+    }
+  }
   return (
     PAGE_META[normalized as AppRoute] ?? {
       path: pathname,
@@ -194,6 +210,7 @@ export function renderHeadTags(meta: PageMeta): string {
   const ogType = meta.ogType ?? 'website'
   const title = escapeHtml(meta.title)
   const description = escapeHtml(meta.description)
+  const image = meta.image ?? DEFAULT_OG_IMAGE
   const tags = [
     `<title>${title}</title>`,
     `<meta name="description" content="${description}" />`,
@@ -203,11 +220,11 @@ export function renderHeadTags(meta: PageMeta): string {
     `<meta property="og:title" content="${title}" />`,
     `<meta property="og:description" content="${description}" />`,
     `<meta property="og:url" content="${url}" />`,
-    `<meta property="og:image" content="${DEFAULT_OG_IMAGE}" />`,
+    `<meta property="og:image" content="${image}" />`,
     `<meta name="twitter:card" content="summary_large_image" />`,
     `<meta name="twitter:title" content="${title}" />`,
     `<meta name="twitter:description" content="${description}" />`,
-    `<meta name="twitter:image" content="${DEFAULT_OG_IMAGE}" />`,
+    `<meta name="twitter:image" content="${image}" />`,
     `<meta name="twitter:image:alt" content="${SITE_NAME} writing companion" />`,
     `<meta property="og:image:alt" content="${SITE_NAME} writing companion" />`,
     `<meta property="og:locale" content="en_US" />`,
@@ -217,6 +234,63 @@ export function renderHeadTags(meta: PageMeta): string {
     tags.push(`<meta name="robots" content="${meta.robots}" />`)
   }
   return tags.join('\n    ')
+}
+
+const SEO_PATH: Record<string, keyof Messages['pages']['seo']> = {
+  '/': 'home',
+  '/product': 'product',
+  '/try': 'try',
+  '/lab': 'lab',
+  '/features': 'features',
+  '/features/writing-correction': 'writing',
+  '/features/translation': 'translation',
+  '/features/live-translation': 'live',
+  '/features/keyboard-layout': 'keyboard',
+  '/features/speed-box': 'speed',
+  '/pricing': 'pricing',
+  '/about': 'about',
+  '/privacy': 'privacy',
+  '/terms': 'terms',
+  '/cookies': 'cookies',
+  '/contact': 'contact',
+  '/support': 'support',
+  '/feedback': 'feedback',
+  '/guide': 'guide',
+  '/blog': 'blog',
+  '/account': 'account',
+  '/dashboard': 'dashboard',
+  '/dashboard/support': 'tickets',
+  '/account/forgot-password': 'forgot',
+  '/account/reset-password': 'reset',
+  '/admin/feedback': 'adminFeedback',
+}
+
+export function resolveLocalizedMeta(pathname: string, pages: Messages['pages']): PageMeta {
+  const base = resolveMeta(pathname)
+  const normalized = pathname.endsWith('/') && pathname !== '/' ? pathname.slice(0, -1) : pathname
+  if (normalized.startsWith('/blog/')) {
+    const slug = normalized.slice('/blog/'.length) as keyof typeof pages.blogPage.posts
+    const post = pages.blogPage.posts[slug]
+    if (post) {
+      const listed = BLOG_POSTS.find((item) => item.slug === slug)
+      return {
+        path: normalized,
+        title: `${post.title} · ${SITE_NAME}`,
+        description: post.excerpt,
+        ogType: 'article',
+        image: listed ? `${SITE_URL}${listed.cover}` : DEFAULT_OG_IMAGE,
+      }
+    }
+  }
+  const key = SEO_PATH[normalized]
+  if (key) {
+    const loc = pages.seo[key]
+    return { ...base, title: loc.title, description: loc.description }
+  }
+  if (!PAGE_META[normalized as AppRoute]) {
+    return { ...base, title: pages.seo.notFound.title, description: pages.seo.notFound.description }
+  }
+  return base
 }
 
 function escapeHtml(value: string): string {

@@ -21,6 +21,7 @@ import { GrowthAdminPage } from './pages/admin/GrowthAdmin.tsx'
 import { SupportAdminPage } from './pages/admin/SupportAdmin.tsx'
 import { GuidePage } from './pages/Guide.tsx'
 import { BlogPage } from './pages/Blog.tsx'
+import BlogPostPage from './bolt/pages/blog/BlogPost.tsx'
 import { ProductPage } from './pages/Product.tsx'
 import { TryPage } from './pages/Try.tsx'
 import { LabPage } from './pages/Lab.tsx'
@@ -33,10 +34,12 @@ import { ForgotPasswordPage } from './pages/ForgotPassword.tsx'
 import { ResetPasswordPage } from './pages/ResetPassword.tsx'
 import { NotFoundPage } from './pages/NotFound.tsx'
 import { ExtensionSessionSync } from './account/ExtensionSessionSync.tsx'
+import { ThemeBoot } from './components/ThemeToggle.tsx'
 
 export function App() {
   return (
     <I18nProvider>
+      <ThemeBoot />
       <ExtensionSessionSync />
       <Routes>
         <Route element={<Layout />}>
@@ -62,6 +65,7 @@ export function App() {
           <Route path="/admin/growth" element={<GrowthAdminPage />} />
           <Route path="/guide" element={<GuidePage />} />
           <Route path="/blog" element={<BlogPage />} />
+          <Route path="/blog/:slug" element={<BlogPostPage />} />
           <Route path="/admin/support" element={<SupportAdminPage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />

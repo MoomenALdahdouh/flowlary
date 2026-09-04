@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom'
 
 const HASH_TARGETS: Record<string, string> = {
-  '#writing-lab': '/lab',
+  '#writing-lab': '/dashboard#lab',
   '#try-flowlary': '/try',
 }
 

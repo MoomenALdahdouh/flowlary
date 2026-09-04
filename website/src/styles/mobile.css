@@ -1,0 +1,123 @@
+/* Shared phone layout — 390px and 320px viewports */
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+img,
+svg,
+video,
+canvas,
+iframe {
+  max-width: 100%;
+}
+
+@media (max-width: 639px) {
+  input,
+  select,
+  textarea {
+    font-size: 1rem;
+  }
+
+  .hp-hero-jobs li {
+    min-width: 0;
+    flex: 1 1 calc(50% - 0.55rem);
+  }
+
+  .fl-try-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .fl-try-tab {
+    flex: 1 0 auto;
+    min-width: max-content;
+    white-space: nowrap;
+    font-size: 0.75rem;
+    padding-inline: 0.65rem;
+  }
+
+  .fl-try-subtabs {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .fl-try-subtab {
+    flex: 1 1 auto;
+  }
+
+  .wd-card,
+  .wd-card-highlight {
+    padding: 1rem 1.05rem;
+  }
+
+  .wd-home-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .wd-home-head .fl-nav-cta {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .wd-home-ext {
+    flex-wrap: wrap;
+  }
+
+  .wd-mobile-bar {
+    flex-wrap: wrap;
+    row-gap: 0.45rem;
+  }
+
+  .wd-connection {
+    font-size: 0.78rem;
+  }
+}
+
+@media (max-width: 56rem) {
+  .wd-nav-mobile {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: var(--fl-bg);
+    padding-block: 0.45rem;
+    margin-inline: -0.15rem;
+    padding-inline: 0.15rem;
+  }
+
+  .wd-nav-mobile .wd-nav-item,
+  .wd-nav-mobile a.wd-nav-item {
+    flex: 0 0 auto;
+    border: 1px solid var(--fl-border);
+    border-radius: 999px;
+    background: var(--fl-surface);
+    padding: 0.45rem 0.7rem;
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+
+  .wd-nav-mobile .wd-nav-item.is-active {
+    border-color: color-mix(in srgb, #0ea5e9 35%, var(--fl-border));
+    background: color-mix(in srgb, #0ea5e9 12%, var(--fl-surface));
+    color: #0369a1;
+  }
+}
+
+@media (hover: none) {
+  .hp-explain-card:hover,
+  .hp-proof-item:hover,
+  .hp-proof-item:hover .hp-proof-icon {
+    transform: none;
+  }
+}
+
+@media (max-width: 40rem) {
+  .wd-stats,
+  .wd-stats-grid,
+  .wd-skill-sparks {
+    grid-template-columns: 1fr 1fr;
+  }
+}

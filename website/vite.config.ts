@@ -29,14 +29,14 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
-      host: true,
+      host: '127.0.0.1',
       port: 5173,
       strictPort: true,
       allowedHosts: ['flowlary.test', 'www.flowlary.test', 'localhost', '127.0.0.1'],
       proxy,
     },
     preview: {
-      host: true,
+      host: '127.0.0.1',
       port: 4173,
       strictPort: true,
       allowedHosts: ['flowlary.test', 'www.flowlary.test', 'localhost', '127.0.0.1'],

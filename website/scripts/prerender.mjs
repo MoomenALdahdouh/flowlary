@@ -38,6 +38,14 @@ const routes = [
   '/support',
   '/guide',
   '/blog',
+  '/blog/wrong-keyboard-gibberish',
+  '/blog/writing-arabic-english-same-field',
+  '/blog/help-not-rewrite',
+  '/blog/live-translation-when-to-use',
+  '/blog/speed-box-story',
+  '/blog/bilingual-writing-tips',
+  '/blog/stay-in-the-inbox',
+  '/blog/what-flowlary-will-not-claim',
   '/account',
 ]
 

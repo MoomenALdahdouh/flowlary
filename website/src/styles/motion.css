@@ -1,26 +1,114 @@
 :root {
-  --fl-reveal-distance: 8px;
+  --fl-reveal-distance: 2.15rem;
+  --fl-reveal-nudge: 2.5rem;
+  --fl-reveal-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --fl-inline-dir: 1;
 }
 
-.reveal {
+html[dir='rtl'] {
+  --fl-inline-dir: -1;
+}
+
+.reveal,
+.fl-stagger,
+.fl-section-reveal {
   overflow-anchor: none;
 }
 
 @media (prefers-reduced-motion: no-preference) {
   html.js .reveal:not(.is-in) {
     opacity: 0;
+    transform: translate3d(0, var(--fl-reveal-distance), 0) scale(0.98);
   }
 
   html.js .reveal.is-in {
-    animation: fl-reveal 280ms var(--fl-ease) both;
+    animation: fl-rise 820ms var(--fl-reveal-ease) both;
+  }
+
+  html.js .reveal.reveal-clip:not(.is-in) {
+    transform: translate3d(0, 1.15rem, 0);
+    clip-path: inset(14% 0 0 0);
+  }
+
+  html.js .reveal.reveal-clip.is-in {
+    animation: fl-clip-up 900ms var(--fl-reveal-ease) both;
+  }
+
+  html.js .reveal.reveal-start:not(.is-in) {
+    transform: translate3d(calc(var(--fl-inline-dir) * -2.35rem), 0.85rem, 0) scale(0.985);
+  }
+
+  html.js .reveal.reveal-start.is-in {
+    animation: fl-from-start 880ms var(--fl-reveal-ease) both;
+  }
+
+  html.js .reveal.reveal-end:not(.is-in) {
+    transform: translate3d(calc(var(--fl-inline-dir) * 2.35rem), 0.85rem, 0) scale(0.985);
+  }
+
+  html.js .reveal.reveal-end.is-in {
+    animation: fl-from-end 880ms var(--fl-reveal-ease) both;
+  }
+
+  html.js .reveal.reveal-scale:not(.is-in) {
+    transform: translate3d(0, 1.1rem, 0) scale(0.94);
+  }
+
+  html.js .reveal.reveal-scale.is-in {
+    animation: fl-scale-up 760ms var(--fl-reveal-ease) both;
   }
 
   html.js .reveal.reveal-d2.is-in {
-    animation-delay: 60ms;
+    animation-delay: 110ms;
+  }
+
+  html.js .reveal.reveal-d3.is-in {
+    animation-delay: 200ms;
+  }
+
+  html.js .fl-stagger:not(.is-in) > * {
+    opacity: 0;
+    transform: translate3d(0, 1.65rem, 0) scale(0.97);
+  }
+
+  html.js .fl-stagger.is-in > * {
+    animation: fl-card-in 720ms var(--fl-reveal-ease) both;
+  }
+
+  html.js .fl-stagger.is-in > *:nth-child(1) {
+    animation-delay: 0ms;
+  }
+
+  html.js .fl-stagger.is-in > *:nth-child(2) {
+    animation-delay: 70ms;
+  }
+
+  html.js .fl-stagger.is-in > *:nth-child(3) {
+    animation-delay: 140ms;
+  }
+
+  html.js .fl-stagger.is-in > *:nth-child(4) {
+    animation-delay: 210ms;
+  }
+
+  html.js .fl-stagger.is-in > *:nth-child(5) {
+    animation-delay: 280ms;
+  }
+
+  html.js .fl-stagger.is-in > *:nth-child(6) {
+    animation-delay: 350ms;
+  }
+
+  html.js .fl-stagger.is-in > *:nth-child(7) {
+    animation-delay: 420ms;
+  }
+
+  html.js .fl-stagger.is-in > *:nth-child(8) {
+    animation-delay: 490ms;
   }
 
   html.js .reveal.is-in .timeline li {
-    animation: fl-reveal 320ms var(--fl-ease) both;
+    animation: fl-rise 560ms var(--fl-reveal-ease) both;
   }
 
   html.js .reveal.is-in .timeline li:nth-child(2) {
@@ -32,7 +120,7 @@
   }
 
   html.js .reveal.is-in .safety-list li {
-    animation: fl-reveal 280ms var(--fl-ease) both;
+    animation: fl-card-in 520ms var(--fl-reveal-ease) both;
   }
 
   html.js .reveal.is-in .safety-list li:nth-child(2) {
@@ -49,6 +137,31 @@
 
   html.js .reveal.is-in .safety-list li:nth-child(5) {
     animation-delay: 160ms;
+  }
+
+  html.js .fl-section-reveal:not(.is-in) > * {
+    opacity: 0;
+    transform: translate3d(0, var(--fl-reveal-nudge), 0) scale(0.985);
+  }
+
+  html.js .fl-section-reveal.is-in > * {
+    animation: fl-section-enter 920ms var(--fl-reveal-ease) both;
+  }
+
+  .hp-hero-jobs li {
+    animation: fl-rise 560ms var(--fl-reveal-ease) both;
+  }
+
+  .hp-hero-jobs li:nth-child(1) {
+    animation-delay: 160ms;
+  }
+
+  .hp-hero-jobs li:nth-child(2) {
+    animation-delay: 230ms;
+  }
+
+  .hp-hero-jobs li:nth-child(3) {
+    animation-delay: 300ms;
   }
 
   .demo-caret {
@@ -93,12 +206,93 @@
   }
 }
 
-@keyframes fl-reveal {
+@keyframes fl-rise {
   from {
     opacity: 0;
+    transform: translate3d(0, var(--fl-reveal-distance), 0) scale(0.98);
   }
   to {
     opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fl-card-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 1.35rem, 0) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fl-section-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, var(--fl-reveal-nudge), 0) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fl-clip-up {
+  from {
+    opacity: 0;
+    clip-path: inset(16% 0 0 0);
+    transform: translate3d(0, 1.15rem, 0);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0);
+    transform: none;
+  }
+}
+
+@keyframes fl-from-start {
+  from {
+    opacity: 0;
+    transform: translate3d(calc(var(--fl-inline-dir) * -2.35rem), 0.85rem, 0) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fl-from-end {
+  from {
+    opacity: 0;
+    transform: translate3d(calc(var(--fl-inline-dir) * 2.35rem), 0.85rem, 0) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fl-scale-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 1.1rem, 0) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fl-reveal {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 
@@ -162,6 +356,40 @@
   }
 }
 
+.fl-scroll-progress {
+  position: fixed;
+  top: 0;
+  inset-inline: 0;
+  z-index: 60;
+  height: 2px;
+  pointer-events: none;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, #0ea5e9, #14b8a6);
+}
+
+html[dir='rtl'] .fl-scroll-progress {
+  transform-origin: 100% 50%;
+}
+
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .fl-scroll-progress {
+      animation: fl-scroll-bar linear;
+      animation-timeline: scroll();
+    }
+  }
+}
+
+@keyframes fl-scroll-bar {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hero-stage-glow,
   .demo-caret,
@@ -173,13 +401,32 @@
     animation: none !important;
   }
 
+  .hp-hero-jobs li,
+  .animate-float,
+  html.js .fl-stagger.is-in > * {
+    animation: none !important;
+    opacity: 1;
+    transform: none;
+  }
+
+  .fl-scroll-progress {
+    display: none;
+  }
+
   html.js .reveal,
   html.js .reveal:not(.is-in),
   html.js .reveal.is-in,
   html.js .reveal.is-in .timeline li,
-  html.js .reveal.is-in .safety-list li {
+  html.js .reveal.is-in .safety-list li,
+  html.js .fl-stagger,
+  html.js .fl-stagger:not(.is-in) > *,
+  html.js .fl-stagger.is-in > *,
+  html.js .fl-section-reveal,
+  html.js .fl-section-reveal:not(.is-in) > *,
+  html.js .fl-section-reveal.is-in > * {
     opacity: 1;
     transform: none;
+    clip-path: none;
     animation: none !important;
     transition: none;
   }

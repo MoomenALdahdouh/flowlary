@@ -1,20 +1,6 @@
-import { lazy, Suspense } from 'react'
-import { LabShowcase } from '../components/lab/LabShowcase.tsx'
+import { Navigate } from 'react-router-dom'
 
-const WritingLab = lazy(() =>
-  import('../lab/WritingLab.tsx').then((module) => ({
-    default: module.WritingLab,
-  })),
-)
-
+/** Writing Lab lives in the dashboard. Keep old /lab links working. */
 export function LabPage() {
-  return (
-    <LabShowcase
-      workspace={
-        <Suspense fallback={<div id="writing-lab" aria-busy="true" className="writing-lab" />}>
-          <WritingLab />
-        </Suspense>
-      }
-    />
-  )
+  return <Navigate to="/dashboard#lab" replace />
 }

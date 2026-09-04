@@ -15,6 +15,7 @@ import {
   readWebLearningStore,
   type WebLearningEventInput,
 } from './webLearningStore.ts'
+import { canStoreProduct } from '../cookies/consent.ts'
 
 const STORE_PREFIX = 'flowlary.web.account.'
 const QUEUE_SUFFIX = '.learning.queue'
@@ -87,6 +88,7 @@ export function writeLearningEventQueue(accountId: string, queue: LearningEventI
     localStorage.removeItem(queueKey(accountId))
     return
   }
+  if (!canStoreProduct()) return
   localStorage.setItem(queueKey(accountId), JSON.stringify(queue))
 }
 
@@ -131,7 +133,7 @@ export async function migrateLocalWebLearningEvents(accountId: string): Promise<
     }
   }
 
-  localStorage.setItem(migrationKey(accountId), '1')
+  if (canStoreProduct()) localStorage.setItem(migrationKey(accountId), '1')
 }
 
 export async function syncWritingLabCorrection(

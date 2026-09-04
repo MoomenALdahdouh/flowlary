@@ -85,12 +85,7 @@ export function ResetPasswordPage() {
       lead={copy.resetPasswordLead}
       trustLine={copy.trustLine}
     >
-      <article className="ac-auth-card">
-        <header className="ac-card-head">
-          <h2 className="ac-card-title">{copy.resetPasswordTitle}</h2>
-          <p className="ac-card-subtitle">{copy.resetPasswordLead}</p>
-        </header>
-
+      <article>
         {done ? (
           <>
             <div className="ac-alert is-ok" role="status">

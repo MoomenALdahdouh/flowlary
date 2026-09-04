@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#f7f8fc" />
+    <meta name="theme-color" content="#f8fafc" />
     <script>
       (function () {
         try {
@@ -15,9 +15,10 @@
                 ? 'light'
                 : 'dark'
           document.documentElement.setAttribute('data-theme', theme)
+          document.documentElement.classList.toggle('dark', theme === 'dark')
           document.documentElement.style.colorScheme = theme
           var meta = document.querySelector('meta[name="theme-color"]')
-          if (meta) meta.setAttribute('content', theme === 'light' ? '#f7f8fc' : '#050508')
+          if (meta) meta.setAttribute('content', theme === 'light' ? '#f7f8fc' : '#0b1120')
           var favicon = document.querySelector('link[rel="icon"]')
           if (favicon) {
             favicon.setAttribute(

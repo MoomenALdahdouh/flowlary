@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { FREE_DAILY_CREDITS, resolveUsageUx } from '@flowlary/shared'
+import { resolveUsageUx } from '@flowlary/shared'
 import { useMessages, useI18n } from '../i18n/index.tsx'
 import type { WebAccountView, WebEntitlementView, BillingConfigView } from '../account/client.ts'
 import type { CommercialPlanState } from '../account/billing.ts'
@@ -20,6 +20,7 @@ import { ProgressPanel } from './panels/ProgressPanel.tsx'
 import { ReportPanel } from './panels/ReportPanel.tsx'
 import { SettingsPanel } from './panels/SettingsPanel.tsx'
 import { AccountDashboardPanel } from './panels/AccountDashboardPanel.tsx'
+import { LabPanel } from './panels/LabPanel.tsx'
 
 export type DashboardAppProps = {
   account: WebAccountView
@@ -185,6 +186,14 @@ export function DashboardApp({
   let panel = accountPanel
   if (section === 'settings') {
     panel = <SettingsPanel accountId={accountId} copy={copy} onRefresh={refresh} />
+  } else if (section === 'lab') {
+    panel = (
+      <LabPanel
+        copy={copy}
+        onOpenProgress={() => navigate('progress')}
+        onOpenPractice={(target) => navigate('practice', target)}
+      />
+    )
   } else if (section !== 'account') {
     const retryBanner = error ? (
       <div className="wd-actions" style={{ marginBottom: '1rem' }}>
@@ -228,11 +237,11 @@ export function DashboardApp({
             bundle={bundle}
             accountId={accountId}
             copy={copy}
-            locale={locale === 'ar' ? 'ar' : 'en'}
-            isProOrTrial={isPro || inTrial}
             extensionConnected={extensionConnected}
             creditsRemaining={creditsRemaining}
             dailyLimit={dailyLimit}
+            creditsUsed={creditsUsed}
+            planLabel={planLabel}
             usageDescription={usageView.description}
             onNavigate={navigate}
           />
@@ -248,6 +257,7 @@ export function DashboardApp({
             copy={copy}
             initialTargetPatternId={practiceTarget}
             onRefresh={refresh}
+            onOpenLab={() => navigate('lab')}
           />
         </div>
       )
@@ -260,7 +270,8 @@ export function DashboardApp({
             copy={copy}
             advanced={advancedProgress}
             onRefresh={refresh}
-            onOpenPractice={() => navigate('practice')}
+            onOpenPractice={(target) => navigate('practice', target)}
+            onOpenLab={() => navigate('lab')}
           />
         </div>
       )
@@ -275,6 +286,7 @@ export function DashboardApp({
             locale={locale === 'ar' ? 'ar' : 'en'}
             isProOrTrial={isPro || inTrial}
             onOpenPractice={(target) => navigate('practice', target)}
+            onOpenLab={() => navigate('lab')}
           />
         </div>
       )
@@ -283,13 +295,11 @@ export function DashboardApp({
 
   return (
     <DashboardShell
-      title={messages.account.dashboardKicker}
       navGroups={navGroups}
       nav={flatNav}
       section={section}
       onSectionChange={(id) => navigate(id as DashboardSection)}
       extensionConnected={extensionConnected}
-      onSignOut={onLogout}
     >
       {panel}
     </DashboardShell>

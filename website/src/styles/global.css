@@ -1,4 +1,5 @@
 @import './tokens.css';
+@import './theme-bridge.css';
 @import '@flowlary/shared/buttons.css';
 @import './glass.css';
 @import './a11y.css';
@@ -26,6 +27,7 @@
 @import './pe2.css';
 @import './experience.css';
 @import './marketing-revamp.css';
+@import './bolt-release.css';
 
 *,
 *::before,
@@ -1806,21 +1808,53 @@ html[dir='rtl'] .footer h2 {
   position: relative;
 }
 
-.theme-toggle {
+.theme-toggle:not(.fl-nav-seg):not(.fl-nav-icon) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.35rem;
-  height: 2.35rem;
-  padding: 0;
+  width: auto;
+  min-width: 2.35rem;
+  height: auto;
+  min-height: 2.35rem;
+  padding: 0.2rem;
   border-radius: 999px;
-  border: 0;
-  background: transparent;
+  border: 1px solid var(--fl-border);
+  background: var(--fl-surface-2);
   color: var(--fl-text);
   cursor: pointer;
-  transition:
-    background var(--fl-duration) var(--fl-ease),
-    color var(--fl-duration) var(--fl-ease);
+}
+
+.theme-switch {
+  gap: 0.15rem;
+}
+
+.theme-switch-btn {
+  min-height: 1.85rem;
+  padding: 0 0.7rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fl-muted);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.theme-switch-btn[aria-pressed='true'] {
+  background: var(--fl-surface);
+  color: var(--fl-text);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--fl-text) 12%, transparent);
+}
+
+.wd-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.wd-theme-row {
+  margin-top: 0.65rem;
 }
 
 .locale-btn {
@@ -1874,7 +1908,7 @@ html[data-theme='light'] .theme-icon-moon {
   stroke-linejoin: round;
 }
 
-.theme-toggle:hover,
+.theme-toggle:not(.fl-nav-seg):not(.fl-nav-icon):hover,
 .locale-btn:hover {
   background: color-mix(in srgb, var(--fl-snow-highlight) 70%, transparent);
   color: var(--fl-accent-hover);

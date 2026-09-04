@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img">
+  <title>Off until you turn it on</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#071018"/>
+      <stop offset="1" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0ea5e9"/>
+      <stop offset="1" stop-color="#14b8a6"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="980" cy="70" r="280" fill="#38bdf8" fill-opacity="0.18"/>
+  <circle cx="180" cy="560" r="200" fill="#14b8a6" fill-opacity="0.08"/>
+  <rect x="72" y="72" width="56" height="56" rx="16" fill="url(#mark)"/>
+  <path d="M84.2 86.7h12.35v3.95h-8v2.05h7.15v3.75h-7.15V103.3H84.2V86.7Z" fill="#fff"/>
+  <rect x="97.2" y="92.35" width="2.35" height="5.5" rx="0.75" fill="#fff"/>
+  <text x="148" y="108" fill="#7dd3fc" font-family="system-ui, Segoe UI, sans-serif" font-size="22" font-weight="600">Features · الميزات</text>
+  <text x="72" y="200" fill="#f8fafc" font-family="system-ui, Segoe UI, sans-serif" font-size="44" font-weight="700">Off until you turn it on</text>
+  
+  <rect x="72" y="250" width="640" height="300" rx="28" fill="#0b1220" stroke="#1e293b"/>
+  <text x="110" y="330" fill="#e2e8f0" font-family="IBM Plex Sans Arabic, system-ui, sans-serif" font-size="34">أكتب بالعربية</text>
+  <text x="110" y="400" fill="#7dd3fc" font-family="system-ui, sans-serif" font-size="28">I am writing in Arabic</text>
+  <rect x="110" y="440" width="220" height="48" rx="24" fill="#1e293b"/>
+  <circle cx="138" cy="464" r="14" fill="#64748b"/>
+  <text x="168" y="472" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="18">Live · off</text>
+</svg>
