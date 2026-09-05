@@ -323,7 +323,6 @@ build_release() {
   if [[ "$SKIP_BUILD" != 1 ]]; then
     # Temporary manual Chrome install CTA serves website/public/downloads/*.zip
     # (gitignored). Build the production release artifact before prerender.
-    require_cmd zip
     log "building production extension release ZIP"
     run_npm "$staging" run build:release
     run_npm "$staging" run package:release
