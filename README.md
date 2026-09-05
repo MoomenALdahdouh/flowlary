@@ -4,13 +4,13 @@ Chrome writing companion for mixed Arabic/English: **keyboard layout repair**, *
 
 LLMs rank hypotheses or propose island spans. They **do not** write the DOM. Only **Write Gate** mutates the field.
 
-**Current release: 1.3.0** (`v1.3.0`). Launch status remains **conditional** — see [docs/audits/FINAL_RELEASE_REPORT.md](docs/audits/FINAL_RELEASE_REPORT.md).
+**Current in-repo version: 1.4.0** (not tagged). See [docs/operations/FLOWLARY_ADMIN.md](docs/operations/FLOWLARY_ADMIN.md) for the operator panel.
 
-## 1.3.0 at a glance
+## 1.4.0 at a glance
 
 - **Writing runtime kernel** — operations, idle scheduling, arbitration, and write authorization so layout / English / translation do not race the same field.
 - **On-device English** — shared lexicon, spell, repair, and refine before the gateway is asked.
-- **Website** — Bolt marketing overlay, blog, cookie banner, and Writing Lab (`website-ui-bolt`). Previous look: `website-ui-classic`.
+- **Admin panel** — `/admin` with server-side allowlist authorization and real store metrics.
 - **Production** — immutable releases at `/var/www/flowlary` only. Do **not** run this against ZAIXOS.
 
 The website Writing Lab is **not** the extension writing engine.
@@ -66,7 +66,7 @@ Canonical path: **`/var/www/flowlary`**. Script: [`docs/operations/FLOWLARY_DEPL
 ssh deploy@169.58.11.99
 cd /var/www/flowlary
 ./deploy.sh status
-./deploy.sh v1.3.0
+./deploy.sh v1.4.0
 ```
 
 This restarts **only** `flowlary-api`. It never writes under `/var/www/zaixos`, never reloads nginx, and never restarts other Supervisor programs.
@@ -86,7 +86,8 @@ Rollback: `./deploy.sh rollback`
 
 | Tag | Meaning |
 | --- | --- |
-| `v1.3.0` | This release |
+| `v1.4.0` | This release |
+| `v1.3.0` | Previous product snapshot |
 | `writing-runtime-kernel` | Runtime kernel commit |
 | `website-ui-bolt` | Current marketing UI |
 | `website-ui-classic` | Previous website UI |

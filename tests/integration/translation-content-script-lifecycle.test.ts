@@ -33,8 +33,17 @@ import {
   simulateAuthAccountAttach,
 } from '../helpers/mockChromeStorageWithListeners.ts'
 import { handleMessage, resetBackgroundStartupForTests } from '../../extension/src/background/index.ts'
+import { LIVE_PAUSE_MS } from '../../extension/src/features/translation/pauseGate.ts'
 
 const ARABIC = 'الرجاء إرسال الفاتورة اليوم. '
+
+/** Simulate typed input, then the 750ms live-translation pause. Does not bypass the gate. */
+function establishTypedPause(session: FieldSession) {
+  session.noteInput()
+  session.noteInputSource('typing')
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(session.getLastInputAt() + LIVE_PAUSE_MS)
+}
 
 function textarea(value: string) {
   const ta = document.createElement('textarea')
@@ -78,6 +87,7 @@ describe('translation content-script lifecycle', () => {
 
   afterEach(() => {
     setPipelineTranslateFnForTests(null)
+    vi.useRealTimers()
     vi.unstubAllGlobals()
   })
 
@@ -88,6 +98,19 @@ describe('translation content-script lifecycle', () => {
 
     const ta = textarea(ARABIC)
     const session = new FieldSession(ta)
+
+    const beforeInput = probeTranslationPipeline(ta, session)
+    expect(beforeInput.policy.arabicToEnglishMode).toBe(true)
+    expect(beforeInput.hypotheses.some((item) => item.intent === 'translate')).toBe(false)
+    expect(beforeInput.decision.action).not.toBe('translation')
+
+    session.noteInput()
+    session.noteInputSource('typing')
+    const beforePause = probeTranslationPipeline(ta, session)
+    expect(beforePause.hypotheses.some((item) => item.intent === 'translate')).toBe(false)
+    expect(beforePause.decision.action).not.toBe('translation')
+
+    establishTypedPause(session)
     const probe = probeTranslationPipeline(ta, session)
 
     expect(probe.policy.arabicToEnglishMode).toBe(true)
@@ -114,6 +137,7 @@ describe('translation content-script lifecycle', () => {
     await simulateAuthAccountAttach(store, TEST_ACCOUNT_A)
     await flushStorageListeners()
 
+    establishTypedPause(session)
     probe = probeTranslationPipeline(ta, session)
     expect(probe.policy.arabicToEnglishMode).toBe(true)
     expect(probe.context.arabicToEnglishMode).toBe(true)
@@ -144,6 +168,7 @@ describe('translation content-script lifecycle', () => {
     })
     await flushStorageListeners()
 
+    establishTypedPause(session)
     const probe = probeTranslationPipeline(ta, session)
     expect(probe.policy.arabicToEnglishMode).toBe(true)
     expect(probe.decision.action).toBe('translation')
@@ -165,6 +190,7 @@ describe('translation content-script lifecycle', () => {
 
     const ta = textarea(ARABIC)
     const session = new FieldSession(ta)
+    establishTypedPause(session)
     const probe = probeTranslationPipeline(ta, session)
     expect(probe.policy.arabicToEnglishMode).toBe(true)
     expect(probe.decision.action).toBe('translation')
@@ -197,6 +223,11 @@ describe('translation content-script lifecycle', () => {
     expect(stateManager.translation.liveEnabled).toBe(true)
 
     await activateTestAccount(TEST_ACCOUNT_A)
+    // Correction is account-owned; anonymous SET_CORRECTION is memory-only.
+    await handleMessage({
+      type: 'SET_CORRECTION',
+      patch: { consentAccepted: true },
+    })
 
     const accountTranslation = await getTranslationSettings(flowlaryStorage)
     const accountCorrection = await getCorrectionSettings(flowlaryStorage)
@@ -208,6 +239,7 @@ describe('translation content-script lifecycle', () => {
 
     const ta = textarea(ARABIC)
     const session = new FieldSession(ta)
+    establishTypedPause(session)
     const probe = probeTranslationPipeline(ta, session)
     expect(probe.policy.arabicToEnglishMode).toBe(true)
     expect(probe.policy.helpStyle).toBe('auto')

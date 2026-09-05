@@ -1,6 +1,6 @@
 import type { PhysicalHttpContext } from '../../core/runtime/physicalHttp.ts'
 import { runWithPhysicalHttp } from '../../core/runtime/physicalHttp.ts'
-import type { LanguageCode, TranslationMode, TranslationOutcome } from './types.ts'
+import type { LanguageCode, TranslationFailureCode, TranslationMode, TranslationOutcome } from './types.ts'
 import type { TranslationRequestContext } from '@flowlary/shared'
 
 export type TranslateTextMessage = {
@@ -38,11 +38,18 @@ function isTranslateResult(response: unknown): response is TranslateTextResponse
   return type === 'TRANSLATE_TEXT_RESULT' || type === 'TRANSLATE_TEXT_ERROR'
 }
 
-function mapBackgroundErrorCode(code: string): TranslationOutcome extends { ok: false; code: infer C } ? C : 'invalid-response' {
-  if (code === 'network' || code === 'upstream') {
-    return 'translation_unavailable' as TranslationOutcome extends { ok: false; code: infer C } ? C : 'invalid-response'
-  }
-  return code as TranslationOutcome extends { ok: false; code: infer C } ? C : 'invalid-response'
+function mapBackgroundErrorCode(code: string): TranslationFailureCode {
+  if (code === 'rate_limited' || code === 'AI_RATE_LIMITED' || code === 'rate-limited') return 'rate-limited'
+  if (code === 'network' || code === 'upstream') return 'translation_unavailable'
+  if (code === 'empty') return 'empty'
+  if (code === 'same-language') return 'same-language'
+  if (code === 'too-long') return 'too-long'
+  if (code === 'protected') return 'protected'
+  if (code === 'invalid-response') return 'invalid-response'
+  if (code === 'license') return 'license'
+  if (code === 'aborted') return 'aborted'
+  if (code === 'translation_unavailable') return 'translation_unavailable'
+  return 'invalid-response'
 }
 
 let lastTranslationNetworkSignal: AbortSignal | null = null

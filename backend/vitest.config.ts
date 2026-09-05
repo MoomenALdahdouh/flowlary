@@ -11,6 +11,7 @@ export default defineConfig({
       '../tests/integration/reliability.test.ts',
       '../tests/integration/feedback-voc.test.ts',
       '../tests/integration/phase2-trust-stats.test.ts',
+      '../tests/integration/admin-panel.test.ts',
       '../tests/integration/phase3-support.test.ts',
       '../tests/unit/ai/**/*.test.ts',
       '../tests/unit/backend/**/*.test.ts',

@@ -10,6 +10,10 @@
 
 `X-Flowlary-Entitlement` is **telemetry only**. Server computes Pro from Paddle / student / trial / free credits (`resolveServerEntitlementForAccount`).
 
+## Admin
+
+Operator access is the email allowlist `FLOWLARY_FEEDBACK_ADMIN_EMAILS` (`isPlatformAdmin` / `isFeedbackAdmin`). Website `/admin` and `/api/admin/*` use the same JWT as the product. See [FLOWLARY_ADMIN.md](../operations/FLOWLARY_ADMIN.md).
+
 ## Secrets
 
 `FLOWLARY_JWT_SECRET`, `FLOWLARY_EXTENSION_AUTH_SECRET` — required in production (`evaluateReadiness`). Never ship in the extension.

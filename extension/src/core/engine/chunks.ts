@@ -176,7 +176,11 @@ export function analyzeFieldText(text: string, options: AnalyzeOptions = {}): Sh
 
     const origin = corrected && scripts.latin > 0 && !translated
       ? 'corrected_en'
-      : tokenOrigin(scripts, layoutSuspicion, role)
+      : tokenOrigin(
+        { arabic: scripts.arabic, latin: scripts.latin, other: scripts.cjk + scripts.cyrillic },
+        layoutSuspicion,
+        role,
+      )
     return {
       id: `c${index}`,
       range: { start: span.start, end: span.end },

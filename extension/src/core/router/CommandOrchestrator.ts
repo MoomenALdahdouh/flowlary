@@ -237,10 +237,14 @@ export class CommandOrchestrator {
     if (isEditableElement(resolved.element)) {
       const selection = readSelectionRange(resolved.element)
       const caret = readCaret(resolved.element) ?? text.length
+      const explicitSelection = Boolean(selection && selection.end > selection.start)
       const span = shortcutRangeForOperation(text, operation, selection, caret)
       if (span) {
         command.rangeStart = span.start
         command.rangeEnd = span.end
+      }
+      if (explicitSelection) {
+        command.explicitSelection = true
       }
     }
 

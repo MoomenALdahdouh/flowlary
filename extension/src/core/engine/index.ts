@@ -48,6 +48,13 @@ export {
   openTokenRange,
 } from './layoutSequence.ts'
 export {
+  isExplicitShortcutSelection,
+  resolveExplicitSelectionTarget,
+  selectionRangeOf,
+} from './shortcutSelection.ts'
+export type { ShortcutSelectionTarget } from './shortcutSelection.ts'
+export { shortcutRangeForOperation } from './shortcutRange.ts'
+export {
   layoutSpanConflictsWithMixedIntent,
   layoutSpanUnsafeForAutoWrite,
 } from './mixedLayoutSafety.ts'

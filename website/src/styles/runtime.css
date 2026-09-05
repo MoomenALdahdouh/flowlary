@@ -5,6 +5,7 @@
 @import './motion.css';
 @import './pe2.css';
 @import './dashboard.css';
+@import './admin.css';
 @import './account.css';
 @import './account-page.css';
 @import './lab-page.css';
@@ -12,4 +13,5 @@
 @import './playground.css';
 @import './glass.css';
 @import './cookie-banner.css';
+@import './install-modal.css';
 @import './mobile.css';

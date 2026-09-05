@@ -32,9 +32,10 @@ export function ContextualFeedbackPrompt({ signedIn }: ContextualFeedbackPromptP
   }, [signedIn])
 
   if (!visible || !promptId) return null
+  const activePromptId = promptId
 
   async function dismiss(action: 'not_now' | 'dont_ask_again') {
-    if (promptId) await dismissFeedbackPrompt(promptId, action)
+    await dismissFeedbackPrompt(activePromptId, action)
     setVisible(false)
   }
 
@@ -42,17 +43,17 @@ export function ContextualFeedbackPrompt({ signedIn }: ContextualFeedbackPromptP
     await submitFeedbackMessage({
       type: 'SATISFACTION',
       surface: 'contextual',
-      feature: promptId.includes('correction')
+      feature: activePromptId.includes('correction')
         ? 'correction'
-        : promptId.includes('translation')
+        : activePromptId.includes('translation')
           ? 'translation'
-          : promptId.includes('layout')
+          : activePromptId.includes('layout')
             ? 'layout'
-            : promptId.includes('learning')
+            : activePromptId.includes('learning')
               ? 'learning'
               : 'general',
       message: answer,
-      promptId,
+      promptId: activePromptId,
     })
     setVisible(false)
   }

@@ -10,7 +10,7 @@ const PUBLIC_PAGES: { path: string; heading: RegExp }[] = [
   { path: '/features/live-translation', heading: /Live translation/i },
   { path: '/features/speed-box', heading: /Speed Box/i },
   { path: '/try', heading: /Try/i },
-  { path: '/lab', heading: /Practice with live AI correction/i },
+  { path: '/lab', heading: /Writing Lab|Welcome back|Practice with live AI correction/i },
   { path: '/guide', heading: /Get started with Flowlary/i },
   { path: '/pricing', heading: /Choose the way you want to use Flowlary/i },
   { path: '/about', heading: /Writing tools that stay where you work/i },
@@ -69,7 +69,7 @@ test.describe('website user journey', () => {
     await expect(page.getByRole('link', { name: /Skip to content/i })).toBeAttached()
     await acceptCookies(page)
 
-    await expect(page.getByRole('link', { name: /Add to Chrome/i }).first()).toBeVisible()
+    await expect(page.getByRole('button', { name: /Add to Chrome/i }).first()).toBeVisible()
     await expect(page.getByRole('navigation', { name: /Primary/i })).toBeVisible()
 
     await page.getByRole('button', { name: /Color theme|System theme|Light theme|Dark theme/i }).click()
@@ -101,14 +101,14 @@ test.describe('website user journey', () => {
     }
 
     await page.goto('/try')
-    await page.getByRole('button', { name: 'Keyboard repair' }).click()
+    await page.getByRole('tab', { name: 'Keyboard repair' }).click()
     await page.getByPlaceholder('e.g. sfj thlk').fill('lvpfh')
     await page.getByRole('button', { name: 'Repair layout' }).click()
     await expect(page.getByText(/Repaired to Arabic/i)).toBeVisible()
-    await page.getByRole('button', { name: 'English help' }).click()
+    await page.getByRole('tab', { name: 'English help' }).click()
     await page.getByRole('button', { name: 'postpond → postponed' }).click()
     await expect(page.getByText(/1 of /)).toBeVisible()
-    await page.getByRole('button', { name: 'Translation' }).click()
+    await page.getByRole('tab', { name: 'Translation' }).click()
     await page.getByRole('button', { name: /^Translate$/ }).click()
     await expect(page.getByText(/Thank you very much/i)).toBeVisible()
     await page.locator('.cta-ink').getByRole('link', { name: /Writing Lab/i }).click()
@@ -179,5 +179,19 @@ test.describe('website user journey', () => {
     const ignored = [/Failed to load resource/, /net::ERR/, /favicon/, /Download the React DevTools/]
     const realErrors = consoleErrors.filter((message) => !ignored.some((pattern) => pattern.test(message)))
     expect(realErrors, realErrors.join('\n')).toEqual([])
+  })
+
+  test('Add to Chrome opens the install modal with a Download button', async ({ page }) => {
+    await page.goto('/')
+    await acceptCookies(page)
+    await page.getByRole('button', { name: /Add to Chrome/i }).first().click()
+    const dialog = page.getByRole('dialog', { name: /Install Flowlary for Chrome/i })
+    await expect(dialog).toBeVisible()
+    await expect(page).toHaveURL(/\/$/)
+    await expect(dialog.getByRole('link', { name: /Download Flowlary/i })).toBeVisible()
+    await expect(dialog.getByRole('link', { name: /Download Flowlary/i })).toHaveAttribute(
+      'href',
+      /\/downloads\/flowlary-v\d+\.\d+\.\d+\.zip$/,
+    )
   })
 })

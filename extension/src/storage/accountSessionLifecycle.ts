@@ -149,11 +149,13 @@ export async function attachActiveAccount(
     accountOwnedKeyPresent(storage, accountId, 'translation'),
     accountOwnedKeyPresent(storage, accountId, 'layout'),
   ])
-  await maybeClaimLegacyAccountData(storage, accountId)
+  const claim = await maybeClaimLegacyAccountData(storage, accountId)
   resetAccountBoundServices()
   await hydrateStateFromStorage(storage)
 
-  if (preAuth) {
+  // Claimed unscoped EWA/Lingo/Layfix is the source of truth. Do not overlay
+  // anonymous in-memory defaults (improveEnglish: true) on top of it.
+  if (preAuth && claim !== 'claimed') {
     mergePreAuthAccountState(preAuth, hadCorrection, hadTranslation, hadLayout)
   }
 

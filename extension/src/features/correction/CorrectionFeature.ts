@@ -4,6 +4,7 @@ import { readFieldText } from '../../core/dom/read.ts'
 import { evaluateFieldSafety } from '../../core/safety/index.ts'
 import type { EditableElement } from '../../core/dom/types.ts'
 import { stateManager } from '../../core/state/StateManager.ts'
+import { resolveExplicitSelectionTarget } from '../../core/engine/shortcutSelection.ts'
 import { isEligibleForCorrection } from './language.ts'
 import { type FieldCorrectionStateEntry } from './applyCorrection.ts'
 import { createCorrectionMetrics, type CorrectionMetrics } from './metrics.ts'
@@ -81,20 +82,32 @@ export function createCorrectionFeature(options: CorrectionModuleOptions): Corre
         return { ok: false, operation: 'CORRECT', error: 'safety_blocked' }
       }
 
-      if (!isEligibleForCorrection(text)) {
+      const selectionTarget = resolveExplicitSelectionTarget(text, command)
+      if (command.explicitSelection && !selectionTarget) {
+        return { ok: false, operation: 'CORRECT', stale: true }
+      }
+
+      const eligibilityText = selectionTarget?.text ?? text
+      if (!isEligibleForCorrection(eligibilityText)) {
         return { ok: false, operation: 'CORRECT', error: 'not_english' }
       }
 
       const active = session.getActiveRequest()
+      const ownsOrchestratorLock =
+        typeof command.requestId === 'number' &&
+        active != null &&
+        active.operation === 'CORRECT' &&
+        active.requestId === command.requestId
       const outcome = await scheduler.runFromShortcut(
         editable,
-        active?.operation === 'CORRECT'
+        ownsOrchestratorLock && active
           ? {
               requestId: active.requestId,
               generation: active.generation,
               signal: active.signal,
             }
           : undefined,
+        selectionTarget ?? undefined,
       )
       if (outcome === 'committed' || outcome === 'pending') {
         return {

@@ -1,4 +1,6 @@
-export function deepMerge<T extends Record<string, unknown>>(base: T, overrides: Partial<T>): T {
+import type { DeepPartial } from './types.ts'
+
+export function deepMerge<T extends Record<string, unknown>>(base: T, overrides: DeepPartial<T>): T {
   const result = { ...base }
   for (const key of Object.keys(overrides) as (keyof T)[]) {
     const overrideValue = overrides[key]

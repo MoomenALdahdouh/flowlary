@@ -30,7 +30,7 @@ import { CorrectionCard } from './ui/CorrectionCard.ts'
 import { cancelCorrectionRemote } from './client.ts'
 import { isCorrectionHost } from './ui/CorrectionCard.ts'
 import { allowsAutomaticFieldWrite } from '../../core/safety/autoWrite.ts'
-import { isShortcutsOnly } from '../../core/policy/writingPolicy.ts'
+import { isDirectHelpStyle, isShortcutsOnly } from '../../core/policy/writingPolicy.ts'
 import { hideEnglishPipelineSuggestion } from '../../core/writeGate/pipelineSuggest.ts'
 import { registerEnglishIdleAnalyzer } from '../../core/runtime/WritingRuntime.ts'
 import { onFieldRevisionBump } from '../../core/runtime/revisionBump.ts'
@@ -41,7 +41,7 @@ import {
   prepareAutomaticWrite,
 } from '../../core/runtime/arbitration.ts'
 import { isOperationCurrent } from '../../core/runtime/validity.ts'
-import type { Operation } from '../../core/runtime/types.ts'
+import { isOperationLive, type Operation } from '../../core/runtime/types.ts'
 import {
   fieldKindFromElement,
   recordWriteTelemetry,
@@ -72,10 +72,23 @@ export class CorrectionScheduler {
       generation: number
       signal: AbortSignal
     },
+    selectionTarget?: {
+      start: number
+      end: number
+      text: string
+    },
   ): Promise<'committed' | 'stale' | 'blocked' | 'noop' | 'busy' | 'aborted' | 'error' | 'pending'> {
     const session = this.options.engine.sessions.getOrCreate(element)
     const fieldState = this.getFieldState(session.field.id, element)
+    if (this.englishCorrectInFlight(session, fieldState, orchestratorLock)) {
+      this.options.metrics.correction_blocked += 1
+      return 'busy'
+    }
     const text = readFieldText(element)
+    if (selectionTarget) {
+      const liveSlice = text.slice(selectionTarget.start, selectionTarget.end)
+      if (liveSlice !== selectionTarget.text) return 'stale'
+    }
     const operation = session.operations.begin({
       fieldId: session.field.id,
       revision: session.getRevision(),
@@ -89,6 +102,7 @@ export class CorrectionScheduler {
       ...this.buildApplyOptions(fieldState),
       orchestratorLock,
       operation,
+      selectionTarget,
     }
     const outcome = await runCorrectionRequest(
       element,
@@ -98,7 +112,10 @@ export class CorrectionScheduler {
       applyOptions,
     )
     if (outcome === 'committed' || outcome === 'pending') return outcome
-    const local = buildLocalCorrectionResponse(text)
+    if (outcome === 'busy' || outcome === 'stale' || outcome === 'aborted' || outcome === 'blocked') {
+      return outcome
+    }
+    const local = buildLocalCorrectionResponse(text, { segment: selectionTarget?.text })
     if (!local) return outcome
     return commitMergedCorrection(
       element,
@@ -158,6 +175,28 @@ export class CorrectionScheduler {
       state.card?.destroy()
     }
     this.fieldStates.clear()
+  }
+
+  private englishCorrectInFlight(
+    session: FieldSession,
+    fieldState: FieldCorrectionStateEntry,
+    orchestratorLock?: {
+      requestId: number
+      generation: number
+      signal: AbortSignal
+    },
+  ): boolean {
+    const active = session.getActiveRequest()
+    const ownsOrchestratorLock = Boolean(
+      orchestratorLock &&
+        active?.operation === 'CORRECT' &&
+        active.requestId === orchestratorLock.requestId,
+    )
+    if (fieldState.pendingRequestId && !ownsOrchestratorLock) return true
+    if (active?.operation === 'CORRECT' && !ownsOrchestratorLock) return true
+    return session.operations
+      .liveForFeature('english', 'shortcut')
+      .some((operation) => isOperationLive(operation) && !ownsOrchestratorLock)
   }
 
   private buildApplyOptions(fieldState: FieldCorrectionStateEntry) {
@@ -388,7 +427,13 @@ export class CorrectionScheduler {
     const fieldState = this.getFieldState(session.field.id, element)
     let next = text
     let networkOperation = operation
-    if (stateManager.correction.mode === 'direct' && allowsAutomaticFieldWrite(element)) {
+    // Direct auto-write only when Settings help style is Direct (`auto`).
+    // Box / Shortcuts only must never rewrite from the idle English path.
+    if (
+      isDirectHelpStyle()
+      && stateManager.correction.mode === 'direct'
+      && allowsAutomaticFieldWrite(element)
+    ) {
       const written = this.writeDirectLocalEnglish(element, session, fieldState, text, {
         includeOpenToken: true,
         operation,

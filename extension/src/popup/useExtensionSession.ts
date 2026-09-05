@@ -124,14 +124,14 @@ export function useExtensionSession() {
 
   async function mutate(
     key: string,
-    fn: () => Promise<ExtensionStatus>,
+    fn: () => Promise<ExtensionStatus | void>,
     rollback?: () => void,
   ): Promise<void> {
     setBusy(key)
     setError(null)
     try {
       const next = await fn()
-      setStatus(next)
+      if (next) setStatus(next)
     } catch (err) {
       rollback?.()
       setError(err instanceof PopupApiError ? err.message : t('errors.saveSettings'))

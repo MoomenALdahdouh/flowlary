@@ -176,6 +176,7 @@ describe('Phase 14 — regression matrix', () => {
 
   describe('shortcut regression', () => {
     it('detects translate, layout, speed box with Ctrl/Cmd+Shift', () => {
+      expect(detectShortcut(shortcut('KeyY'))).toBe('TRANSLATE')
       expect(detectShortcut(shortcut('Comma'))).toBe('TRANSLATE')
       expect(detectShortcut(shortcut('KeyP'))).toBe('FIX_LAYOUT')
       expect(detectShortcut(shortcut('KeyE'))).toBe('CORRECT')
@@ -184,8 +185,8 @@ describe('Phase 14 — regression matrix', () => {
     })
 
     it('rejects wrong modifier combinations', () => {
-      expect(detectShortcut(new KeyboardEvent('keydown', { code: 'Comma', ctrlKey: true }))).toBeNull()
-      expect(detectShortcut(new KeyboardEvent('keydown', { code: 'Comma', shiftKey: true }))).toBeNull()
+      expect(detectShortcut(new KeyboardEvent('keydown', { code: 'KeyY', ctrlKey: true }))).toBeNull()
+      expect(detectShortcut(new KeyboardEvent('keydown', { code: 'KeyY', shiftKey: true }))).toBeNull()
     })
 
     it('250ms dedupe prevents duplicate dispatch', async () => {

@@ -88,6 +88,7 @@ export class FieldSession {
   } | null = null
   private reviewHashes = new Set<string>()
   private lastReviewAt = 0
+  private pauseReviewTimer: ReturnType<typeof setTimeout> | null = null
   private snapshotReanalysisRevision: number | null = null
 
   constructor(element: Element) {

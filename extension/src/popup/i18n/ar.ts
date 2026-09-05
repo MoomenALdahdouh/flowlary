@@ -1,9 +1,9 @@
 import { deepMerge } from './merge.ts'
 import { en } from './en.ts'
-import type { MessageCatalog } from './types.ts'
+import type { MessageCatalog, MessageOverrides } from './types.ts'
 
 /** Arabic catalog — missing keys fall back to English via resolveMessage(). */
-const arOverrides: Partial<MessageCatalog> = {
+const arOverrides: MessageOverrides = {
   brand: {
     name: 'Flowlary',
     tagline: 'رفيقك الذكي للكتابة والتعلم',
@@ -160,7 +160,8 @@ const arOverrides: Partial<MessageCatalog> = {
     placeholderTranslation: 'اكتب نصا للترجمة…',
     placeholderLayout: 'الصق نصا بتخطيط خاطئ…',
     placeholderSpeedBox: 'صندوق السرعة يفتح في الصفحة: تخطيط أو ترجمة أو تصحيح.',
-    hintCorrection: 'Enter للتشغيل · Shift+Enter لسطر جديد',
+    hintCorrectionDirect: 'Enter للتشغيل · Shift+Enter لسطر جديد',
+    hintCorrectionCard: 'Enter للتشغيل · Shift+Enter لسطر جديد',
     hintTranslation: '{pair} · في حقل الصفحة: {shortcut}',
     hintLayout: 'إعادة تخطيط محلية · في حقل الصفحة: {shortcut}',
     hintSpeedBox: 'تخطيط أو ترجمة أو تصحيح حيث تكتب · الاختصار:',
@@ -417,7 +418,7 @@ const arOverrides: Partial<MessageCatalog> = {
     ready: 'جاهز',
     enable: 'تفعيل الذكاء الاصطناعي',
     unavailable: 'الذكاء الاصطناعي غير متاح مؤقتا',
-    consentRequired: 'يلزم موافقتك',
+    consent: 'يلزم موافقتك',
   },
   features: {
     section: 'بماذا تريد المساعدة؟',
@@ -636,4 +637,4 @@ const arOverrides: Partial<MessageCatalog> = {
   },
 }
 
-export const ar = deepMerge(en, arOverrides as MessageCatalog)
+export const ar = deepMerge(en as unknown as MessageCatalog, arOverrides)

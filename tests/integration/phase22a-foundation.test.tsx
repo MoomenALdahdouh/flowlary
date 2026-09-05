@@ -171,7 +171,7 @@ describe('Phase 22A — foundation cleanup', () => {
 
   it('popup and dashboard omit BYOK/Groq UI', async () => {
     await renderApp(<App />)
-    await waitUntil(container, 'Writing Correction')
+    await waitUntil(container, 'Help in fields')
     const popupText = container.textContent ?? ''
     expect(popupText).not.toMatch(/groq|byok|bring your own key|api key/i)
 
@@ -182,26 +182,38 @@ describe('Phase 22A — foundation cleanup', () => {
     expect(dashText).toContain('Flowlary')
   })
 
-  it('uses new primary navigation without History', async () => {
+  it('uses Overview, Writing Lab, and account navigation without History', async () => {
     await renderApp(<DashboardApp />)
-    await waitUntil(container, 'Home')
-    const navButtons = Array.from(container.querySelectorAll('.fl-dash-nav-btn')).map(
+    await waitUntil(container, 'Overview')
+    const navButtons = Array.from(container.querySelectorAll('.wd-nav-groups a, .wd-nav-groups button')).map(
       (btn) => btn.textContent?.trim(),
     )
-    expect(navButtons).toEqual(['Home', 'Practice', 'Progress', 'Report', 'Settings', 'Account'])
+    expect(navButtons).toEqual([
+      'Overview',
+      'Writing Lab',
+      'Practice',
+      'Progress',
+      'Report',
+      'Settings',
+      'Account',
+      'Activity',
+      'Support',
+    ])
+    expect(navButtons).not.toContain('Home')
     expect(navButtons).not.toContain('History')
   })
 
   it('renders Progress with honest empty state', async () => {
     await renderApp(<DashboardApp />)
-    await waitUntil(container, 'Progress')
+    await waitUntil(container, 'Writing settings')
 
-    const progressBtn = Array.from(container.querySelectorAll('button')).find(
+    const progressBtn = Array.from(container.querySelectorAll('.wd-nav-groups button')).find(
       (btn) => btn.textContent === 'Progress',
     )
     await act(async () => {
       progressBtn!.click()
     })
+    await waitUntil(container, 'Your progress is building')
     expect(container.textContent).toContain('Your progress is building')
     expect(container.textContent).not.toContain('Total actions')
     expect(container.textContent).not.toContain('Activity summary')
@@ -209,14 +221,16 @@ describe('Phase 22A — foundation cleanup', () => {
 
   it('shows data controls under Settings, not embedded activity list', async () => {
     await renderApp(<DashboardApp />)
-    await waitUntil(container, 'Settings')
-    const settingsBtn = Array.from(container.querySelectorAll('button')).find(
+    await waitUntil(container, 'Writing settings')
+    const settingsBtn = Array.from(container.querySelectorAll('.wd-nav-groups button')).find(
       (btn) => btn.textContent === 'Settings',
     )
     await act(async () => {
       settingsBtn!.click()
     })
-    const dataBtn = Array.from(container.querySelectorAll('button')).find((btn) => btn.textContent === 'Data')
+    await waitUntil(container, 'Highlights')
+    const dataBtn = Array.from(container.querySelectorAll('[role="tab"]')).find((btn) => btn.textContent === 'Data')
+    expect(dataBtn).toBeTruthy()
     await act(async () => {
       dataBtn!.click()
     })

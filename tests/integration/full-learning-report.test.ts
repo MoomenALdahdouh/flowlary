@@ -16,6 +16,7 @@ import {
   TEST_ACCOUNT_B,
 } from '../helpers/accountIsolation.ts'
 import { seedFlowlaryAccountAuth } from '../helpers/mockFlowlaryAuth.ts'
+import { stubLearningRemoteUnavailable } from '../helpers/stubLearningRemote.ts'
 import {
   flowlaryStorage,
   getLearningEventService,
@@ -100,8 +101,9 @@ describe('Full Learning Report', () => {
   const now = Date.UTC(2026, 7, 27, 12, 0, 0)
 
   beforeEach(async () => {
-    vi.useFakeTimers()
+    vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(now)
+    stubLearningRemoteUnavailable()
     store.reset()
     store.install()
     resetBackgroundStartupForTests()
@@ -118,6 +120,7 @@ describe('Full Learning Report', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
     vi.useRealTimers()
   })
 

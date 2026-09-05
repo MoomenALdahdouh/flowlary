@@ -2,7 +2,7 @@
  * Central Write Gate. All field mutations should go through commitWriteTransaction.
  * Lives outside core/engine so the shadow tree never imports writers.
  */
-import type { WriterTag } from '@flowlary/shared'
+import type { WriteOrigin, WriterTag } from '@flowlary/shared'
 import { writeReplacement, type WriteReplacementOptions, type WriteResult } from '../dom/editor.ts'
 import type { EditableElement } from '../dom/types.ts'
 import type { FieldSession } from '../session/FieldSession.ts'
@@ -198,7 +198,7 @@ function capabilityToAction(capability: WriteTelemetryCapability): DecisionActio
   return 'noop'
 }
 
-export function writerForAction(action: DecisionAction): WriterTag {
+export function writerForAction(action: DecisionAction): Extract<WriteOrigin, WriterTag> {
   if (action === 'layout_fix') return 'FIX_LAYOUT'
   if (action === 'translation') return 'TRANSLATE'
   return 'CORRECT'

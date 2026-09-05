@@ -1,14 +1,14 @@
 import { isEditableElement } from '../../core/dom/read.ts'
 import type { InputEngine } from '../../core/input/InputEngine.ts'
 import { resolveWritingPolicy } from '../../core/policy/writingPolicy.ts'
-import { readUiLocale } from '../../popup/i18n/localeStorage.ts'
+import { peekUiLocale } from '../../popup/i18n/localeStorage.ts'
 import { en } from '../../popup/i18n/en.ts'
 import { ar } from '../../popup/i18n/ar.ts'
 
 const HOST_ID = 'flowlary-translation-chip'
 
 function chipCopy(paused: boolean): string {
-  const locale = readUiLocale()
+  const locale = peekUiLocale()
   const pack = locale === 'ar' ? ar.assistant : en.assistant
   return paused ? pack.resumeField : pack.pauseField
 }

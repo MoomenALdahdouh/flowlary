@@ -32,6 +32,12 @@ export type Command = {
   /** Shared-analysis span for explicit shortcuts. */
   rangeStart?: number
   rangeEnd?: number
+  /**
+   * True when the user had a non-empty DOM selection at dispatch.
+   * Features must then operate only on [rangeStart, rangeEnd).
+   * When false/omitted, existing no-selection shortcut targeting applies.
+   */
+  explicitSelection?: boolean
 }
 
 /** Result returned by feature handlers and CommandRouter. */
@@ -97,7 +103,7 @@ export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS]
 export const BRAND = {
   name: 'Flowlary',
   tagline: 'Your AI Writing Companion',
-  version: '1.1.0',
+  version: '1.4.0',
   pageMarker: 'flowlary',
 } as const
 

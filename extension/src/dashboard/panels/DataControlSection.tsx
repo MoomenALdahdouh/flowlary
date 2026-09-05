@@ -19,7 +19,7 @@ import { getUpgradeUrl } from '../../config/upgrade.ts'
 type DataControlSectionProps = {
   status: ExtensionStatus
   busy: string | null
-  onMutate: (key: string, fn: () => Promise<unknown>) => Promise<void>
+  onMutate: (key: string, fn: () => Promise<ExtensionStatus | void>) => Promise<void>
   onOpenActivity: () => void
   onOpenProgress: () => void
   onRestartOnboarding: () => void

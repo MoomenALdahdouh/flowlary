@@ -1,7 +1,7 @@
-export type SafeNext = 'lab' | 'checkout' | 'feedback' | 'feedback-features' | 'feedback-support'
+export type SafeNext = 'lab' | 'checkout' | 'feedback' | 'feedback-features' | 'feedback-support' | 'admin'
 
 const PENDING_NEXT_KEY = 'flowlary.auth.next'
-const SAFE_NEXT = new Set<SafeNext>(['lab', 'checkout', 'feedback', 'feedback-features', 'feedback-support'])
+const SAFE_NEXT = new Set<SafeNext>(['lab', 'checkout', 'feedback', 'feedback-features', 'feedback-support', 'admin'])
 
 export function parseSafeNext(raw: string | null): SafeNext | null {
   if (raw && SAFE_NEXT.has(raw as SafeNext)) return raw as SafeNext
@@ -43,5 +43,6 @@ export function resolvePostAuthDestination(next: SafeNext | null): string {
   if (next === 'feedback') return '/feedback'
   if (next === 'feedback-features') return '/feedback?tab=features'
   if (next === 'feedback-support') return '/feedback?tab=support'
+  if (next === 'admin') return '/admin'
   return '/dashboard'
 }

@@ -191,4 +191,62 @@ describe('computeDomainState', () => {
     )
     expect(domain?.features.liveTranslation.kind).toBe('ready')
   })
+
+  it('treats Layout as on in shortcuts-only when fixWrongTyping is enabled', () => {
+    const domain = computeDomainState(
+      baseStatus({
+        features: { correction: true, translation: true, layout: true },
+        layout: {
+          mode: 'direct',
+          autoEnabled: false,
+          manualConversionEnabled: true,
+          directShortcutEnabled: true,
+          sourceLayout: 'en',
+          targetLayouts: ['ar'],
+        },
+        writingPolicy: {
+          helpStyle: 'shortcuts_only',
+          fixWrongTyping: true,
+          improveEnglish: true,
+          arabicToEnglishMode: true,
+          polishAfterTranslate: false,
+          aiAdvisorEnabled: true,
+          aiWritingReviewEnabled: true,
+          operatingState: 'manual',
+        },
+      }),
+      false,
+    )
+    expect(domain?.features.layout.kind).toBe('ready')
+    expect(domain?.features.layout.enabled).toBe(true)
+  })
+
+  it('treats Layout as off when fixWrongTyping is disabled even if autoEnabled was stale', () => {
+    const domain = computeDomainState(
+      baseStatus({
+        features: { correction: true, translation: true, layout: false },
+        layout: {
+          mode: 'direct',
+          autoEnabled: true,
+          manualConversionEnabled: true,
+          directShortcutEnabled: true,
+          sourceLayout: 'en',
+          targetLayouts: ['ar'],
+        },
+        writingPolicy: {
+          helpStyle: 'auto',
+          fixWrongTyping: false,
+          improveEnglish: true,
+          arabicToEnglishMode: false,
+          polishAfterTranslate: false,
+          aiAdvisorEnabled: true,
+          aiWritingReviewEnabled: true,
+          operatingState: 'normal',
+        },
+      }),
+      false,
+    )
+    expect(domain?.features.layout.kind).toBe('disabled')
+    expect(domain?.features.layout.enabled).toBe(false)
+  })
 })

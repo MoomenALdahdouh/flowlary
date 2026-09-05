@@ -24,6 +24,8 @@ import {
 import { onFieldRevisionBump, requestSameRevisionReanalyze } from '../runtime/revisionBump.ts'
 import { evaluateAutomaticArbitration, featureFromAction, noteBoxOccupant } from '../runtime/arbitration.ts'
 import { shouldWholeFieldOwnEnglishCorrection } from '../../features/correction/liveAssist.ts'
+import { recordSpanCorrectionOutcome } from '../../features/correction/recordSpanCorrectionOutcome.ts'
+import { recordLayoutLearningAccepted } from '../../features/learning/recordLayoutLearning.ts'
 import { commitWriteTransaction, writerForAction } from './writeGate.ts'
 
 export type PipelineSuggestionRecord = {
@@ -401,6 +403,21 @@ export function applyPipelineSuggestion(
       })
       hideCard(fieldId)
       return write.verdict === 'stale' ? 'stale' : 'blocked'
+    }
+    if (action === 'layout_fix') {
+      recordLayoutLearningAccepted(
+        `layout-suggest-${identity.operationId}-${identity.range.start}`,
+        live,
+        current.sourceText,
+        suggestion,
+      )
+    } else if (action === 'english_correction') {
+      recordSpanCorrectionOutcome({
+        element,
+        fullTextBefore: live,
+        range: identity.range,
+        replacement: suggestion,
+      })
     }
     identity.state = 'hidden'
     hideCard(fieldId)

@@ -95,7 +95,7 @@ export function normalizeTranslationWriteSpacing(
     && wordChar.test(text.at(-1)!)
     && !/\s/u.test(next)
     && !/\s$/u.test(text)
-    && !/[,;.!?…؟]$/.u.test(text)
+    && !/[,;.!?…؟]$/u.test(text)
   ) {
     text = `${text} `
   }

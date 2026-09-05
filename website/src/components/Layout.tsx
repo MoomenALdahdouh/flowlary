@@ -13,7 +13,7 @@ export function Layout() {
   const t = useMessages()
   const { direction, locale } = useI18n()
   const { pathname } = useLocation()
-  const isApp = pathname.startsWith('/dashboard')
+  const isApp = pathname.startsWith('/dashboard') || pathname.startsWith('/admin')
 
   return (
     <div

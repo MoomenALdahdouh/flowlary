@@ -78,17 +78,18 @@ describe('Phase 5 — Translation module integration', () => {
     engine.stop()
   })
 
-  it('1 — Ctrl/Cmd+Shift+, dispatches TRANSLATE', async () => {
+  it('1 — Ctrl/Cmd+Shift+Y dispatches TRANSLATE', async () => {
     const ta = document.createElement('textarea')
     ta.value = 'مرحبا'
     document.body.append(ta)
     ta.focus()
-    ta.dispatchEvent(shortcutEvent('Comma'))
+    ta.dispatchEvent(shortcutEvent('KeyY'))
     await vi.waitFor(() => expect(orchestrator.lastResult?.status).toBe('success'))
     expect(orchestrator.executed).toContain('TRANSLATE')
   })
 
-  it('2 — shortcut uses physical Comma code', () => {
+  it('2 — shortcut uses physical KeyY code (Comma still accepted)', () => {
+    expect(detectShortcut(shortcutEvent('KeyY'))).toBe('TRANSLATE')
     expect(detectShortcut(shortcutEvent('Comma'))).toBe('TRANSLATE')
   })
 

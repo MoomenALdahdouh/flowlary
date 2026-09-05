@@ -8,11 +8,13 @@ export function isModifiedShortcut(event: Pick<KeyboardEvent, 'ctrlKey' | 'metaK
 
 /**
  * Physical key codes (not `event.key`) so shortcuts survive wrong keyboard layouts.
- * Matches the manifest: Comma, KeyP, KeyE, KeyL.
+ * Matches the manifest: KeyY (translate), KeyP, KeyE, KeyL.
+ * Comma remains accepted as a legacy translate chord (old ⌘⇧, binding).
  */
 export function detectShortcut(event: KeyboardEvent): ShortcutCommand | null {
   if (!isModifiedShortcut(event)) return null
   switch (event.code) {
+    case 'KeyY':
     case 'Comma':
       return 'TRANSLATE'
     case 'KeyP':

@@ -1,16 +1,18 @@
 #!/usr/bin/env node
 /**
  * Build release ZIP + SHA-256 from extension/dist (production release build).
+ * Also publishes the ZIP to website/public/downloads for the temporary manual-install CTA.
  * Run: npm run build:release && npm run package:release
  */
 import { createHash } from 'node:crypto'
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { execSync } from 'node:child_process'
 import { join, resolve } from 'node:path'
 
 const root = resolve(import.meta.dirname, '..')
 const dist = join(root, 'extension/dist')
 const releaseDir = join(root, 'release')
+const publicDownloads = join(root, 'website/public/downloads')
 
 function readVersion() {
   const manifest = JSON.parse(readFileSync(join(dist, 'manifest.json'), 'utf8'))
@@ -37,7 +39,13 @@ const hash = sha256File(zipPath)
 const hashFile = join(releaseDir, `${zipName}.sha256`)
 writeFileSync(hashFile, `${hash}  ${zipName}\n`, 'utf8')
 
+mkdirSync(publicDownloads, { recursive: true })
+const publicZipPath = join(publicDownloads, zipName)
+copyFileSync(zipPath, publicZipPath)
+writeFileSync(join(publicDownloads, `${zipName}.sha256`), `${hash}  ${zipName}\n`, 'utf8')
+
 console.log(`Release package: release/${zipName}`)
+console.log(`Website download: website/public/downloads/${zipName}`)
 console.log(`SHA-256: ${hash}`)
 
 const validateDir = join(releaseDir, '.validate-tmp')

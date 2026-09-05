@@ -112,22 +112,25 @@ describe('Extension dashboard', () => {
     })
   })
 
-  it('renders home with practice, progress, settings, and account navigation', async () => {
+  it('renders overview with practice, progress, settings, and account navigation', async () => {
     await act(async () => {
       createRoot(container).render(<DashboardApp />)
     })
-    await waitUntil(container, 'Try it')
+    await waitUntil(container, 'Help in fields')
 
-    expect(container.textContent).toContain('Dashboard')
-    expect(container.textContent).toContain('Home')
+    expect(container.querySelector('[aria-label="Dashboard"]')).toBeTruthy()
+    expect(container.textContent).toContain('Overview')
+    expect(container.textContent).toContain('Writing Lab')
     expect(container.textContent).toContain('Progress')
     expect(container.textContent).toContain('Practice')
     expect(container.textContent).toContain('Report')
     expect(container.textContent).toContain('Settings')
     expect(container.textContent).toContain('Account')
+    expect(container.textContent).toContain('Activity')
+    expect(container.textContent).toContain('Support')
     expect(container.textContent).not.toContain('History')
-    expect(container.textContent).toContain('Writing Correction')
-    expect(container.textContent).toContain('Tools')
+    expect(container.textContent).toContain('Writing settings')
+    expect(container.textContent).toContain('Help in fields')
     expect(container.textContent).not.toContain('gsk_test')
     expect(container.textContent).not.toMatch(/groq|byok/i)
   })
@@ -136,19 +139,21 @@ describe('Extension dashboard', () => {
     await act(async () => {
       createRoot(container).render(<DashboardApp />)
     })
-    await waitUntil(container, 'Writing Correction')
+    await waitUntil(container, 'Help in fields')
 
-    const settingsBtn = Array.from(container.querySelectorAll('button')).find(
+    const settingsBtn = Array.from(container.querySelectorAll('.wd-nav-groups button')).find(
       (btn) => btn.textContent === 'Settings',
     )
     expect(settingsBtn).toBeTruthy()
     await act(async () => {
       settingsBtn!.click()
     })
-    expect(container.textContent).toContain('Mode')
+    await waitUntil(container, 'Highlights')
+    expect(container.textContent).toContain('Direct')
+    expect(container.textContent).toContain('Box')
     expect(container.textContent).toContain('Highlights')
 
-    const dataBtn = Array.from(container.querySelectorAll('button')).find((btn) => btn.textContent === 'Data')
+    const dataBtn = Array.from(container.querySelectorAll('[role="tab"]')).find((btn) => btn.textContent === 'Data')
     expect(dataBtn).toBeTruthy()
     await act(async () => {
       dataBtn!.click()

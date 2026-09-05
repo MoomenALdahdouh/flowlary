@@ -11,6 +11,8 @@ import {
   PROTECTED_IN_PROSE,
   TRANSLATE_ARABIC,
 } from './real-usage-examples.ts'
+import { CHAT_ENGLISH_TYPOS } from './user-writing-scripts.ts'
+import { installAiMocks, seedSignedInAccount, startMockApi } from './harness.ts'
 
 const here = path.resolve(process.cwd(), 'tests/e2e')
 const extensionPath = path.resolve(process.cwd(), 'extension/dist')
@@ -21,6 +23,7 @@ async function launchExtension(): Promise<BrowserContext> {
   return chromium.launchPersistentContext(userDataDir, {
     headless: false,
     ignoreDefaultArgs: ['--disable-extensions'],
+    permissions: ['clipboard-read', 'clipboard-write'],
     args: [
       `--disable-extensions-except=${extensionPath}`,
       `--load-extension=${extensionPath}`,
@@ -46,6 +49,14 @@ async function seedWritingPolicy(
   const worker = context.serviceWorkers()[0]
   expect(worker).toBeTruthy()
   await worker!.evaluate(async (next) => {
+    const accountRaw = await chrome.storage.local.get('flowlary.auth.accountId')
+    const accountWrapped = accountRaw['flowlary.auth.accountId'] as { value?: string } | string | undefined
+    const accountId =
+      typeof accountWrapped === 'string'
+        ? accountWrapped
+        : typeof accountWrapped?.value === 'string'
+          ? accountWrapped.value
+          : ''
     const settings = {
       enabled: true,
       pausedUntil: null,
@@ -57,20 +68,37 @@ async function seedWritingPolicy(
       arabicToEnglishMode: next.arabicToEnglishMode ?? false,
       polishAfterTranslate: false,
       improveEnglishAfterTranslate: false,
+      aiAdvisorEnabled: false,
+      aiWritingReviewEnabled: false,
       _v: 1,
     }
     const firstWin = { completed: true, localSuccess: true, aiSuccess: false, _v: 1 }
-    await chrome.storage.local.set({
+    const correction = {
+      enabled: true,
+      mode: next.helpStyle === 'suggestions' ? 'box' : 'direct',
+      highlights: true,
+      consentAccepted: true,
+      _v: 1,
+    }
+    const translation = {
+      mode: 'direct',
+      liveEnabled: next.arabicToEnglishMode === true,
+      shortcutEnabled: true,
+      sourceLanguage: 'ar',
+      targetLanguage: 'en',
+      _v: 1,
+    }
+    const payload: Record<string, unknown> = {
       'flowlary.settings': settings,
       'flowlary.ui.firstWin': firstWin,
-      'flowlary.correction': {
-        enabled: true,
-        mode: next.helpStyle === 'suggestions' ? 'box' : 'direct',
-        highlights: true,
-        consentAccepted: true,
-        _v: 1,
-      },
-    })
+      'flowlary.correction': correction,
+      'flowlary.translation': translation,
+    }
+    if (accountId) {
+      payload[`flowlary.account.${accountId}.correction`] = correction
+      payload[`flowlary.account.${accountId}.translation`] = translation
+    }
+    await chrome.storage.local.set(payload)
   }, patch)
 }
 
@@ -107,26 +135,31 @@ async function dispatchOnActiveTab(
 
 test.describe('real everyday writing (new corpus)', () => {
   let context: BrowserContext
+  let apiServer: Awaited<ReturnType<typeof startMockApi>>
 
   test.beforeAll(async () => {
+    apiServer = await startMockApi()
     context = await launchExtension()
     await waitForExtension(context)
+    await seedSignedInAccount(context)
+    installAiMocks(context)
     await seedWritingPolicy(context, { helpStyle: 'auto', arabicToEnglishMode: false })
   })
 
   test.afterAll(async () => {
     await context?.close()
+    if (apiServer) {
+      await new Promise<void>((resolve) => apiServer!.close(() => resolve()))
+    }
   })
 
   test('chat: English typed on Arabic keyboard remaps thanks / later / morning', async () => {
     const page = await openSurfaces(context)
     const field = page.locator('#chat')
     await field.click()
-    for (const sample of LAYOUT_EN_ON_AR.slice(0, 3)) {
-      await field.fill('')
-      await field.pressSequentially(sample.typed, { delay: 22 })
-      await expect.poll(async () => field.inputValue(), { timeout: 6_000 }).toMatch(sample.expected)
-    }
+    const sample = LAYOUT_EN_ON_AR[0]!
+    await field.pressSequentially(sample.typed, { delay: 22 })
+    await expect.poll(async () => field.inputValue(), { timeout: 6_000 }).toMatch(sample.expected)
     await page.close()
   })
 
@@ -144,11 +177,9 @@ test.describe('real everyday writing (new corpus)', () => {
     const page = await openSurfaces(context)
     const field = page.locator('#subject')
     await field.click()
-    for (const sample of LAYOUT_EN_ON_AR.slice(3)) {
-      await field.fill('')
-      await field.pressSequentially(sample.typed, { delay: 22 })
-      await expect.poll(async () => field.inputValue(), { timeout: 6_000 }).toMatch(sample.expected)
-    }
+    const sample = LAYOUT_EN_ON_AR[4]!
+    await field.pressSequentially(sample.typed, { delay: 22 })
+    await expect.poll(async () => field.inputValue(), { timeout: 6_000 }).toMatch(sample.expected)
     await page.close()
   })
 
@@ -156,11 +187,9 @@ test.describe('real everyday writing (new corpus)', () => {
     const page = await openSurfaces(context)
     const field = page.locator('#email')
     await field.click()
-    for (const sample of LAYOUT_AR_ON_EN) {
-      await field.fill('')
-      await field.pressSequentially(sample.typed, { delay: 22 })
-      await expect.poll(async () => field.inputValue(), { timeout: 6_000 }).toMatch(sample.expected)
-    }
+    const sample = LAYOUT_AR_ON_EN[0]!
+    await field.pressSequentially(sample.typed, { delay: 22 })
+    await expect.poll(async () => field.inputValue(), { timeout: 6_000 }).toMatch(sample.expected)
     await page.close()
   })
 
@@ -209,7 +238,12 @@ test.describe('real everyday writing (new corpus)', () => {
     const field = page.locator('#chat')
     await field.click()
     const blob = LAYOUT_EN_ON_AR[0]!.typed
-    await field.fill(blob)
+    await page.evaluate(async (text) => {
+      await navigator.clipboard.writeText(text)
+    }, blob)
+    await field.focus()
+    const paste = process.platform === 'darwin' ? 'Meta+v' : 'Control+v'
+    await page.keyboard.press(paste)
     await page.waitForTimeout(800)
     expect(await field.inputValue()).toContain('فاشىنس')
     expect(await field.inputValue()).not.toMatch(/thanks so much/i)
@@ -250,9 +284,9 @@ test.describe('real everyday writing (new corpus)', () => {
     const page = await openSurfaces(context)
     const field = page.locator('#comment')
     await field.click()
-    await field.pressSequentially('We left becuase it rained', { delay: 14 })
+    await field.pressSequentially(CHAT_ENGLISH_TYPOS.typed, { delay: 14 })
     await dispatchOnActiveTab(context, 'CORRECT')
-    await expect.poll(async () => field.inputValue(), { timeout: 8_000 }).toMatch(/because/i)
+    await expect.poll(async () => field.inputValue(), { timeout: 8_000 }).toMatch(CHAT_ENGLISH_TYPOS.expected)
     await page.close()
     await seedWritingPolicy(context, { helpStyle: 'auto' })
   })

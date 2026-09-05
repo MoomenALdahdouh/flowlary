@@ -151,7 +151,7 @@ export class PracticeSessionStore {
       const guard = captureWriteGuard()
       const store = await this.readStore()
       const next = [session, ...store.sessions.filter((item) => item.id !== session.id)]
-      const merged = {
+      const merged: PracticeSessionStoreV1 = {
         version: PRACTICE_SESSION_STORE_VERSION,
         sessions: next.slice(0, MAX_PRACTICE_SESSIONS),
       }

@@ -91,6 +91,17 @@ export type WebhookEventRecord = {
   processedAt: number
 }
 
+export type AdminAuditRecord = {
+  id: string
+  action: string
+  actorAccountId: string
+  actorEmail: string
+  targetType: string
+  targetId: string
+  metadata: Record<string, string | number | boolean | null>
+  createdAt: number
+}
+
 export type SessionRecord = {
   id: string
   accountId: string
@@ -148,8 +159,9 @@ type StoreSnapshot = {
   supportTicketIdsByAccount?: Record<string, string[]>
   feedbackPreferencesByAccount?: Record<string, import('./feedbackStoreSlice.ts').FeedbackPreferencesRecord>
   feedbackAnalyticsEvents?: import('./feedbackStoreSlice.ts').FeedbackAnalyticsRecord[]
-  testimonialsById?: Record<string, import('./testimonialStoreSlice.ts').TestimonialRecord>
+  testimonialsById?: Record<string, import('@flowlary/shared').TestimonialRecord>
   publishedTestimonialIds?: string[]
+  adminAuditEvents?: AdminAuditRecord[]
 }
 
 const EMPTY_SNAPSHOT = (): StoreSnapshot => ({
@@ -164,6 +176,7 @@ const EMPTY_SNAPSHOT = (): StoreSnapshot => ({
   practiceSessionsByAccount: {},
   emailVerifications: {},
   passwordResets: {},
+  adminAuditEvents: [],
 })
 
 let dataPath = resolve(process.cwd(), 'data', 'flowlary-store.json')
@@ -212,6 +225,7 @@ export function ensureLoaded(): void {
       practiceSessionsByAccount: raw.practiceSessionsByAccount ?? {},
       emailVerifications: normalizeEmailVerifications(raw.emailVerifications ?? {}),
       passwordResets: raw.passwordResets ?? {},
+      adminAuditEvents: Array.isArray(raw.adminAuditEvents) ? raw.adminAuditEvents : [],
     }
     loadStudentSlice({
       benefits: raw.studentBenefits ?? {},
@@ -417,6 +431,44 @@ export function deleteSessionsForAccount(accountId: string): void {
     if (row.accountId === accountId) delete snapshot.sessions[id]
   }
   touch()
+}
+
+export function listSessionsForAccount(accountId: string): SessionRecord[] {
+  ensureLoaded()
+  return Object.values(snapshot.sessions).filter((row) => row.accountId === accountId)
+}
+
+export function countSessionsForAccount(accountId: string): number {
+  return listSessionsForAccount(accountId).length
+}
+
+export function listRecentWebhookEvents(limit = 50): WebhookEventRecord[] {
+  ensureLoaded()
+  return Object.values(snapshot.webhookEvents)
+    .sort((a, b) => b.processedAt - a.processedAt)
+    .slice(0, Math.min(Math.max(limit, 1), 200))
+}
+
+export function appendAdminAuditEvent(
+  input: Omit<AdminAuditRecord, 'id' | 'createdAt'> & { createdAt?: number },
+): AdminAuditRecord {
+  ensureLoaded()
+  const row: AdminAuditRecord = {
+    ...input,
+    id: randomUUID(),
+    createdAt: input.createdAt ?? Date.now(),
+  }
+  const events = snapshot.adminAuditEvents ?? []
+  events.unshift(row)
+  if (events.length > 5_000) events.length = 5_000
+  snapshot.adminAuditEvents = events
+  touch()
+  return row
+}
+
+export function listAdminAuditEvents(): AdminAuditRecord[] {
+  ensureLoaded()
+  return snapshot.adminAuditEvents ?? []
 }
 
 export function upsertInstall(installId: string, accountId: string | null): InstallLinkRecord {

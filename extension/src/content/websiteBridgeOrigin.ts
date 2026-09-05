@@ -6,7 +6,8 @@
  * flowlary.test and must accept that origin or sign-in never syncs.
  *
  * Production-API builds use the production manifest, which does not inject
- * this script on .test / localhost at all.
+ * this script on .test / localhost at all. Compare `import.meta.env` here so
+ * the bundler can drop local-host string literals from the release artifact.
  */
 export function isWebsiteBridgeOriginAllowed(
   origin: string,
@@ -15,6 +16,7 @@ export function isWebsiteBridgeOriginAllowed(
   try {
     const host = new URL(origin).hostname
     if (host === 'flowlary.com' || host.endsWith('.flowlary.com')) return true
+    if (import.meta.env.VITE_FLOWLARY_API_TARGET === 'production') return false
     if (!allowLocalDevHosts) return false
     return (
       host === 'flowlary.test' ||

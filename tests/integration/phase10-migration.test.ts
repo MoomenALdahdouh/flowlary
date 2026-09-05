@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { STORAGE_KEYS } from '@flowlary/shared'
 import { resetBackgroundStartupForTests } from '../../extension/src/background/index.ts'
-import { stateManager, DEFAULT_CORRECTION, DEFAULT_TRANSLATION } from '../../extension/src/core/state/StateManager.ts'
+import {
+  stateManager,
+  DEFAULT_CORRECTION,
+  DEFAULT_SETTINGS,
+  DEFAULT_TRANSLATION,
+} from '../../extension/src/core/state/StateManager.ts'
 import { FlowlaryStorage, flowlaryStorage } from '../../extension/src/storage/index.ts'
 import {
   getCorrectionSettings,
@@ -37,7 +42,7 @@ describe('Phase 10 — migration scenarios', () => {
     mockStore.install()
     resetMigrationRunnerForTests()
     await clearTestAccountContext()
-    Object.assign(stateManager.settings, { enabled: true, pausedUntil: null, excludedDomains: [], version: 1 })
+    Object.assign(stateManager.settings, { ...DEFAULT_SETTINGS, pausedUntil: null, excludedDomains: [] })
     Object.assign(stateManager.correction, DEFAULT_CORRECTION)
     Object.assign(stateManager.translation, DEFAULT_TRANSLATION)
   })
@@ -95,8 +100,12 @@ describe('Phase 10 — migration scenarios', () => {
 
     await runStorageMigration()
     await claimMigratedData()
+    await hydrateStateFromStorage(flowlaryStorage)
     const correction = await getCorrectionSettings(flowlaryStorage)
+    const settings = await getSettings(flowlaryStorage)
+    expect(settings.improveEnglish).toBe(false)
     expect(correction.enabled).toBe(false)
+    expect(stateManager.correction.enabled).toBe(false)
     expect(correction.mode).toBe('box')
     expect(correction.consentAccepted).toBe(true)
     expect(correction).not.toHaveProperty('groqApiKey')
@@ -165,8 +174,61 @@ describe('Phase 10 — migration scenarios', () => {
     const profile = await getLayoutProfile(flowlaryStorage)
     expect(correction).not.toHaveProperty('groqApiKey')
     expect(correction).not.toHaveProperty('aiProvider')
+    expect(correction.enabled).toBe(true)
+    expect((await getSettings(flowlaryStorage)).improveEnglish).toBe(true)
     expect(translation.sourceLanguage).toBe('ar')
     expect(profile.personalExceptions).toContain('npm')
+  })
+
+  it('EWA enabled migrates to improveEnglish true', async () => {
+    mockStore.sync[LEGACY_EWA.settings] = {
+      enabled: true,
+      highlights: true,
+      correctionMode: 'direct',
+      consentAccepted: true,
+    }
+
+    await runStorageMigration()
+    await claimMigratedData()
+    await hydrateStateFromStorage(flowlaryStorage)
+    const settings = await getSettings(flowlaryStorage)
+    const correction = await getCorrectionSettings(flowlaryStorage)
+    expect(settings.improveEnglish).toBe(true)
+    expect(correction.enabled).toBe(true)
+    expect(stateManager.correction.enabled).toBe(true)
+  })
+
+  it('no legacy EWA keeps the current improveEnglish default', async () => {
+    await runStorageMigration()
+    await claimMigratedData()
+    await hydrateStateFromStorage(flowlaryStorage)
+    const settings = await getSettings(flowlaryStorage)
+    expect(settings.improveEnglish).toBe(true)
+    expect(stateManager.correction.enabled).toBe(true)
+  })
+
+  it('existing unified improveEnglish is not overwritten by legacy EWA', async () => {
+    mockStore.local[STORAGE_KEYS.settings] = {
+      _v: 1,
+      enabled: true,
+      pausedUntil: null,
+      excludedDomains: [],
+      version: 1,
+      improveEnglish: false,
+    }
+    mockStore.sync[LEGACY_EWA.settings] = {
+      enabled: true,
+      highlights: true,
+      correctionMode: 'direct',
+      consentAccepted: true,
+    }
+
+    await runStorageMigration()
+    await claimMigratedData()
+    await hydrateStateFromStorage(flowlaryStorage)
+    const settings = await getSettings(flowlaryStorage)
+    expect(settings.improveEnglish).toBe(false)
+    expect(stateManager.correction.enabled).toBe(false)
   })
 
   it('F — partial migration resumes successfully', async () => {

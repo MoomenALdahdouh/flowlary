@@ -4,7 +4,6 @@
 
 import { STORAGE_KEYS } from '@flowlary/shared'
 import { activeAccountContext } from '../storage/activeAccountContext.ts'
-import { stateManager } from '../core/state/StateManager.ts'
 import { parseAccountIdFromStorageKey } from '../storage/accountScopedStorage.ts'
 import type { CorrectionModule } from '../features/correction/CorrectionFeature.ts'
 import type { LayoutModule } from '../features/layout/LayoutFeature.ts'
@@ -16,12 +15,10 @@ import {
   detachActiveAccount,
   flowlaryStorage,
   getLayoutProfile,
-  getSettings,
   hydrateStateFromStorage,
   restoreActiveAccountFromSession,
   runStorageMigration,
 } from '../storage/index.ts'
-import { applyUserPolicyToMemory, resolveWritingPolicy } from '../core/policy/writingPolicy.ts'
 import { ensureHistoryInitialized } from '../storage/history/record.ts'
 import { initializeFlowlaryCache } from '../storage/cache/index.ts'
 import { readStoredString } from '../storage/schemas.ts'
@@ -58,18 +55,12 @@ function hasPolicyKeyChange(changes: Record<string, chrome.storage.StorageChange
 }
 
 async function hydratePolicyFromStorageChange(
-  changes: Record<string, chrome.storage.StorageChange>,
+  _changes: Record<string, chrome.storage.StorageChange>,
 ): Promise<void> {
-  const accountId = activeAccountContext.getAccountId()
-  if (accountId) {
-    await hydrateStateFromStorage(flowlaryStorage)
-    return
-  }
-
-  if (hasPolicyKeyChange(changes)) {
-    Object.assign(stateManager.settings, await getSettings(flowlaryStorage))
-    applyUserPolicyToMemory(resolveWritingPolicy())
-  }
+  // Always full-hydrate so helpStyle (Direct / Box / Shortcuts only) and the
+  // projected feature modes stay aligned after Settings changes — including
+  // signed-out sessions where only `flowlary.settings` is persisted.
+  await hydrateStateFromStorage(flowlaryStorage)
 }
 
 export async function hydrateLayoutFeatureFromStorage(

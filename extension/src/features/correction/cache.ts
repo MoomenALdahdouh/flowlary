@@ -4,9 +4,10 @@ import {
   normalizeCacheText,
   type CacheCoordinator,
   type CorrectRequestContext,
+  type TieredCacheCoordinator,
 } from '@flowlary/shared'
 
-export function createCorrectionCache(coordinator: CacheCoordinator) {
+export function createCorrectionCache(coordinator: CacheCoordinator | TieredCacheCoordinator) {
   return {
     get(text: string, context?: CorrectRequestContext): CorrectionResponse | undefined {
       const key = coordinator.buildKey({

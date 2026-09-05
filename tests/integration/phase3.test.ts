@@ -121,13 +121,13 @@ describe('Phase 3 — InputEngine + CommandRouter wiring', () => {
     expect(session.isComposing()).toBe(false)
   })
 
-  it('TEST 6 — Ctrl/Cmd+Shift+, routes TRANSLATE', async () => {
+  it('TEST 6 — Ctrl/Cmd+Shift+Y routes TRANSLATE', async () => {
     const ta = document.createElement('textarea')
     ta.value = 'hello'
     document.body.append(ta)
     ta.focus()
     ta.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
-    ta.dispatchEvent(shortcutEvent('Comma'))
+    ta.dispatchEvent(shortcutEvent('KeyY'))
     await vi.waitFor(() => expect(orchestrator.lastResult?.status).toBe('feature_not_ported'))
     expect(orchestrator.executed).toContain('TRANSLATE')
     expect(translate).toHaveBeenCalledTimes(1)
@@ -313,6 +313,7 @@ describe('Phase 3 — InputEngine + CommandRouter wiring', () => {
   })
 
   it('detects physical shortcut codes', () => {
+    expect(detectShortcut(shortcutEvent('KeyY'))).toBe('TRANSLATE')
     expect(detectShortcut(shortcutEvent('Comma'))).toBe('TRANSLATE')
     expect(detectShortcut(shortcutEvent('KeyP'))).toBe('FIX_LAYOUT')
     expect(detectShortcut(shortcutEvent('KeyE'))).toBe('CORRECT')

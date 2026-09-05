@@ -16,11 +16,14 @@ async function loadPdfMake(): Promise<PdfMakeInstance> {
     import('pdfmake/build/pdfmake'),
     import('pdfmake/build/vfs_fonts'),
   ])
-  const pdfMake = (pdfMakeModule as { default?: PdfMakeInstance }).default ?? (pdfMakeModule as PdfMakeInstance)
-  const vfs =
-    (pdfFontsModule as { default?: Record<string, string> }).default ??
-    (pdfFontsModule as { pdfMake?: { vfs: Record<string, string> } }).pdfMake?.vfs ??
-    (pdfFontsModule as Record<string, string>)
+  const pdfMake =
+    ((pdfMakeModule as { default?: PdfMakeInstance }).default ??
+      (pdfMakeModule as unknown as PdfMakeInstance))
+  const fontsModule = pdfFontsModule as unknown as {
+    default?: Record<string, string>
+    pdfMake?: { vfs: Record<string, string> }
+  }
+  const vfs = fontsModule.default ?? fontsModule.pdfMake?.vfs ?? {}
   pdfMake.vfs = { ...pdfMake.vfs, ...vfs }
   pdfMake.fonts = {
     Roboto: {

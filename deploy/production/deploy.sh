@@ -321,6 +321,15 @@ build_release() {
     log "skipping tests (FLOWLARY_SKIP_TESTS=1)"
   fi
   if [[ "$SKIP_BUILD" != 1 ]]; then
+    # Temporary manual Chrome install CTA serves website/public/downloads/*.zip
+    # (gitignored). Build the production release artifact before prerender.
+    require_cmd zip
+    log "building production extension release ZIP"
+    run_npm "$staging" run build:release
+    run_npm "$staging" run package:release
+    if ! compgen -G "$staging/website/public/downloads/flowlary-v*.zip" >/dev/null; then
+      die "missing website/public/downloads ZIP after package:release"
+    fi
     log "building website"
     run_npm "$staging" run build -w @flowlary/website
   else

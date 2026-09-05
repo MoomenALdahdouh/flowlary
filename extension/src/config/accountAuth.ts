@@ -123,10 +123,11 @@ type AccountEntitlementSeed = {
   resetAt?: number
   remainingMs?: number
   monthlyCreditsUsed?: number
-  monthlySoftCap?: number | null
-  capabilities?: string[]
-  billingAvailable?: boolean
-}
+    monthlySoftCap?: number | null
+    capabilities?: string[]
+    billingAvailable?: boolean
+    emailVerified?: boolean
+  }
 
 type AuthResponse = {
   ok?: boolean
@@ -172,6 +173,7 @@ export async function seedEntitlementFromAccountView(
     cancelAtPeriodEnd: false,
     paymentFailed: false,
     currentPeriodEnd: null,
+    emailVerified: account.emailVerified !== false,
     syncedAt: Date.now(),
   })
 }
@@ -541,12 +543,12 @@ export async function syncServerEntitlement(storage: FlowlaryStorage): Promise<{
       studentProExpiresAt?: number | null
       trialEndsAt?: number | null
       billingAvailable?: boolean
+      emailVerified?: boolean
       subscription?: {
         status?: string
         cancelAtPeriodEnd?: boolean
         paymentFailed?: boolean
         currentPeriodEnd?: number | null
-        emailVerified?: boolean
       }
     }
   }

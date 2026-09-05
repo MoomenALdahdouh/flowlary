@@ -1,4 +1,4 @@
-import type { FlowlaryStorage } from './facade.ts'
+import type { FlowlaryStorage } from './index.ts'
 import { getCorrectionSettings, setCorrectionSettings } from './facade.ts'
 import { normalizeCorrection, readStoredString, withVersion } from './schemas.ts'
 import { activeAccountContext } from './activeAccountContext.ts'

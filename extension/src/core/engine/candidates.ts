@@ -1,7 +1,7 @@
 /**
  * Candidates derived from span-level hypotheses. Local evidence only.
  */
-import { stateManager } from '../state/StateManager.ts'
+import { isDirectHelpStyle } from '../policy/writingPolicy.ts'
 import type { CandidateAction, FieldContext, Hypothesis, SharedAnalysis } from './types.ts'
 import { collectHypotheses } from './hypotheses.ts'
 
@@ -38,7 +38,7 @@ export function candidatesFromHypotheses(
         eligibleForAuto:
           high
           && Boolean(item.replacement || item.candidateAction === 'translation')
-          && (item.candidateAction !== 'english_correction' || stateManager.correction.mode === 'direct')
+          && (item.candidateAction !== 'english_correction' || isDirectHelpStyle())
           && translationEligibleForAuto(context, item.candidateAction!),
         replacement: item.replacement,
       }

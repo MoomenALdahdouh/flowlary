@@ -10,6 +10,7 @@ import { handleMessage } from '../../extension/src/background/index.ts'
 import { stateManager } from '../../extension/src/core/state/StateManager.ts'
 import { retireByokIfNeeded } from '../../extension/src/storage/retireByok.ts'
 import { createCorrectionFeature } from '../../extension/src/features/correction/CorrectionFeature.ts'
+import { InputEngine } from '../../extension/src/core/input/InputEngine.ts'
 import { flowlaryStorage } from '../../extension/src/storage/index.ts'
 import { getCorrectionSettings } from '../../extension/src/storage/facade.ts'
 import { createMockChromeStorage } from '../helpers/mockChromeStorage.ts'
@@ -119,13 +120,14 @@ describe('Phase 22A.1 — progress / activity reconciliation', () => {
 
   it('Progress shows honest empty state without activity metrics', async () => {
     await render(<DashboardApp />)
-    await waitUntil(container, 'Progress')
-    const progressBtn = Array.from(container.querySelectorAll('button')).find(
+    await waitUntil(container, 'Writing settings')
+    const progressBtn = Array.from(container.querySelectorAll('.wd-nav-groups button')).find(
       (btn) => btn.textContent === 'Progress',
     )
     await act(async () => {
       progressBtn!.click()
     })
+    await waitUntil(container, 'Your progress is building')
     expect(container.textContent).toContain('Your progress is building')
     expect(container.textContent).not.toContain('Total actions')
     expect(container.textContent).not.toContain('Activity summary')
@@ -134,13 +136,14 @@ describe('Phase 22A.1 — progress / activity reconciliation', () => {
 
   it('View activity navigates to the activity list, not settings root', async () => {
     await render(<DashboardApp />)
-    await waitUntil(container, 'Progress')
-    const progressBtn = Array.from(container.querySelectorAll('button')).find(
+    await waitUntil(container, 'Writing settings')
+    const progressBtn = Array.from(container.querySelectorAll('.wd-nav-groups button')).find(
       (btn) => btn.textContent === 'Progress',
     )
     await act(async () => {
       progressBtn!.click()
     })
+    await waitUntil(container, 'View activity log')
     const viewActivity = Array.from(container.querySelectorAll('button')).find((btn) =>
       btn.textContent?.includes('View activity log'),
     )
@@ -149,42 +152,57 @@ describe('Phase 22A.1 — progress / activity reconciliation', () => {
       viewActivity!.click()
     })
     expect(window.location.hash).toBe('#activity')
-    expect(container.textContent).toContain('Activity log')
+    expect(container.textContent).toContain('Could not load activity.')
+    expect(container.textContent).not.toContain('Writing, languages, and data.')
   })
 
-  it('uses Home, Practice, Progress, Report, Settings, Account navigation', async () => {
+  it('uses Overview, Writing Lab, and account navigation', async () => {
     await render(<DashboardApp />)
-    await waitUntil(container, 'Home')
-    const navButtons = Array.from(container.querySelectorAll('.fl-dash-nav-btn')).map(
+    await waitUntil(container, 'Overview')
+    const navButtons = Array.from(container.querySelectorAll('.wd-nav-groups a, .wd-nav-groups button')).map(
       (btn) => btn.textContent?.trim(),
     )
-    expect(navButtons).toEqual(['Home', 'Practice', 'Progress', 'Report', 'Settings', 'Account'])
+    expect(navButtons).toEqual([
+      'Overview',
+      'Writing Lab',
+      'Practice',
+      'Progress',
+      'Report',
+      'Settings',
+      'Account',
+      'Activity',
+      'Support',
+    ])
+    expect(navButtons).not.toContain('Home')
     expect(navButtons).not.toContain('History')
   })
 
   it('Practice route shows honest empty state without activity data', async () => {
     await render(<DashboardApp />)
-    await waitUntil(container, 'Practice')
-    const practiceBtn = Array.from(container.querySelectorAll('button')).find(
+    await waitUntil(container, 'Writing settings')
+    const practiceBtn = Array.from(container.querySelectorAll('.wd-nav-groups button')).find(
       (btn) => btn.textContent === 'Practice',
     )
     await act(async () => {
       practiceBtn!.click()
     })
+    await waitUntil(container, 'Keep writing first')
     expect(container.textContent).toContain('Keep writing first')
     expect(container.textContent).not.toContain('Total actions')
   })
 
   it('Data controls live under Settings and Activity remains a direct route', async () => {
     await render(<DashboardApp />)
-    await waitUntil(container, 'Settings')
-    const settingsBtn = Array.from(container.querySelectorAll('button')).find(
+    await waitUntil(container, 'Writing settings')
+    const settingsBtn = Array.from(container.querySelectorAll('.wd-nav-groups button')).find(
       (btn) => btn.textContent === 'Settings',
     )
     await act(async () => {
       settingsBtn!.click()
     })
-    const dataBtn = Array.from(container.querySelectorAll('button')).find((btn) => btn.textContent === 'Data')
+    await waitUntil(container, 'Highlights')
+    const dataBtn = Array.from(container.querySelectorAll('[role="tab"]')).find((btn) => btn.textContent === 'Data')
+    expect(dataBtn).toBeTruthy()
     await act(async () => {
       dataBtn!.click()
     })
@@ -193,23 +211,84 @@ describe('Phase 22A.1 — progress / activity reconciliation', () => {
     expect(container.textContent).toContain('Clear learning data')
   })
 
-  it('CorrectionFeature no longer returns missing_api_key', async () => {
-    stateManager.correction.consentAccepted = false
-    const feature = createCorrectionFeature({
-      engine: {
-        sessions: {
-          resolveElement: () => null,
-          getOrCreate: () => ({}) as never,
-        },
-      } as never,
+  async function executeCorrectionOnField(options: {
+    consentAccepted: boolean
+    field: 'missing' | 'textarea' | 'password'
+    text?: string
+  }) {
+    stateManager.correction.enabled = true
+    stateManager.correction.consentAccepted = options.consentAccepted
+    const engine = new InputEngine()
+    engine.start()
+    const text = options.text ?? 'hello world test sentence'
+    let fieldId = 'missing-field'
+    let element: HTMLTextAreaElement | HTMLInputElement | null = null
+    if (options.field !== 'missing') {
+      element =
+        options.field === 'password' ? document.createElement('input') : document.createElement('textarea')
+      if (element instanceof HTMLInputElement) element.type = 'password'
+      element.value = text
+      document.body.append(element)
+      fieldId = engine.sessions.getOrCreate(element).field.id
+    }
+    const feature = createCorrectionFeature({ engine })
+    try {
+      return await feature.execute({
+        type: 'CORRECT',
+        field: { id: fieldId, tag: options.field === 'textarea' ? 'textarea' : 'input' },
+        text,
+      })
+    } finally {
+      engine.stop()
+      element?.remove()
+    }
+  }
+
+  it('CorrectionFeature returns no_target when the field cannot be resolved', async () => {
+    const result = await executeCorrectionOnField({
+      consentAccepted: false,
+      field: 'missing',
     })
-    const result = await feature.execute({
-      type: 'CORRECT',
-      field: { id: 'f1', tag: 'textarea' },
-      text: 'hello world test sentence',
+    expect(result.error).toBe('no_target')
+    expect(result.error).not.toBe('missing_api_key')
+  })
+
+  it('CorrectionFeature no longer returns missing_api_key', async () => {
+    const result = await executeCorrectionOnField({
+      consentAccepted: false,
+      field: 'textarea',
     })
     expect(result.error).toBe('consent_required')
     expect(result.error).not.toBe('missing_api_key')
+    expect(result.error).not.toBe('no_target')
+  })
+
+  it('CorrectionFeature blocks a protected password field before consent', async () => {
+    const result = await executeCorrectionOnField({
+      consentAccepted: false,
+      field: 'password',
+    })
+    expect(result.error).toBe('safety_blocked')
+    expect(result.error).not.toBe('consent_required')
+  })
+
+  it('CorrectionFeature with consent on an eligible field does not return consent_required', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: false,
+        status: 503,
+        json: async () => ({}),
+      })),
+    )
+    const result = await executeCorrectionOnField({
+      consentAccepted: true,
+      field: 'textarea',
+    })
+    expect(result.error).not.toBe('consent_required')
+    expect(result.error).not.toBe('no_target')
+    expect(result.error).not.toBe('missing_api_key')
+    vi.unstubAllGlobals()
   })
 
   it('StateManager correction settings omit BYOK fields', () => {

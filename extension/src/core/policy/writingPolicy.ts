@@ -144,6 +144,16 @@ export function isShortcutsOnly(): boolean {
   return resolveHelpStyle() === 'shortcuts_only'
 }
 
+/** Direct: auto-apply into the field (helpStyle `auto`). */
+export function isDirectHelpStyle(): boolean {
+  return resolveHelpStyle() === 'auto'
+}
+
+/** Box: show a card; never rewrite until accept (helpStyle `suggestions`). */
+export function isBoxHelpStyle(): boolean {
+  return resolveHelpStyle() === 'suggestions'
+}
+
 export function allowAutomaticNetworkAssist(): boolean {
   return stateManager.isActive() && !isShortcutsOnly()
 }

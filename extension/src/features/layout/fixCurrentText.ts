@@ -12,6 +12,8 @@ import {
 } from './layouts/index.ts'
 import { applyLayoutSpansToText, inferLayoutSpans } from '../../core/engine/layoutSequence.ts'
 import { isExceptedToken } from './profile/exceptions.ts'
+import { isSupportedLayout } from './layouts/registry.ts'
+import type { LayoutId } from './layouts/types.ts'
 import { isInsideMarkdownCode, isSafeToken, tokenizeText } from '../../core/safety/index.ts'
 import type { LayoutClassifier } from './classifier/LayoutClassifier.ts'
 import type { LayoutMetrics } from './metrics.ts'
@@ -58,8 +60,11 @@ export function planShortcutFixes(
 ): FieldFix[] {
   const inferred = inferLayoutSpans(text, undefined, { commitOpenToken: true })
   const { applied } = applyLayoutSpansToText(text, inferred, { includeMedium: true })
-  const fromEngine = applied
+  const fromEngine: FieldFix[] = applied
     .filter((span) => span.range.start >= target.start && span.range.end <= target.end)
+    .filter((span): span is typeof span & { sourceLayout: LayoutId; targetLayout: LayoutId } =>
+      isSupportedLayout(span.sourceLayout) && isSupportedLayout(span.targetLayout),
+    )
     .map((span) => ({
       start: span.range.start,
       end: span.range.end,
@@ -193,6 +198,8 @@ export function applyLayoutFix(
       expectedGeneration: lockGeneration,
       cycleGeneration: lockGeneration,
       placeCaretAfter: options.placeCaretAfter,
+      // Manual selection shortcuts keep the range selected; allow the write.
+      allowActiveEdit: true,
       auto: automatic,
       capability: 'layout',
       trigger: automatic ? 'auto' : 'shortcut',

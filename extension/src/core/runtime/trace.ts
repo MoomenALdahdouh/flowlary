@@ -7,6 +7,7 @@ export type RuntimeTraceName =
   | 'STALE'
   | 'SCHEDULE'
   | 'ARBITRATE'
+  | 'ENGLISH_HTTP'
 
 export type RuntimeTraceEvent = {
   name: RuntimeTraceName
@@ -19,6 +20,12 @@ export type RuntimeTraceEvent = {
   verdict?: string
   reason?: string
   competing?: string
+  /** Dev-only English HTTP probe — never includes text, tokens, or auth. */
+  trigger?: string
+  localFirst?: boolean
+  pendingBefore?: boolean
+  httpStatus?: number | string
+  durationMs?: number
 }
 
 const TRACE_KEY = 'flowlary.runtimeTrace'
@@ -53,6 +60,11 @@ export function runtimeTrace(event: RuntimeTraceEvent): void {
   if (event.reason) parts.push(`reason=${event.reason}`)
   if (event.competing) parts.push(`competing=${event.competing}`)
   if (event.fieldId) parts.push(`field=${event.fieldId}`)
+  if (event.trigger) parts.push(`trigger=${event.trigger}`)
+  if (event.localFirst !== undefined) parts.push(`localFirst=${event.localFirst}`)
+  if (event.pendingBefore !== undefined) parts.push(`pendingBefore=${event.pendingBefore}`)
+  if (event.httpStatus !== undefined) parts.push(`httpStatus=${event.httpStatus}`)
+  if (event.durationMs !== undefined) parts.push(`durationMs=${event.durationMs}`)
   const line = parts.join(' ')
   testSink?.(line)
   if (!testSink && typeof console !== 'undefined' && typeof console.debug === 'function') {

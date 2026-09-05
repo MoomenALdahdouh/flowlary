@@ -55,6 +55,7 @@ import {
 } from '../engine/writingReview.ts'
 import { notifyEnforceEnglishCorrectionApplied } from '../../features/correction/correctionFeedback.ts'
 import { recordSpanCorrectionOutcome } from '../../features/correction/recordSpanCorrectionOutcome.ts'
+import { recordLayoutLearningAccepted } from '../../features/learning/recordLayoutLearning.ts'
 
 let cycle = 0
 
@@ -609,6 +610,13 @@ export function fulfillWritingDecision(options: {
       if (applied) {
         session.noteLayoutRun(applied.direction, range.start + replacement.length, applied.sourceChunkIds.length)
       }
+      const original = text.slice(range.start, range.end)
+      recordLayoutLearningAccepted(
+        `layout-auto-${acquired.requestId}-${range.start}`,
+        text,
+        original,
+        replacement,
+      )
     } else {
       session.clearPendingLayoutRun()
     }

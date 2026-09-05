@@ -56,8 +56,11 @@ async function check(
   })
   const status = result.ok ? 'WORKING' : `NOT WORKING (${result.category})`
   const extraBit = extra ? ` | ${extra}` : ''
+  const failBit = result.ok
+    ? ''
+    : ` | finish=${result.finishReason ?? 'n/a'} | tokens=${result.usage?.outputTokens ?? 'n/a'} reasonTokens=${result.usage?.reasoningTokens ?? 'n/a'}`
   console.log(
-    `${label}: ${status} | model=${result.model} | ${result.latencyMs}ms${extraBit}`,
+    `${label}: ${status} | model=${result.model} | ${result.latencyMs}ms${extraBit}${failBit}`,
   )
   return result.ok
 }

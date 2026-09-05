@@ -44,6 +44,7 @@ function assertInternalHref(href: string, html: string) {
   else if (url.pathname === '/support') expect(SUPPORT_HASHES.has(id)).toBe(true)
   else if (url.pathname === '/contact') expect(id === '').toBe(true)
   else if (url.pathname === '/pricing') expect(['students', 'pr-compare'].includes(id)).toBe(true)
+  else if (url.pathname === '/dashboard') expect(['lab', 'overview'].includes(id)).toBe(true)
   else expect.fail(`unexpected hash ${href}`)
 }
 
@@ -59,11 +60,11 @@ describe('website buttons and links', () => {
     }
   })
 
-  it('sends Add to Chrome to the guide and Try the demo to /try', () => {
+  it('sends Add to Chrome as an install action and Try the demo to /try', () => {
     const html = renderRoute('/')
-    expect(html).toContain('href="/guide"')
     expect(html).toContain('href="/try"')
     expect(html).toContain('Add to Chrome')
+    expect(html).toContain('aria-haspopup="dialog"')
   })
 
   it('features final CTA links to Try', () => {

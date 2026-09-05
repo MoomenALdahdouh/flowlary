@@ -19,6 +19,8 @@ import { createLayoutMetrics } from './metrics.ts'
 import { LayoutScheduler } from './scheduler.ts'
 import { createSpeedBox, type SpeedBox } from './speedBox.ts'
 import type { UserLayoutProfile } from './layouts/types.ts'
+import { readFieldText } from '../../core/dom/read.ts'
+import { resolveExplicitSelectionTarget } from '../../core/engine/shortcutSelection.ts'
 
 export type LayoutModuleOptions = {
   engine: InputEngine
@@ -131,6 +133,11 @@ export function createLayoutFeature(options: LayoutModuleOptions): LayoutModule 
       const requestId = command.requestId ?? session.getRequestSequence()
       const active = session.getActiveRequest()
       const signal = active?.signal ?? new AbortController().signal
+      const liveText = readFieldText(editable)
+      const explicit = resolveExplicitSelectionTarget(liveText, command)
+      if (command.explicitSelection && !explicit) {
+        return { ok: false, operation: 'FIX_LAYOUT', stale: true, error: 'selection_stale' }
+      }
 
       const result = await fixCurrentText({
         element: editable,
@@ -142,8 +149,8 @@ export function createLayoutFeature(options: LayoutModuleOptions): LayoutModule 
         signal,
         classifier,
         metrics,
-        rangeStart: command.rangeStart,
-        rangeEnd: command.rangeEnd,
+        rangeStart: explicit?.start ?? command.rangeStart,
+        rangeEnd: explicit?.end ?? command.rangeEnd,
       })
 
       if (result.aborted) {
@@ -152,7 +159,12 @@ export function createLayoutFeature(options: LayoutModuleOptions): LayoutModule 
       if (result.stale) {
         return { ok: false, operation: 'FIX_LAYOUT', stale: true }
       }
-      return { ok: result.applied, operation: 'FIX_LAYOUT', data: { applied: result.applied } }
+      return {
+        ok: result.applied,
+        operation: 'FIX_LAYOUT',
+        data: { applied: result.applied },
+        error: result.applied ? undefined : 'noop',
+      }
     },
   }
 

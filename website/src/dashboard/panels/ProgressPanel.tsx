@@ -12,7 +12,7 @@ import {
   summarizeProgressRange,
   type ProgressRange,
 } from '../learning/progress.ts'
-import { WRITING_LEARNING_CATEGORIES } from '@flowlary/shared'
+import { INPUT_LEARNING_CATEGORIES, WRITING_LEARNING_CATEGORIES } from '@flowlary/shared'
 
 type ProgressPanelProps = {
   bundle: WebLearningBundle
@@ -26,13 +26,16 @@ type ProgressPanelProps = {
 function categoryLabel(type: string, copy: DashboardCopy): string {
   if (type === 'spelling') return copy.practice.focusSpelling
   if (type === 'grammar') return copy.practice.focusGrammar
+  if (type === 'layout') return 'Keyboard layout'
   return copy.practice.focusWording
 }
 
 export function ProgressPanel({ bundle, copy, advanced, onRefresh, onOpenPractice, onOpenLab }: ProgressPanelProps) {
   const [chartRange, setChartRange] = useState<ProgressRange>('all')
   const [view, setView] = useState<'list' | 'type'>('list')
-  const [typeFilter, setTypeFilter] = useState<'all' | (typeof WRITING_LEARNING_CATEGORIES)[number]>('all')
+  const [typeFilter, setTypeFilter] = useState<
+    'all' | (typeof WRITING_LEARNING_CATEGORIES)[number] | (typeof INPUT_LEARNING_CATEGORIES)[number]
+  >('all')
   const [historyFocus, setHistoryFocus] = useState<string | null>(null)
   const [clearing, setClearing] = useState(false)
   const metrics = useMemo(() => computeWebProgress(bundle), [bundle])
@@ -94,7 +97,7 @@ export function ProgressPanel({ bundle, copy, advanced, onRefresh, onOpenPractic
   const topPattern = metrics.recurringPatterns[0] ?? null
   const grouped =
     view === 'type'
-      ? WRITING_LEARNING_CATEGORIES.map((type) => ({
+      ? [...WRITING_LEARNING_CATEGORIES, ...INPUT_LEARNING_CATEGORIES].map((type) => ({
           type,
           items: visibleMistakes.filter((item) => item.category === type),
         })).filter((group) => group.items.length > 0)
@@ -223,6 +226,19 @@ export function ProgressPanel({ bundle, copy, advanced, onRefresh, onOpenPractic
                 }}
               >
                 {categoryLabel(type, copy)} · {rangeSummary.byType[type]}
+              </button>
+            ))}
+            {INPUT_LEARNING_CATEGORIES.map((type) => (
+              <button
+                key={type}
+                type="button"
+                className={typeFilter === type ? 'is-active' : ''}
+                onClick={() => {
+                  setTypeFilter(type)
+                  setHistoryFocus(null)
+                }}
+              >
+                {categoryLabel(type, copy)} · {metrics.byType[type]}
               </button>
             ))}
           </div>

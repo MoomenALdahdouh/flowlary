@@ -172,7 +172,7 @@ export async function renderLearningReportDocx(
   const doc = new Document({
     sections: [
       {
-        properties: { rightToLeft: rtl },
+        properties: {},
         children: buildDocxChildren(model, labels, rtl),
       },
     ],

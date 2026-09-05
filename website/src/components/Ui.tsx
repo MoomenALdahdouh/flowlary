@@ -1,8 +1,9 @@
 import type { ReactElement, ReactNode } from 'react'
-import { cloneElement, isValidElement } from 'react'
+import { cloneElement, isValidElement, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CHROME_WEB_STORE_URL } from '../config.ts'
 import { useMessages } from '../i18n/index.tsx'
+import { InstallExtensionModal } from './install/InstallExtensionModal.tsx'
 
 export type Variant = 'primary' | 'secondary' | 'tertiary' | 'ghost' | 'danger' | 'link'
 
@@ -23,6 +24,7 @@ type ButtonProps = {
   'aria-busy'?: boolean
   'aria-describedby'?: string
   'aria-expanded'?: boolean
+  'aria-haspopup'?: boolean | 'dialog'
 }
 
 export function Button({
@@ -42,6 +44,7 @@ export function Button({
   'aria-busy': ariaBusy,
   'aria-describedby': ariaDescribedBy,
   'aria-expanded': ariaExpanded,
+  'aria-haspopup': ariaHaspopup,
 }: ButtonProps) {
   const classes = `btn btn-${variant} ${className}`.trim()
 
@@ -74,6 +77,7 @@ export function Button({
       aria-busy={ariaBusy}
       aria-describedby={ariaDescribedBy}
       aria-expanded={ariaExpanded}
+      aria-haspopup={ariaHaspopup}
     >
       {children}
     </button>
@@ -113,6 +117,7 @@ export function InstallFlowlaryButton({
   showChromeIcon?: boolean
 }) {
   const t = useMessages()
+  const [open, setOpen] = useState(false)
   const text = label ?? t.cta.install ?? t.cta.primary
   const content = (
     <>
@@ -128,9 +133,18 @@ export function InstallFlowlaryButton({
     )
   }
   return (
-    <Button variant={variant} to="/guide" className={className}>
-      {content}
-    </Button>
+    <>
+      <Button
+        variant={variant}
+        className={className}
+        onClick={() => setOpen(true)}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+      >
+        {content}
+      </Button>
+      <InstallExtensionModal open={open} onClose={() => setOpen(false)} />
+    </>
   )
 }
 

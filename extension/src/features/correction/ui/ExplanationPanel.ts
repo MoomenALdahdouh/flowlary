@@ -207,7 +207,8 @@ export class ExplanationPanel {
       e.stopPropagation()
       this.hide()
     })
-    this.shadow.querySelector('.panel')?.addEventListener('keydown', (e) => {
+    this.shadow.querySelector('.panel')?.addEventListener('keydown', (e: Event) => {
+      if (!(e instanceof KeyboardEvent)) return
       if (e.key === 'Escape') {
         e.preventDefault()
         e.stopPropagation()

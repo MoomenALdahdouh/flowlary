@@ -338,14 +338,14 @@ export function DashboardTour({ open, onNavigate, onClose }: DashboardTourProps)
 
   return (
     <div className="fl-tour" role="dialog" aria-modal="true" aria-labelledby="fl-tour-title">
-      {panels ? (
+      {rect ? (
         <>
           {(['top', 'left', 'right', 'bottom'] as const).map((key) => (
             <button
               key={key}
               type="button"
               className={`fl-tour-panel fl-tour-panel-${key}`}
-              style={panels[key]}
+              style={panels?.[key]}
               aria-label={t('tour.skip')}
               onClick={() => void finish()}
             />

@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { execSync } from 'node:child_process'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..')
@@ -18,6 +18,26 @@ function walk(dir: string): string[] {
   return files
 }
 
+function distTextFiles(): string[] {
+  return walk(DIST_DIR).filter((file) => /\.(js|json|html|css)$/.test(file) && !file.endsWith('.map'))
+}
+
+function combinedDist(): string {
+  return distTextFiles()
+    .map((file) => readFileSync(file, 'utf8'))
+    .join('\n')
+}
+
+function hitsFor(pattern: RegExp): string[] {
+  const hits: string[] = []
+  for (const file of distTextFiles()) {
+    const content = readFileSync(file, 'utf8')
+    if (!pattern.test(content)) continue
+    hits.push(relative(ROOT, file))
+  }
+  return hits
+}
+
 describe('Phase 23 release security scan', () => {
   beforeAll(() => {
     // Development `vite build` injects localhost hosts into dist. Release audit must
@@ -31,17 +51,31 @@ describe('Phase 23 release security scan', () => {
     })
   }, 120_000)
 
-  it('dist bundle contains no secrets or dev hosts', () => {
-    const patterns = [/gsk_[a-zA-Z0-9]+/, /GROQ_API_KEY/, /api\.groq\.com/, /localhost/, /127\.0\.0\.1/]
-    const files = walk(DIST_DIR).filter((file) => /\.(js|json|html|css)$/.test(file) && !file.endsWith('.map'))
+  it('dist bundle contains no secrets or development API endpoints', () => {
+    // `127.0.0.1` must not appear in the release artifact (local API / bridge
+    // hosts are compile-time excluded). The word `localhost` remains only as
+    // the writing-engine technical-token regex, not as an HTTP endpoint.
+    const forbidden = [
+      /gsk_[a-zA-Z0-9]+/,
+      /GROQ_API_KEY/,
+      /api\.groq\.com/,
+      /127\.0\.0\.1/,
+      /https?:\/\/localhost(?::\d+)?\b/,
+      /localhost:8787/,
+      /writing-api\.test/,
+    ]
     const hits: string[] = []
-    for (const file of files) {
-      const content = readFileSync(file, 'utf8')
-      for (const pattern of patterns) {
-        if (pattern.test(content)) hits.push(`${file}: ${pattern}`)
+    for (const pattern of forbidden) {
+      for (const file of hitsFor(pattern)) {
+        hits.push(`${file}: ${pattern}`)
       }
     }
     expect(hits).toEqual([])
+  })
+
+  it('production bundle uses the production API host', () => {
+    expect(combinedDist()).toContain('https://api.flowlary.com')
+    expect(combinedDist()).not.toContain('http://127.0.0.1:8787')
   })
 
   it('production manifest uses api.flowlary.com only', () => {

@@ -16,6 +16,7 @@ import {
 import { ChromeIcon } from '@/bolt/components/icons/ChromeIcon'
 import { SURFACES, FEATURES } from '@/bolt/data/site'
 import { FidelityBadge } from '../../components/Ui.tsx'
+import { AddToChromeButton } from '../../components/install/AddToChromeButton.tsx'
 import CTASection from '@/bolt/components/ui/CTASection'
 import KeyboardRepairDemo from '@/bolt/components/demos/KeyboardRepairDemo'
 import { CompactJobDemos, InFieldDemo, LiveTranslationDemo, SpeedBoxDemo } from '@/bolt/demos/zipADemos'
@@ -75,10 +76,10 @@ export default function Home() {
               ) : null}
               <div className="hp-hero-launch">
                 <div className="hp-hero-cta">
-                  <Link to="/guide" className="fl-nav-cta h-12 px-6 text-sm">
-                    <ChromeIcon className="h-4 w-4" />
-                    {t.pages.chrome}
-                  </Link>
+                  <AddToChromeButton
+                    className="fl-nav-cta h-12 px-6 text-sm"
+                    chromeIcon={<ChromeIcon className="h-4 w-4" />}
+                  />
                   <Link to="/try" className="btn-secondary h-12">
                     {t.pages.tryDemos}
                     <ArrowRight className="h-4 w-4 rtl:rotate-180" />

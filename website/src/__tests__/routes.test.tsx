@@ -4,7 +4,19 @@ import { describe, expect, it } from 'vitest'
 import { App } from '../App.tsx'
 import { ROUTES } from '../routes.ts'
 
-const AUTH_GATED_ROUTES = new Set(['/dashboard', '/dashboard/support', '/lab'])
+const AUTH_GATED_ROUTES = new Set([
+  '/dashboard',
+  '/dashboard/support',
+  '/lab',
+  '/admin',
+  '/admin/users',
+  '/admin/subscriptions',
+  '/admin/usage',
+  '/admin/support',
+  '/admin/activity',
+  '/admin/settings',
+  '/admin/feedback',
+])
 
 function renderRoute(path: string) {
   return renderToString(

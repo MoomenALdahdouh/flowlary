@@ -4,6 +4,7 @@ import { FlowlaryStorage } from '../../extension/src/storage/index.ts'
 import { activeAccountContext } from '../../extension/src/storage/activeAccountContext.ts'
 import {
   importWebAccountSession,
+  loginAccount,
   readAccountSession,
   refreshAccountSession,
 } from '../../extension/src/config/accountAuth.ts'
@@ -178,5 +179,92 @@ describe('extension account session', () => {
     expect(result.sessionId).toBe('ext-session')
     expect(result.accessToken).toBe('ext-access')
     expect(mock.local[STORAGE_KEYS.authSessionId]).toEqual({ value: 'ext-session', _v: 1 })
+  })
+})
+
+describe('extension account login error taxonomy', () => {
+  beforeEach(() => {
+    activeAccountContext.clear()
+  })
+
+  afterEach(() => {
+    activeAccountContext.clear()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  function installStorage() {
+    const mock = createMockChromeStorage()
+    mock.install()
+    seedFlowlaryInstallAuth(mock)
+    return new FlowlaryStorage()
+  }
+
+  function stubLogin(status: number, body: Record<string, unknown>, ok = status >= 200 && status < 300) {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo) => {
+        expect(String(input)).toContain('/api/auth/login')
+        return { ok, status, json: async () => body }
+      }),
+    )
+  }
+
+  async function expectLoginCode(code: string) {
+    const storage = installStorage()
+    await expect(loginAccount(storage, 'user@flowlary.com', 'wrong-password')).rejects.toMatchObject({
+      name: 'AccountAuthError',
+      code,
+      message: code,
+    })
+  }
+
+  it('maps 401 to account_credentials', async () => {
+    stubLogin(401, { error: { message: 'invalid credentials' } })
+    await expectLoginCode('account_credentials')
+  })
+
+  it('maps transport failure to network', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new TypeError('Failed to fetch')
+      }),
+    )
+    await expectLoginCode('network')
+  })
+
+  it('maps server 503 to network', async () => {
+    stubLogin(503, { error: { message: 'unavailable' } })
+    await expectLoginCode('network')
+  })
+
+  it('maps other HTTP login failures to account_login_failed', async () => {
+    stubLogin(429, { error: { message: 'too many requests' } })
+    await expectLoginCode('account_login_failed')
+  })
+
+  it('maps a 200 response that cannot form a session to account_login_invalid', async () => {
+    stubLogin(200, { ok: true })
+    await expectLoginCode('account_login_invalid')
+  })
+
+  it('persists a successful login session', async () => {
+    stubLogin(200, {
+      ok: true,
+      access_token: 'login-access',
+      refresh_token: 'login-refresh',
+      session_id: 'login-session',
+      expires_in: 3600,
+      account: { id: TEST_ACCOUNT_A, email: 'user@flowlary.com', plan: 'trial' },
+    })
+    const storage = installStorage()
+    const session = await loginAccount(storage, 'user@flowlary.com', 'correct-password')
+    expect(session.sessionId).toBe('login-session')
+    expect(session.email).toBe('user@flowlary.com')
+    expect(await readAccountSession(storage)).toMatchObject({
+      sessionId: 'login-session',
+      accessToken: 'login-access',
+    })
   })
 })

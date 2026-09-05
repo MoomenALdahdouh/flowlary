@@ -8,4 +8,9 @@ export * from './frameGuard.ts'
 export * from './writeOrigin.ts'
 export * from './generation.ts'
 export * from './editor.ts'
-export * from './adapter.ts'
+export {
+  createEditableAdapter,
+  findEditableFromTarget,
+  isSupportedEditable,
+  type EditableAdapter,
+} from './adapter.ts'

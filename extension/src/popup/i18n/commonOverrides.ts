@@ -1,4 +1,4 @@
-import type { MessageCatalog } from './types.ts'
+import type { MessageOverrides } from './types.ts'
 
 type ShellCopy = {
   tagline: string
@@ -37,7 +37,7 @@ type ShellCopy = {
   resultLabel: string
 }
 
-export function extensionShellOverrides(copy: ShellCopy): Partial<MessageCatalog> {
+export function extensionShellOverrides(copy: ShellCopy): MessageOverrides {
   return {
     brand: { tagline: copy.tagline },
     nav: {
@@ -98,5 +98,5 @@ export function extensionShellOverrides(copy: ShellCopy): Partial<MessageCatalog
       enable: copy.enableAi,
       unavailable: copy.aiUnavailable,
     },
-  } as Partial<MessageCatalog>
+  }
 }

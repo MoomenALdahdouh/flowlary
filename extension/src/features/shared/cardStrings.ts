@@ -1,4 +1,4 @@
-import { readUiLocale } from '../../popup/i18n/localeStorage.ts'
+import { peekUiLocale } from '../../popup/i18n/localeStorage.ts'
 import { en } from '../../popup/i18n/en.ts'
 import { ar } from '../../popup/i18n/ar.ts'
 
@@ -27,7 +27,7 @@ const DEFAULT: CardActionStrings = {
 }
 
 export function resolveCardActionStrings(): CardActionStrings {
-  const locale = readUiLocale()
+  const locale = peekUiLocale()
   if (locale === 'ar') {
     return {
       apply: ar.card?.apply ?? DEFAULT.apply,

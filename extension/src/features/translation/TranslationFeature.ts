@@ -23,6 +23,7 @@ import {
 } from './languages.ts'
 import { createTranslationMetrics, type TranslationMetrics } from './metrics.ts'
 import { TranslationScheduler } from './scheduler.ts'
+import { resolveExplicitSelectionTarget } from '../../core/engine/shortcutSelection.ts'
 
 export type TranslationProviderFn = (
   request: TranslationRequest,
@@ -172,8 +173,13 @@ export function createTranslationFeature(options: TranslationModuleOptions): Tra
       const requestId = command.requestId ?? session.getRequestSequence()
       const signal = session.getActiveRequest()?.signal
       const text = readFieldText(editable)
-      const selection =
-        command.rangeStart != null && command.rangeEnd != null
+      const explicit = resolveExplicitSelectionTarget(text, command)
+      if (command.explicitSelection && !explicit) {
+        return { ok: false, operation: 'TRANSLATE', stale: true }
+      }
+      const selection = explicit
+        ? { start: explicit.start, end: explicit.end }
+        : command.rangeStart != null && command.rangeEnd != null
           ? { start: command.rangeStart, end: command.rangeEnd }
           : readSelectionRange(editable)
       if (!selection) {
@@ -182,6 +188,10 @@ export function createTranslationFeature(options: TranslationModuleOptions): Tra
 
       const target = resolveTranslateTarget(text, selection.start, selection.end)
       if (!target) {
+        return { ok: false, operation: 'TRANSLATE', error: 'empty_text' }
+      }
+      if (explicit && (target.start !== explicit.start || target.end !== explicit.end)) {
+        // Explicit selection must remain the write target — never expand.
         return { ok: false, operation: 'TRANSLATE', error: 'empty_text' }
       }
 

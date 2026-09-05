@@ -174,6 +174,10 @@ function installPassthroughCapture(
 }
 
 test.describe('live translation polish (real API browser)', () => {
+  test.skip(
+    process.env.FLOWLARY_LIVE_GROQ !== '1',
+    'Live Groq polish: set FLOWLARY_LIVE_GROQ=1 with a running local API.',
+  )
   test.describe.configure({ timeout: 90_000 })
 
   let context: BrowserContext

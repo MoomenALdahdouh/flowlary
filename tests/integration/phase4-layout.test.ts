@@ -232,6 +232,7 @@ describe('Phase 4 — Layout module integration', () => {
   })
 
   it('detects shortcuts without collision', () => {
+    expect(detectShortcut(shortcutEvent('KeyY'))).toBe('TRANSLATE')
     expect(detectShortcut(shortcutEvent('Comma'))).toBe('TRANSLATE')
     expect(detectShortcut(shortcutEvent('KeyP'))).toBe('FIX_LAYOUT')
     expect(detectShortcut(shortcutEvent('KeyE'))).toBe('CORRECT')

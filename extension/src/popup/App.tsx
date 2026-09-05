@@ -111,7 +111,7 @@ export function App() {
           />
         ) : null}
 
-        {status && !showFirstWin ? (
+        {status && domain && !showFirstWin ? (
           <>
             <ContextualFeedbackPrompt signedIn={Boolean(status.account.signedIn)} />
             <HomeView

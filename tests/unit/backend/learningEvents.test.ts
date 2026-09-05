@@ -127,12 +127,34 @@ describe('WL-7 — learning events API', () => {
     const token = await registerAccount(config, 'invalid@flowlary.com', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb')
     const res = await request(config, 'POST', '/api/learning/events', {
       headers: { authorization: `Bearer ${token}` },
-      body: { events: [validWritingEvent({ category: 'layout' })] },
+      body: { events: [validWritingEvent({ category: 'not-a-real-category' })] },
     })
     expect(res.status).toBe(200)
     const result = res.body.result as { accepted?: number; rejected?: number }
     expect(result.accepted).toBe(0)
     expect(result.rejected).toBeGreaterThan(0)
+  })
+
+  it('accepts layout learning events from the extension', async () => {
+    const config = createTestConfig()
+    const token = await registerAccount(config, 'layout@flowlary.com', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb')
+    const res = await request(config, 'POST', '/api/learning/events', {
+      headers: { authorization: `Bearer ${token}` },
+      body: {
+        events: [
+          validWritingEvent({
+            category: 'layout',
+            original: 'hgfdj',
+            corrected: 'البيت',
+            action: 'accepted',
+            sampleHash: hashWritingSample('hgfdj typed wrong'),
+          }),
+        ],
+      },
+    })
+    expect(res.status).toBe(200)
+    const result = res.body.result as { accepted?: number }
+    expect(result.accepted).toBe(1)
   })
 
   it('accepts website practice events', async () => {
@@ -234,5 +256,34 @@ describe('validateLearningEventIngestInput', () => {
       Date.now(),
     )
     expect(result).toBeNull()
+  })
+
+  it('accepts layout events from the extension client', () => {
+    const result = validateLearningEventIngestInput(
+      validWritingEvent({
+        category: 'layout',
+        original: 'hgfdj',
+        corrected: 'البيت',
+        action: 'accepted',
+        sampleHash: hashWritingSample('hgfdj typed wrong'),
+      }),
+      Date.now(),
+    )
+    expect(result?.category).toBe('layout')
+  })
+
+  it('accepts layout writing events from the website client', () => {
+    const result = validateLearningEventIngestInput(
+      validWritingEvent({
+        category: 'layout',
+        original: 'hgfdj',
+        corrected: 'البيت',
+        action: 'accepted',
+        sampleHash: hashWritingSample('hgfdj typed wrong'),
+      }),
+      Date.now(),
+      { website: true },
+    )
+    expect(result?.category).toBe('layout')
   })
 })

@@ -1,17 +1,17 @@
 import type { CacheMetrics } from '@flowlary/shared'
 
-export function createRequestCoalescer<T>(metrics?: CacheMetrics): {
-  run(key: string, fn: () => Promise<T>): Promise<T>
+export function createRequestCoalescer(metrics?: CacheMetrics): {
+  run<T>(key: string, fn: () => Promise<T>): Promise<T>
   reset(): void
 } {
-  const inflight = new Map<string, Promise<T>>()
+  const inflight = new Map<string, Promise<unknown>>()
 
   return {
-    run(key, fn) {
+    run<T>(key: string, fn: () => Promise<T>): Promise<T> {
       const existing = inflight.get(key)
       if (existing) {
         metrics && (metrics.request_coalesced += 1)
-        return existing
+        return existing as Promise<T>
       }
       const promise = fn().finally(() => {
         inflight.delete(key)

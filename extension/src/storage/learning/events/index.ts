@@ -67,7 +67,8 @@ export function sanitizeLearningEvent(raw: unknown): LearningEvent | null {
     return null
   }
   if (!isValidLearningChange(value.original, value.corrected)) return null
-  if (value.source !== 'writing' && value.source !== 'practice' && value.source !== 'future-practice') {
+  const sourceRaw = (value as { source?: unknown }).source
+  if (sourceRaw !== 'writing' && sourceRaw !== 'practice' && sourceRaw !== 'future-practice') {
     return null
   }
 
@@ -79,8 +80,7 @@ export function sanitizeLearningEvent(raw: unknown): LearningEvent | null {
     version: typeof value.version === 'number' ? value.version : LEARNING_EVENT_VERSION,
     timestamp: value.timestamp,
     batchId: value.batchId,
-    source:
-      value.source === 'practice' || value.source === 'future-practice' ? 'practice' : 'writing',
+    source: sourceRaw === 'practice' || sourceRaw === 'future-practice' ? 'practice' : 'writing',
     category: value.category,
     original: value.original,
     corrected: value.corrected,

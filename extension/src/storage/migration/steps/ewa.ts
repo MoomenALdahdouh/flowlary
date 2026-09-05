@@ -1,4 +1,6 @@
+import type { FlowlarySettings } from '../../../core/state/StateManager.ts'
 import type { FlowlaryStorage } from '../../index.ts'
+import { getSettings, setSettings } from '../../facade.ts'
 import { LEGACY_EWA } from '../../legacyKeys.ts'
 import {
   isValidCorrection,
@@ -20,6 +22,9 @@ type StorageReader = {
   setGroqKey(key: string): Promise<void>
   getFlowlaryHistory(): Promise<ReturnType<typeof normalizeHistoryPreserve>>
   setFlowlaryHistory(value: ReturnType<typeof normalizeHistoryPreserve>): Promise<void>
+  hasFlowlarySettings(): Promise<boolean>
+  getFlowlarySettings(): Promise<FlowlarySettings>
+  setFlowlarySettings(value: FlowlarySettings): Promise<void>
 }
 
 export function createStorageReader(storage: FlowlaryStorage): StorageReader {
@@ -44,11 +49,42 @@ export function createStorageReader(storage: FlowlaryStorage): StorageReader {
     getFlowlaryHistory: async () =>
       normalizeHistoryPreserve(await storage.get(storage.keys.history, 'local')),
     setFlowlaryHistory: (value) => storage.set(storage.keys.history, value, 'local'),
+    hasFlowlarySettings: async () => Boolean(await storage.get(storage.keys.settings, 'local')),
+    getFlowlarySettings: () => getSettings(storage),
+    setFlowlarySettings: (value) => setSettings(storage, value),
   }
 }
 
 function normalizeEwaMode(value: unknown): 'box' | 'direct' {
   return value === 'direct' ? 'direct' : 'box'
+}
+
+/**
+ * Unified policy reads `settings.improveEnglish` / `helpStyle` ahead of
+ * `correction.enabled` / `correction.mode`. Persist explicit EWA values so
+ * hydrate defaults cannot re-enable English or rewrite apply mode.
+ * Skip fields the user already set in unified settings.
+ */
+async function persistUnifiedPolicyFromEwa(
+  reader: StorageReader,
+  raw: Record<string, unknown>,
+): Promise<void> {
+  const existing = await reader.getFlowlarySettings()
+  const next = { ...existing }
+  let changed = false
+
+  if (typeof raw.enabled === 'boolean' && typeof existing.improveEnglish !== 'boolean') {
+    next.improveEnglish = raw.enabled
+    changed = true
+  }
+  if (
+    (existing.helpStyle == null || existing.helpStyle === undefined) &&
+    (raw.correctionMode === 'box' || raw.correctionMode === 'direct')
+  ) {
+    next.helpStyle = raw.correctionMode === 'box' ? 'suggestions' : 'auto'
+    changed = true
+  }
+  if (changed) await reader.setFlowlarySettings(next)
 }
 
 export async function migrateEwaCorrection(reader: StorageReader): Promise<MigrationStepResult> {
@@ -70,6 +106,7 @@ export async function migrateEwaCorrection(reader: StorageReader): Promise<Migra
     })
 
     await reader.setFlowlaryCorrection(merged)
+    await persistUnifiedPolicyFromEwa(reader, raw)
 
     const verify = await reader.getFlowlaryCorrection()
     if (!verify || !isValidCorrection(verify)) {

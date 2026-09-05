@@ -223,13 +223,15 @@ export async function buildStatus(options?: { forceHealthProbe?: boolean }): Pro
         monthlySoftCap: null,
         capabilities: [],
       }
+  const writingPolicy = resolveWritingPolicy()
   return {
     brand: BRAND,
     active: stateManager.isActive(),
     features: {
       correction: stateManager.correction.enabled,
       translation: stateManager.translation.shortcutEnabled,
-      layout: stateManager.layout.autoEnabled,
+      // Match Settings Layout toggle (fixWrongTyping), not autoEnabled — shortcuts-only keeps layout on with auto off.
+      layout: writingPolicy.fixWrongTyping,
     },
     translation: {
       mode: stateManager.translation.mode,
@@ -253,7 +255,7 @@ export async function buildStatus(options?: { forceHealthProbe?: boolean }): Pro
       sourceLayout: stateManager.layout.sourceLayout,
       targetLayouts: [...stateManager.layout.targetLayouts],
     },
-    writingPolicy: resolveWritingPolicy(),
+    writingPolicy,
     excludedDomains: [...stateManager.settings.excludedDomains],
     pageHostname,
     pageExcluded,
@@ -752,8 +754,16 @@ export async function handleMessage(
         validated.value.type === 'RUN_COMMAND'
           ? validated.value.operation
           : validated.value.command.type
+      if (
+        operation !== 'TRANSLATE' &&
+        operation !== 'FIX_LAYOUT' &&
+        operation !== 'CORRECT' &&
+        operation !== 'SPEED_BOX'
+      ) {
+        return { ok: false, error: 'unsupported_operation' }
+      }
       const result = await runCommandOnActiveTab(operation)
-      if (result.handlerExecuted) {
+      if (result.ok) {
         void recordFeedbackMeaningfulUse(flowlaryStorage, featureForCommand(operation))
       }
       return result

@@ -184,6 +184,7 @@ export type SupportTicketPublicView = {
 export type SupportTicketAdminView = SupportTicketPublicView & {
   accountId: string
   accountEmailMasked: string
+  accountEmail: string
   plan: string
   messageCount: number
   internalNotes: string[]

@@ -235,6 +235,11 @@ export class WritingRuntime {
     }
 
     try {
+      // Idle wake means the user paused — treat the caret token as finished
+      // so the last wrong-layout word is included (same idea as English idle repair).
+      if (!wake.focusOut) {
+        session.requestCommitOpenToken()
+      }
       if (pipelineDue.size > 0) {
         const pipelineOps = { ...operations }
         if (englishIdleAnalyzer) delete pipelineOps.english

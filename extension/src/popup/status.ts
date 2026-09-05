@@ -50,6 +50,17 @@ export function requiresAuth(status: ExtensionStatus): boolean {
   return !status.account.signedIn
 }
 
+/** Layout is on when the writing-policy toggle is on — not only when auto-detect runs. */
+export function isLayoutFeatureOn(status: ExtensionStatus): boolean {
+  if (typeof status.writingPolicy?.fixWrongTyping === 'boolean') {
+    return status.writingPolicy.fixWrongTyping
+  }
+  if (typeof status.features?.layout === 'boolean') {
+    return status.features.layout
+  }
+  return status.layout.autoEnabled
+}
+
 export function requiresConsent(status: ExtensionStatus): boolean {
   if (!status.account.signedIn) return false
   return !status.correction.consentAccepted || !status.correction.aiReady
@@ -159,7 +170,7 @@ export function computeFeatureStatus(status: ExtensionStatus | null): PopupFeatu
       correction: status.correction.enabled ? 'unavailable' : 'disabled',
       translation: status.translation.shortcutEnabled ? 'unavailable' : 'disabled',
       liveTranslation: status.translation.liveEnabled ? 'unavailable' : 'disabled',
-      layout: status.layout.autoEnabled ? 'ready' : 'disabled',
+      layout: isLayoutFeatureOn(status) ? 'ready' : 'disabled',
       summary: 'AI is temporarily unavailable.',
       summaryTone: 'warn',
     }
@@ -193,7 +204,7 @@ export function computeFeatureStatus(status: ExtensionStatus | null): PopupFeatu
     liveTranslation = 'disabled'
   }
 
-  let layout: FeatureReadiness = status.layout.autoEnabled ? 'ready' : 'disabled'
+  let layout: FeatureReadiness = isLayoutFeatureOn(status) ? 'ready' : 'disabled'
 
   const usage = resolveUsageUxFromStatus(status)
   let summary = 'Extension active'
@@ -246,9 +257,10 @@ export function correctionAiLabel(status: { aiReady: boolean; consentAccepted: b
 }
 
 export function layoutStatusLabel(status: ExtensionStatus): string {
+  if (!isLayoutFeatureOn(status)) return 'Off'
   const parts: string[] = []
   if (status.layout.autoEnabled) parts.push('Auto-detect')
   if (status.layout.manualConversionEnabled) parts.push('Manual')
   if (status.layout.directShortcutEnabled) parts.push('Shortcut')
-  return parts.length > 0 ? parts.join(' · ') : 'Off'
+  return parts.length > 0 ? parts.join(' · ') : 'On'
 }

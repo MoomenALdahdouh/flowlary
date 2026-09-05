@@ -5,6 +5,7 @@ import { ChromeIcon } from '../icons/ChromeIcon'
 import { FEATURES, NAV_LINKS } from '@/bolt/data/site'
 import Logo from './Logo'
 import { ThemeToggle } from '../../../components/ThemeToggle.tsx'
+import { AddToChromeButton } from '../../../components/install/AddToChromeButton.tsx'
 import { useI18n, useMessages } from '../../../i18n/index.tsx'
 import { ENABLED_LOCALES, type Locale } from '../../../config.ts'
 import { hasStoredWebSession } from '../../../account/client.ts'
@@ -130,10 +131,10 @@ export default function Navbar() {
               <AccountIcon className="h-4 w-4" aria-hidden="true" />
             </Link>
           </div>
-          <Link to="/guide" className="fl-nav-cta">
-            <ChromeIcon className="h-4 w-4" />
-            {t.pages.chrome}
-          </Link>
+          <AddToChromeButton
+            className="fl-nav-cta"
+            chromeIcon={<ChromeIcon className="h-4 w-4" />}
+          />
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2 lg:hidden">
@@ -218,10 +219,10 @@ export default function Navbar() {
               <Link to="/try" className="btn-secondary w-full">
                 {t.pages.tryDemos}
               </Link>
-              <Link to="/guide" className="fl-nav-cta w-full">
-                <ChromeIcon className="h-4 w-4" />
-                {t.pages.chrome}
-              </Link>
+              <AddToChromeButton
+                className="fl-nav-cta w-full"
+                chromeIcon={<ChromeIcon className="h-4 w-4" />}
+              />
             </div>
           </div>
         </div>

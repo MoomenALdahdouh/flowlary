@@ -31,6 +31,15 @@ import type {
   SetSettingsMessage,
   SetTranslationMessage,
   TranslateTextMessage,
+  GetLearningMessage,
+  ResetLearningProfileMessage,
+  CompleteOnboardingMessage,
+  DismissLearningSetupMessage,
+  RestartLearningOnboardingMessage,
+  GetProgressMessage,
+  ClearLearningEventsMessage,
+  ActivateLicenseMessage,
+  SetLearningProfileMessage,
 } from './types.ts'
 import { normalizeLanguage, isSupportedLanguage } from '../features/translation/languages.ts'
 import { isSupportedLayout } from '../features/layout/layouts/registry.ts'
@@ -722,7 +731,9 @@ export function validateContentCommandType(raw: unknown): ValidationResult<Opera
   const type = raw.type
   if (type === 'RUN_COMMAND') {
     const op = validateRunCommandPayload(raw)
-    return op
+    if (!op.ok) return op
+    if (op.value === 'SPEED_BOX') return fail('unsupported_operation')
+    return ok(op.value)
   }
   if (type === 'DISPATCH_COMMAND') {
     if (!isPlainObject(raw.command)) return fail('invalid_command')

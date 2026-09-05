@@ -30,12 +30,13 @@ export function sanitizeLearningEvent(raw: unknown, now = Date.now()): LearningE
   const corrected = value.corrected.trim()
   if (!original || !corrected || original === corrected) return null
 
+  const sourceRaw = (value as { source?: unknown }).source
   return {
     id: value.id.trim(),
     version: typeof value.version === 'number' ? value.version : 1,
     timestamp: typeof value.timestamp === 'number' ? value.timestamp : now,
     batchId: value.batchId.trim(),
-    source: value.source === 'practice' || value.source === 'future-practice' ? 'practice' : 'writing',
+    source: sourceRaw === 'practice' || sourceRaw === 'future-practice' ? 'practice' : 'writing',
     category: value.category,
     original,
     corrected,

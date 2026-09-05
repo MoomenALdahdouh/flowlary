@@ -53,15 +53,15 @@ describe('SEO metadata', () => {
 })
 
 describe('CTAs', () => {
-  it('Add to Chrome points at the guide while the store URL is unpublished', () => {
+  it('Add to Chrome opens the temporary install flow while the store URL is unpublished', () => {
     expect(CHROME_WEB_STORE_URL).toBeNull()
     const html = renderToString(
       <MemoryRouter initialEntries={['/']}>
         <App />
       </MemoryRouter>,
     )
-    expect(html).toContain('href="/guide"')
     expect(html).toContain('Add to Chrome')
+    expect(html).toContain('aria-haspopup="dialog"')
     expect(html).not.toContain('Coming soon')
     expect(html).not.toContain('chromewebstore')
   })

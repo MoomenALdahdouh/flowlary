@@ -1,6 +1,7 @@
 import type { ExtensionStatus } from '../messaging/types.ts'
 import {
   isCreditsExhausted,
+  isLayoutFeatureOn,
   isServiceOffline,
   requiresAuth,
   requiresConsent,
@@ -47,6 +48,8 @@ export type DomainState = {
   flowlaryAiNeeded: boolean
   flowlaryAiOffline: boolean
 }
+
+export { isLayoutFeatureOn } from '../popup/status.ts'
 
 function subscriptionKind(status: ExtensionStatus): SubscriptionKind {
   if (status.entitlement.isPro) return 'pro'
@@ -105,15 +108,16 @@ function managedAiFeatureState(
 }
 
 function layoutState(status: ExtensionStatus): FeatureState {
+  const enabled = isLayoutFeatureOn(status)
   if (!status.active) {
     return {
       kind: 'paused',
-      enabled: status.layout.autoEnabled,
+      enabled,
       canToggle: false,
       reasonKey: 'paused',
     }
   }
-  if (!status.layout.autoEnabled) {
+  if (!enabled) {
     return { kind: 'disabled', enabled: false, canToggle: true, reasonKey: null }
   }
   return { kind: 'ready', enabled: true, canToggle: true, reasonKey: null }

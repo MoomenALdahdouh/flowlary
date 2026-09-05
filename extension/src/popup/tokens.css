@@ -2244,6 +2244,16 @@ body {
   cursor: wait;
 }
 
+.fl-zip-action.is-off:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
+.fl-zip-action.is-off .fl-zip-action-label,
+.fl-zip-action.is-off .fl-kbd {
+  color: var(--fl-muted);
+}
+
 .fl-zip-action-icon {
   display: flex;
   width: 30px;
@@ -2275,6 +2285,16 @@ body {
   min-width: 0;
   font-size: 13px;
   font-weight: 650;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.5rem;
+}
+
+.fl-zip-action-state {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--fl-muted);
 }
 
 .fl-check-chip {

@@ -8,6 +8,38 @@ export const sitePagesEn = {
   writingLab: 'Writing Lab',
   company: 'Company',
   installGuide: 'Install guide',
+  installExtension: {
+    title: 'Install Flowlary for Chrome',
+    lead:
+      'Get the latest stable Flowlary extension. Until Chrome Web Store publication is available, you can install this version manually in Chrome.',
+    versionLabel: 'Stable version {version}',
+    stepLabel: 'Step {n}',
+    download: 'Download Flowlary',
+    close: 'Close',
+    extensionsUrl: 'chrome://extensions',
+    steps: [
+      {
+        title: 'Download Flowlary',
+        body: 'Download the stable extension ZIP for Chrome.',
+      },
+      {
+        title: 'Extract the downloaded ZIP',
+        body: 'Unzip the file so you have a Flowlary folder with manifest.json inside.',
+      },
+      {
+        title: 'Open Chrome Extensions',
+        body: 'In Chrome, open the Extensions page.',
+      },
+      {
+        title: 'Turn on Developer mode',
+        body: 'Enable Developer mode using the toggle in the Extensions page.',
+      },
+      {
+        title: 'Load unpacked',
+        body: 'Click “Load unpacked” and select the extracted Flowlary folder.',
+      },
+    ],
+  },
   createAccount: 'Create account',
   forgotPassword: 'Forgot password',
   blogStories: 'Blog & stories',
@@ -767,6 +799,14 @@ export const sitePagesEn = {
       title: 'Feedback admin · Flowlary',
       description: 'Internal inbox for Flowlary feedback.',
     },
+    admin: {
+      title: 'Admin · Flowlary',
+      description: 'Internal Flowlary administration for accounts, billing, usage, and support.',
+    },
+    adminLogin: {
+      title: 'Admin sign in · Flowlary',
+      description: 'Sign in with a Flowlary administrator email and password to open the internal admin panel.',
+    },
     notFound: {
       title: 'Page not found · Flowlary',
       description: 'That URL is not part of the Flowlary site.',
@@ -794,6 +834,38 @@ export const sitePagesAr: SitePages = {
   writingLab: 'مساحة الكتابة',
   company: 'الشركة',
   installGuide: 'دليل التثبيت',
+  installExtension: {
+    title: 'تثبيت Flowlary لمتصفح Chrome',
+    lead:
+      'احصل على أحدث إصدار مستقر من إضافة Flowlary. إلى أن يتوفر إدراج Chrome Web Store، يمكنك تثبيت هذا الإصدار يدوياً في Chrome.',
+    versionLabel: 'الإصدار المستقر {version}',
+    stepLabel: 'الخطوة {n}',
+    download: 'تنزيل Flowlary',
+    close: 'إغلاق',
+    extensionsUrl: 'chrome://extensions',
+    steps: [
+      {
+        title: 'نزّل Flowlary',
+        body: 'نزّل ملف ZIP المستقر للإضافة.',
+      },
+      {
+        title: 'استخرج ملف ZIP',
+        body: 'فك ضغط الملف لتحصل على مجلد Flowlary وفيه manifest.json.',
+      },
+      {
+        title: 'افتح صفحة الإضافات',
+        body: 'في Chrome، افتح صفحة الإضافات.',
+      },
+      {
+        title: 'فعّل وضع المطوّر',
+        body: 'شغّل «وضع المطوّر» من مفتاح التبديل في صفحة الإضافات.',
+      },
+      {
+        title: 'تحميل غير معبأ',
+        body: 'انقر «Load unpacked» واختر مجلد Flowlary المستخرج.',
+      },
+    ],
+  },
   createAccount: 'إنشاء حساب',
   forgotPassword: 'نسيت كلمة المرور',
   blogStories: 'المدونة',
@@ -1552,6 +1624,14 @@ export const sitePagesAr: SitePages = {
     adminFeedback: {
       title: 'إدارة الملاحظات · فلو لاري',
       description: 'صندوق داخلي لملاحظات فلو لاري.',
+    },
+    admin: {
+      title: 'الإدارة · فلو لاري',
+      description: 'إدارة داخلية لحسابات فلو لاري والفوترة والاستخدام والدعم.',
+    },
+    adminLogin: {
+      title: 'دخول الإدارة · فلو لاري',
+      description: 'سجّل الدخول ببريد وكلمة مرور المشرف لفتح لوحة إدارة فلو لاري.',
     },
     notFound: {
       title: 'الصفحة غير موجودة · فلو لاري',

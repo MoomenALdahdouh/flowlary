@@ -1,4 +1,4 @@
-import { evaluateFeatureAccess } from '@flowlary/shared'
+import { evaluateFeatureAccess, type FlowlaryCapability } from '@flowlary/shared'
 import type { ExtensionStatus } from '../../messaging/types.ts'
 
 export type PracticeBlockReason =
@@ -50,7 +50,7 @@ export function resolvePracticeCheckAvailability(
 
   const access = evaluateFeatureAccess('practice', status.entitlement.status, {
     creditsRemaining,
-    capabilities: status.entitlement.capabilities,
+    capabilities: status.entitlement.capabilities as FlowlaryCapability[],
     signedIn: status.account.signedIn,
   })
 

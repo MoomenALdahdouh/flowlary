@@ -108,19 +108,25 @@ export async function setLearningProfile(
 
 export async function patchLearningProfile(
   storage: FlowlaryStorage,
-  patch: Partial<
-    Pick<
-      LearningProfile,
-      | 'learningLanguage'
-      | 'nativeLanguage'
-      | 'level'
-      | 'focusAreas'
-      | 'onboardingCompleted'
-      | 'onboardingVersion'
-      | 'onboardingStep'
-      | 'setupPromptDismissed'
-    >
-  > & { level?: LearningLevel | null },
+  patch: Omit<
+    Partial<
+      Pick<
+        LearningProfile,
+        | 'learningLanguage'
+        | 'nativeLanguage'
+        | 'level'
+        | 'focusAreas'
+        | 'onboardingCompleted'
+        | 'onboardingVersion'
+        | 'onboardingStep'
+        | 'setupPromptDismissed'
+      >
+    >,
+    'level' | 'nativeLanguage'
+  > & {
+    level?: LearningLevel | null
+    nativeLanguage?: string | null
+  },
 ): Promise<LearningProfile> {
   const current = await getLearningProfile(storage)
   const now = Date.now()

@@ -11,8 +11,8 @@ export function buildLayoutLearningBatchId(requestId: number | string): string {
 }
 
 /**
- * Record an accepted manual keyboard-layout correction as a learning event.
- * Side effect only — never throws; does not affect the layout write path.
+ * Record an accepted keyboard-layout correction as a learning event
+ * (manual shortcut or automatic layout_fix). Side effect only — never throws.
  */
 export function recordLayoutLearningAccepted(
   batchId: string,

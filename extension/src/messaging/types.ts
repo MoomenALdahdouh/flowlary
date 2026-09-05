@@ -256,8 +256,8 @@ export type CancelReviewWritingMessage = {
 export type TranslateTextMessage = {
   type: 'TRANSLATE_TEXT'
   text: string
-  sourceLanguage: string
-  targetLanguage: string
+  sourceLanguage: import('../features/translation/types.ts').LanguageCode
+  targetLanguage: import('../features/translation/types.ts').LanguageCode
   mode: 'shortcut' | 'live'
   context?: import('@flowlary/shared').TranslationRequestContext
   requestId?: string
@@ -414,6 +414,11 @@ export type ExtensionRequest =
   | FeedbackSubmitMessage
   | FeedbackPromptShownMessage
 
+export type FeedbackEligibilityResponse = {
+  ok: true
+  eligiblePrompts: string[]
+}
+
 export type ExtensionResponse =
   | ExtensionStatus
   | CommandResult
@@ -425,6 +430,11 @@ export type ExtensionResponse =
   | ExportUserDataResponse
   | ImportPreviewResponse
   | ImportUserDataResponse
+  | DailyBriefResponse
+  | import('@flowlary/shared').FullLearningReport
+  | LearningCoachResponsePayload
+  | import('../background/classify.ts').CheckWordResponse
+  | FeedbackEligibilityResponse
   | { ok: boolean; error?: string }
 
 export function isExtensionRequest(value: unknown): value is ExtensionRequest {

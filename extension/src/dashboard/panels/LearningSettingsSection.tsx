@@ -16,9 +16,9 @@ import { ConfirmDialog } from '../../ui/shared.tsx'
 type LearningSettingsSectionProps = {
   status: ExtensionStatus
   busy: string | null
-  onMutate: (key: string, fn: () => Promise<unknown>) => Promise<void>
+  onMutate: (key: string, fn: () => Promise<ExtensionStatus | void>) => Promise<void>
   onRestartOnboarding: () => void
-  onStatusRefresh: () => Promise<void>
+  onStatusRefresh: () => Promise<unknown>
 }
 
 export function LearningSettingsSection({
@@ -158,7 +158,7 @@ export function LearningSettingsSection({
             type="button"
             className="fl-action-btn"
             disabled={busy === 'learning-dismiss'}
-            onClick={() => void onMutate('learning-dismiss', () => dismissLearningSetup())}
+            onClick={() => void onMutate('learning-dismiss', async () => { await dismissLearningSetup() })}
           >
             {t('learning.setupDismiss')}
           </button>

@@ -32,7 +32,7 @@ type SettingsTab = 'writing' | 'languages' | 'learning' | 'data' | 'privacy'
 type SettingsPanelProps = {
   status: ExtensionStatus
   busy: string | null
-  onMutate: (key: string, fn: () => Promise<unknown>, rollback?: () => void) => Promise<void>
+  onMutate: (key: string, fn: () => Promise<ExtensionStatus | void>, rollback?: () => void) => Promise<void>
   onStatus: (status: ExtensionStatus) => void
   onRestartOnboarding: () => void
   onReplayTour?: () => void
@@ -91,7 +91,55 @@ export function SettingsPanel({
             value={status.writingPolicy?.helpStyle ?? 'auto'}
             disabled={busy === 'help-style'}
             onChange={(next) => {
-              void onMutate('help-style', () => patchWritingPolicy({ helpStyle: next }))
+              const prev = status.writingPolicy
+              onStatus({
+                ...status,
+                writingPolicy: {
+                  helpStyle: next,
+                  fixWrongTyping: status.writingPolicy?.fixWrongTyping ?? status.layout.autoEnabled,
+                  improveEnglish: status.writingPolicy?.improveEnglish ?? status.correction.enabled,
+                  arabicToEnglishMode:
+                    status.writingPolicy?.arabicToEnglishMode ?? status.translation.liveEnabled,
+                  polishAfterTranslate: status.writingPolicy?.polishAfterTranslate ?? false,
+                  aiAdvisorEnabled: status.writingPolicy?.aiAdvisorEnabled !== false,
+                  aiWritingReviewEnabled: status.writingPolicy?.aiWritingReviewEnabled !== false,
+                  operatingState:
+                    next === 'shortcuts_only'
+                      ? 'manual'
+                      : (status.writingPolicy?.arabicToEnglishMode ?? status.translation.liveEnabled)
+                        ? 'translation'
+                        : 'normal',
+                },
+                // Keep projected feature modes in sync with the Settings choice immediately.
+                correction: {
+                  ...status.correction,
+                  mode: next === 'suggestions' ? 'box' : 'direct',
+                },
+                translation: {
+                  ...status.translation,
+                  mode: next === 'suggestions' ? 'box' : 'direct',
+                  liveEnabled:
+                    next === 'shortcuts_only'
+                      ? false
+                      : (status.writingPolicy?.arabicToEnglishMode ?? status.translation.liveEnabled),
+                },
+                layout: {
+                  ...status.layout,
+                  mode: next === 'suggestions' ? 'box' : 'direct',
+                  autoEnabled:
+                    next !== 'shortcuts_only' &&
+                    (status.writingPolicy?.fixWrongTyping ?? status.layout.autoEnabled),
+                },
+              })
+              void onMutate(
+                'help-style',
+                () => patchWritingPolicy({ helpStyle: next }),
+                () =>
+                  onStatus({
+                    ...status,
+                    writingPolicy: prev,
+                  }),
+              )
             }}
           />
           <p className="fl-settings-row">

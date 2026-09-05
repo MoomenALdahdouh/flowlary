@@ -3,7 +3,13 @@ import { createRoot } from 'react-dom/client'
 import { act } from 'react'
 import { App } from '../../extension/src/popup/App.tsx'
 import { buildStatus, handleMessage } from '../../extension/src/background/index.ts'
-import { stateManager } from '../../extension/src/core/state/StateManager.ts'
+import {
+  DEFAULT_CORRECTION,
+  DEFAULT_LAYOUT,
+  DEFAULT_SETTINGS,
+  DEFAULT_TRANSLATION,
+  stateManager,
+} from '../../extension/src/core/state/StateManager.ts'
 import { flowlaryStorage } from '../../extension/src/storage/index.ts'
 import { setFirstWinState } from '../../extension/src/storage/ui/firstWin.ts'
 import { sendCommandToActiveTab } from '../../extension/src/background/commands.ts'
@@ -79,13 +85,12 @@ function mockChromeWithFirstWinComplete() {
 
 describe('Phase 9 — Popup UX integration', () => {
   beforeEach(() => {
-    stateManager.settings.enabled = true
-    stateManager.settings.pausedUntil = null
-    stateManager.correction.enabled = true
-    stateManager.correction.consentAccepted = true
-    stateManager.translation.shortcutEnabled = true
-    stateManager.translation.liveEnabled = false
-    stateManager.layout.autoEnabled = true
+    // Feature blobs are projections of the unified writing policy. Reset the
+    // policy fields, not only correction.enabled / layout.autoEnabled.
+    stateManager.settings = { ...DEFAULT_SETTINGS, enabled: true, pausedUntil: null }
+    stateManager.correction = { ...DEFAULT_CORRECTION, consentAccepted: true }
+    stateManager.translation = { ...DEFAULT_TRANSLATION }
+    stateManager.layout = { ...DEFAULT_LAYOUT }
     mockSendCommand.mockClear()
   })
 
@@ -124,10 +129,41 @@ describe('Phase 9 — Popup UX integration', () => {
     expect(status.active).toBe(false)
   })
 
-  it('E — SET_LAYOUT updates layout without touching correction', async () => {
+  it('E — SET_LAYOUT patches fixWrongTyping without changing improveEnglish', async () => {
     await handleMessage({ type: 'SET_LAYOUT', patch: { autoEnabled: false } })
     expect(stateManager.layout.autoEnabled).toBe(false)
+    expect(stateManager.settings.fixWrongTyping).toBe(false)
     expect(stateManager.correction.enabled).toBe(true)
+    expect(stateManager.settings.improveEnglish).toBe(true)
+    expect(stateManager.translation.liveEnabled).toBe(false)
+    expect(stateManager.settings.arabicToEnglishMode).toBe(false)
+  })
+
+  it('E2 — SET_LAYOUT does not re-enable English when improveEnglish is off', async () => {
+    await handleMessage({ type: 'SET_CORRECTION', patch: { enabled: false } })
+    expect(stateManager.correction.enabled).toBe(false)
+
+    await handleMessage({ type: 'SET_LAYOUT', patch: { autoEnabled: false } })
+    expect(stateManager.layout.autoEnabled).toBe(false)
+    expect(stateManager.settings.fixWrongTyping).toBe(false)
+    expect(stateManager.correction.enabled).toBe(false)
+    expect(stateManager.settings.improveEnglish).toBe(false)
+
+    await handleMessage({ type: 'SET_LAYOUT', patch: { autoEnabled: true } })
+    expect(stateManager.layout.autoEnabled).toBe(true)
+    expect(stateManager.settings.fixWrongTyping).toBe(true)
+    expect(stateManager.correction.enabled).toBe(false)
+    expect(stateManager.settings.improveEnglish).toBe(false)
+  })
+
+  it('E3 — SET_LAYOUT still configures layout when the product is paused', async () => {
+    await handleMessage({ type: 'SET_SETTINGS', patch: { enabled: false } })
+    await handleMessage({ type: 'SET_LAYOUT', patch: { autoEnabled: false } })
+    expect(stateManager.settings.enabled).toBe(false)
+    expect(stateManager.layout.autoEnabled).toBe(false)
+    expect(stateManager.settings.fixWrongTyping).toBe(false)
+    expect(stateManager.correction.enabled).toBe(true)
+    expect(stateManager.settings.improveEnglish).toBe(true)
   })
 
   it('F — clearing consent marks correction as needing setup', async () => {
@@ -200,21 +236,30 @@ describe('Popup rendering', () => {
       createRoot(container).render(<App />)
     })
     for (let i = 0; i < 40; i++) {
-      if (container.textContent?.includes('Writing Correction')) break
+      if (container.textContent?.includes('Help in fields')) break
       await act(async () => {
         await new Promise((resolve) => setTimeout(resolve, 15))
       })
     }
 
     expect(container.textContent).toContain('Flowlary')
-    expect(container.textContent).toContain('Your AI Writing Companion')
-    expect(container.textContent).toContain('Writing Correction')
-    expect(container.textContent).toContain('Live Translation')
-    expect(container.textContent).toContain('Keyboard Layout')
-    expect(container.textContent).toContain('Tools')
-    expect(container.textContent).toContain('Ready')
-    expect(container.textContent).toContain('Quick actions')
+    expect(container.textContent).toContain('Help in fields')
+    expect(container.textContent).toContain('Fix')
+    expect(container.textContent).toContain('Translate')
+    expect(container.textContent).toContain('Layout')
+    expect(container.textContent).toContain('Speed Box')
+    expect(container.textContent).toContain('AI checks today')
+    expect(container.textContent).toContain('Shortcuts')
     expect(container.textContent).toContain('Dashboard')
+    expect(container.textContent).toContain('All settings')
+
+    const shortcuts = (await import('../../extension/src/popup/shortcuts.ts')).getShortcutLabels()
+    const actionKbds = Array.from(container.querySelectorAll('button.fl-zip-action kbd.fl-kbd')).map(
+      (el) => el.textContent,
+    )
+    expect(actionKbds).toEqual([shortcuts.fixLayout, shortcuts.translate, shortcuts.fixWriting])
+    expect(container.textContent).toContain(shortcuts.speedBox)
+
     expect(container.textContent).not.toContain('gsk_test')
     expect(container.textContent).not.toContain('Local history')
     expect(container.textContent).not.toContain('Correction mode')

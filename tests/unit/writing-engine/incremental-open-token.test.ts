@@ -69,6 +69,44 @@ describe('incremental open-token writing', () => {
     expect(openTokenRange('comming', 7, undefined, { commitOpenToken: true })).toBeNull()
   })
 
+  it('keeps the last wrong-layout word out while typing, then includes it when committed', () => {
+    const typed = 'jhjd ig s,t jr,g gd'
+    expect(inferLayoutSpans(typed, undefined, { caret: typed.length }).map((span) => span.replacement)).toEqual([
+      'تاتي هل سوف تقول',
+    ])
+    expect(
+      inferLayoutSpans(typed, undefined, { caret: typed.length, commitOpenToken: true }).map(
+        (span) => span.replacement,
+      ),
+    ).toEqual(['تاتي هل سوف تقول لي'])
+  })
+
+  it('does not drop trailing layout words after junk glyphs or short bridges', () => {
+    const broken =
+      'مرحبا كيف حالك هل انت بخير ام لا متى سوف jhjd ig s,t jr,g gd lh§ h jtug'
+    const spans = inferLayoutSpans(broken, undefined, { commitOpenToken: true })
+    expect(spans).toHaveLength(1)
+    expect(spans[0]?.replacement).toBe('تاتي هل سوف تقول لي ما ا تفعل')
+    expect(repairKeyboardLayoutText(broken).text).toBe(
+      'مرحبا كيف حالك هل انت بخير ام لا متى سوف تاتي هل سوف تقول لي ما ا تفعل',
+    )
+  })
+
+  it('offers the last wrong-keyboard word after Arabic prose (idkd → هيني)', () => {
+    const text = 'مرحبا كيف حالك يا حسن وين انت راح تيجي ولا لا انا قاعد بستناك idkd'
+    expect(inferLayoutSpans(text, undefined, { caret: text.length })).toEqual([])
+    const committed = inferLayoutSpans(text, undefined, {
+      caret: text.length,
+      commitOpenToken: true,
+    })
+    expect(committed).toHaveLength(1)
+    expect(committed[0]?.replacement).toBe('هيني')
+    expect(committed[0]?.risk).toBe('low')
+    expect(repairKeyboardLayoutText(text).text).toBe(
+      'مرحبا كيف حالك يا حسن وين انت راح تيجي ولا لا انا قاعد بستناك هيني',
+    )
+  })
+
   it('does not emit a layout span for an unfinished wrong-keyboard word', () => {
     const prefix = GARBLED_COMING.slice(0, Math.min(5, GARBLED_COMING.length))
     const live = inferLayoutSpans(prefix, undefined, { caret: prefix.length })

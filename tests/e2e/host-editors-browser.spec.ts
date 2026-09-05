@@ -171,6 +171,114 @@ test.describe('realistic host editors · local fixtures', () => {
     await page.close()
   })
 
+  test('selected English span is the only range CORRECT rewrites', async () => {
+    await seedTools(context, {
+      applyHow: 'shortcuts',
+      layout: false,
+      english: true,
+      liveTranslation: false,
+    })
+    const page = await openLab(context, origin)
+    const field = page.locator('#plain-textarea')
+    const prefix = 'Note: '
+    const bad = CHAT_ENGLISH_TYPOS.typed.trim()
+    const suffix = ' today.'
+    await typeAsPerson(page, '#plain-textarea', `${prefix}${bad}${suffix}`)
+    await field.evaluate(
+      (el, range) => {
+        const box = el as HTMLTextAreaElement
+        box.focus()
+        box.setSelectionRange(range.start, range.end)
+      },
+      { start: prefix.length, end: prefix.length + bad.length },
+    )
+    await runCommand(context, 'CORRECT')
+    await expect
+      .poll(async () => field.inputValue(), { timeout: 8_000 })
+      .toMatch(CHAT_ENGLISH_TYPOS.expected)
+    const value = await field.inputValue()
+    expect(value.startsWith(prefix)).toBe(true)
+    expect(value.endsWith(suffix)).toBe(true)
+    await page.close()
+  })
+
+  test('selected Arabic sentence is the only range TRANSLATE rewrites', async () => {
+    await seedTools(context, {
+      applyHow: 'shortcuts',
+      layout: false,
+      english: false,
+      liveTranslation: false,
+    })
+    const page = await openLab(context, origin)
+    const field = page.locator('#plain-textarea')
+    const prefix = 'Intro '
+    const arabic = 'مرحبا كيف حالك'
+    const suffix = ' Outro'
+    await typeAsPerson(page, '#plain-textarea', `${prefix}${arabic}${suffix}`)
+    await field.evaluate(
+      (el, range) => {
+        const box = el as HTMLTextAreaElement
+        box.focus()
+        box.setSelectionRange(range.start, range.end)
+      },
+      { start: prefix.length, end: prefix.length + arabic.length },
+    )
+    await runCommand(context, 'TRANSLATE')
+    await expect
+      .poll(async () => field.inputValue(), { timeout: 12_000 })
+      .not.toContain(arabic)
+    const value = await field.inputValue()
+    expect(value.startsWith(prefix)).toBe(true)
+    expect(value.endsWith(suffix)).toBe(true)
+    await page.close()
+  })
+
+  test('input and simple CE selection shortcuts rewrite only the selected span', async () => {
+    await seedTools(context, {
+      applyHow: 'shortcuts',
+      layout: true,
+      english: false,
+      liveTranslation: false,
+    })
+    const page = await openLab(context, origin)
+    const broken = 'lvpfh'
+    for (const selector of ['#plain-input', '#ce'] as const) {
+      if (selector === '#plain-input') {
+        await typeAsPerson(page, selector, `KEEP ${broken} END`)
+        await page.locator(selector).evaluate((el) => {
+          const box = el as HTMLInputElement
+          box.focus()
+          box.setSelectionRange(5, 10)
+        })
+      } else {
+        await page.locator(selector).click()
+        await page.keyboard.type(`KEEP ${broken} END`, { delay: 15 })
+        await page.locator(selector).evaluate((el) => {
+          const root = el as HTMLElement
+          const textNode = root.firstChild
+          if (!textNode) return
+          const range = document.createRange()
+          range.setStart(textNode, 5)
+          range.setEnd(textNode, 10)
+          const sel = window.getSelection()
+          sel?.removeAllRanges()
+          sel?.addRange(range)
+        })
+      }
+      await runCommand(context, 'FIX_LAYOUT')
+      await page.waitForTimeout(700)
+      const value =
+        selector === '#plain-input'
+          ? await page.locator(selector).inputValue()
+          : await fieldText(page, selector)
+      expect(value).toContain('KEEP')
+      expect(value).toContain('END')
+      expect(value).toMatch(/مرحبا/)
+      expect(value).not.toContain(broken)
+    }
+    await page.close()
+  })
+
   test('stale selection cannot authorize a later Direct write of old text', async () => {
     await seedTools(context, {
       applyHow: 'direct',

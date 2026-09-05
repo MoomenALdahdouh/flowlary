@@ -1,13 +1,13 @@
 import type {
   FullLearningReportNarrative,
   LearningAnalysisSnapshot,
-  LearningFocus,
+  LearningEventCategory,
 } from '@flowlary/shared'
 import { WRITING_LEARNING_CATEGORIES } from '@flowlary/shared'
 import { resolveMessage } from '../../../popup/i18n/resolveMessage.ts'
 import type { UiLocale } from '../../../popup/i18n/types.ts'
 
-function categoryLabel(locale: UiLocale, category: LearningFocus): string {
+function categoryLabel(locale: UiLocale, category: LearningEventCategory): string {
   return resolveMessage(`learning.focus.${category}`, locale)
 }
 

@@ -238,7 +238,8 @@ export function writeReplacement(
   )
 
   if (verdict === 'written' && session && requestId !== undefined) {
-    session.noteWrite(origin === 'SYSTEM' ? 'SYSTEM' : origin, requestId, fieldSnapshot)
+    const writer = origin === 'USER' ? 'SYSTEM' : origin
+    session.noteWrite(writer, requestId, fieldSnapshot)
   }
 
   if (verdict === 'discarded') {

@@ -320,7 +320,7 @@ export function computeMistakeFeed(events: LearningEvent[], now = Date.now(), li
   const unique = uniqueLearningErrorEvents(events)
   const groups = new Map<string, LearningEvent[]>()
   for (const event of unique) {
-    if (!WRITING_LEARNING_CATEGORIES.includes(event.category as (typeof WRITING_LEARNING_CATEGORIES)[number])) {
+    if (!(LEARNING_CATEGORIES as readonly string[]).includes(event.category)) {
       continue
     }
     const tight = tightenCorrectionPair(event.original, event.corrected)
@@ -333,7 +333,7 @@ export function computeMistakeFeed(events: LearningEvent[], now = Date.now(), li
   const appliedByKey = new Map<string, number>()
   for (const event of events) {
     if (event.action !== 'accepted') continue
-    if (!WRITING_LEARNING_CATEGORIES.includes(event.category as (typeof WRITING_LEARNING_CATEGORIES)[number])) {
+    if (!(LEARNING_CATEGORIES as readonly string[]).includes(event.category)) {
       continue
     }
     const tight = tightenCorrectionPair(event.original, event.corrected)

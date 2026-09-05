@@ -10,6 +10,7 @@ vi.mock('../../../extension/src/popup/openDashboard.ts', () => ({
 
 vi.mock('../../../extension/src/popup/i18n/localeStorage.ts', () => ({
   readUiLocale: vi.fn(async () => 'en'),
+  peekUiLocale: vi.fn(() => 'en'),
 }))
 
 vi.mock('../../../extension/src/features/correction/explainLocalizeClient.ts', () => ({

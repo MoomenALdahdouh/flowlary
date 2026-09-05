@@ -324,4 +324,25 @@ describe('progress metrics', () => {
     expect(items[0]?.original).toBe('yuo')
     expect(items[0]?.corrected).toBe('you')
   })
+
+  it('includes keyboard-layout fixes in the mistake feed', () => {
+    const now = Date.now()
+    const events = [
+      baseEvent({
+        id: 'layout-1',
+        batchId: 'layout-auto-1',
+        category: 'layout',
+        original: 'hgfdj',
+        corrected: 'البيت',
+        normalizedOriginal: 'hgfdj',
+        normalizedCorrected: 'البيت',
+        timestamp: now,
+        action: 'accepted',
+      }),
+    ]
+    const items = computeMistakeFeed(events, now)
+    expect(items).toHaveLength(1)
+    expect(items[0]?.category).toBe('layout')
+    expect(items[0]?.original).toBe('hgfdj')
+  })
 })

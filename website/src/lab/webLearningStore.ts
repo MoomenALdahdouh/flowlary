@@ -47,7 +47,7 @@ function sanitizeEvent(raw: unknown): LearningEvent | null {
   ) {
     return null
   }
-  if (value.category === 'layout') return null
+  if (!isLearningEventCategory(value.category)) return null
   if (!isLearningEventCategory(value.category)) return null
   if (value.action !== 'detected' && value.action !== 'accepted' && value.action !== 'rejected') {
     return null
@@ -119,9 +119,9 @@ export type WebLearningEventInput = {
 function validWritingChanges(segment: string, changes: CorrectionChange[]): CorrectionChange[] {
   return changes.filter(
     (change) =>
-      change.type !== 'layout' &&
       changePresentInWritingSample(segment, change.original) &&
-      isValidLearningChange(change.original, change.corrected),
+      isValidLearningChange(change.original, change.corrected) &&
+      isLearningEventCategory(change.type),
   )
 }
 

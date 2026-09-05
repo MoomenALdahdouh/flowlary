@@ -5,10 +5,12 @@ import { humanizePopupError, accountSync } from '../../popup/api.ts'
 import { t } from '../../popup/i18n/index.ts'
 import type { CorrectionResponse } from '@flowlary/shared'
 import { DIRECT_HIGHLIGHT_PREVIEW_MS } from '@flowlary/shared'
-import { recordCorrectionDetected } from '../../features/learning/recordCorrectionLearning.ts'
+import { recordCorrectionAccepted, recordCorrectionDetected } from '../../features/learning/recordCorrectionLearning.ts'
+import { recordLayoutLearningAccepted } from '../../features/learning/recordLayoutLearning.ts'
 import { cancelCorrectionRemote, requestCorrectionRemote } from '../../features/correction/client.ts'
 import { buildLocalCorrectionResponse } from '../../features/correction/localSuggestion.ts'
 import { requestTranslationRemote } from '../../features/translation/client.ts'
+import { normalizeLanguage } from '../../features/translation/languages.ts'
 import {
   isAssistCooldownActive,
   noteAssistRateLimited,
@@ -283,6 +285,7 @@ export function ComposeWorkbench({
             setPhase('done')
             window.setTimeout(() => {
               if (token !== correctionRunRef.current) return
+              recordCorrectionAccepted(requestId, trimmed, response.data)
               setInput(response.data.correctedText)
               setPhase('idle')
               setResult(null)
@@ -290,6 +293,7 @@ export function ComposeWorkbench({
             }, DIRECT_HIGHLIGHT_PREVIEW_MS)
             return
           }
+          recordCorrectionAccepted(requestId, trimmed, response.data)
           setInput(response.data.correctedText)
           setPhase('idle')
           setResult(null)
@@ -322,14 +326,14 @@ export function ComposeWorkbench({
         lastTranslationSentRef.current = { text: trimmed, at: Date.now() }
         const response = await requestTranslationRemote(
           trimmed,
-          status.translation.sourceLanguage,
-          status.translation.targetLanguage,
+          normalizeLanguage(status.translation.sourceLanguage, 'ar'),
+          normalizeLanguage(status.translation.targetLanguage, 'en'),
           undefined,
           'shortcut',
         )
         if (token !== translationRunRef.current) return
         if (!response.ok) {
-          if (response.code === 'rate_limited' || response.code === 'AI_RATE_LIMITED') {
+          if (response.code === 'rate-limited') {
             translationCooldownUntilRef.current = Date.now() + 60_000
           }
           setPhase('error')
@@ -384,6 +388,7 @@ export function ComposeWorkbench({
           return
         }
         if (layoutMode === 'direct') {
+          recordLayoutLearningAccepted(`compose-layout-${token}`, trimmed, trimmed, converted.text)
           setInput(converted.text)
           setPhase('idle')
           setResult(null)
@@ -494,21 +499,28 @@ export function ComposeWorkbench({
 
   const applySuggestion = useCallback(() => {
     if (!result) return
+    if (mode === 'layout' && result !== input.trim()) {
+      recordLayoutLearningAccepted(`compose-layout-apply-${Date.now()}`, input.trim(), input.trim(), result)
+    }
+    if (mode === 'correction' && correction) {
+      recordCorrectionAccepted(`compose-accept-${Date.now()}`, input.trim(), correction)
+    }
     setInput(result)
     setPhase('idle')
     setResult(null)
     setCorrection(null)
     textareaRef.current?.focus()
-  }, [result])
+  }, [correction, input, mode, result])
 
   const applyCorrectionSuggestion = useCallback(() => {
     if (!correction) return
+    recordCorrectionAccepted(`compose-accept-${Date.now()}`, input.trim() || correction.originalText, correction)
     heldCorrectionRef.current = correction
     setInput(correction.correctedText)
     setResult(correction.correctedText)
     setPhase('done')
     textareaRef.current?.focus()
-  }, [correction])
+  }, [correction, input])
 
   const run = useCallback(async () => {
     const trimmed = input.trim()

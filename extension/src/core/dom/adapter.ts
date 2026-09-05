@@ -144,7 +144,10 @@ export function findEditableFromTarget(target: EventTarget | null): EditableAdap
     const adapter = createEditableAdapter(node)
     if (adapter) return adapter
     const parent = parentOrShadowHost(node)
-    if (parent?.isContentEditable || parent?.getAttribute('contenteditable') === 'true') {
+    if (
+      parent instanceof HTMLElement &&
+      (parent.isContentEditable || parent.getAttribute('contenteditable') === 'true')
+    ) {
       const parentAdapter = createEditableAdapter(parent)
       if (parentAdapter) return parentAdapter
     }

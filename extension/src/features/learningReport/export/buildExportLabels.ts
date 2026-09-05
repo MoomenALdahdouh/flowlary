@@ -1,7 +1,7 @@
 import type { FullLearningReport, LearningFocus } from '@flowlary/shared'
 import type { LearningReportExportLabels } from '@flowlary/shared'
 import { resolveMessage } from '../../../popup/i18n/resolveMessage.ts'
-import type { UiLocale } from '../../popup/i18n/types.ts'
+import type { UiLocale } from '../../../popup/i18n/types.ts'
 
 const FOCUS_CATEGORIES: LearningFocus[] = ['spelling', 'grammar', 'wording']
 

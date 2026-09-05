@@ -9,11 +9,12 @@
     "skipLibCheck": true,
     "noEmit": true,
     "isolatedModules": true,
+    "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "types": ["chrome", "vite/client"],
     "paths": {
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "../tests"]
+  "include": ["src"]
 }

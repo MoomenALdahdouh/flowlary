@@ -64,6 +64,7 @@ function signedOutBrief(now = Date.now()): DailyLearningBrief {
     wordsWritten: 0,
     practiceSessionsThisWeek: 0,
     hasRecentWriting: false,
+    targetProgression: null,
     fromCache: false,
     generationsUsedToday: 0,
     generationsRemainingToday: DAILY_BRIEF_MAX_GENERATIONS_PER_DAY,

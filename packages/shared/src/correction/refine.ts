@@ -226,10 +226,48 @@ export function finalizeCorrectionResponse(
     })
     .filter((change): change is CorrectionChange => Boolean(change))
 
-  const changes = derived.length > 0 ? derived : fromModel
+  const changes =
+    derived.length > 0 ? preserveAuthoritativeLayoutTypes(derived, fromModel) : fromModel
   return {
     originalText: sourceText,
     correctedText,
     changes,
   }
+}
+
+/**
+ * Derived diffs own the replacement text and offsets. Model `layout` remains
+ * the type source of truth for those same edits so explanations are not
+ * reclassified as spelling when capitalization or tokenization differs.
+ */
+function preserveAuthoritativeLayoutTypes(
+  derived: CorrectionChange[],
+  fromModel: CorrectionChange[],
+): CorrectionChange[] {
+  const layoutModels = fromModel.filter((change) => change.type === 'layout')
+  if (layoutModels.length === 0) return derived
+  return derived.map((change) => {
+    if (change.type === 'layout') return change
+    const layout = layoutModels.some((model) => isSameCorrectionEdit(change, model))
+    return layout ? { ...change, type: 'layout' as const } : change
+  })
+}
+
+function isSameCorrectionEdit(left: CorrectionChange, right: CorrectionChange): boolean {
+  const leftOriginal = left.original.trim().toLowerCase()
+  const rightOriginal = right.original.trim().toLowerCase()
+  const leftCorrected = left.corrected.trim().toLowerCase()
+  const rightCorrected = right.corrected.trim().toLowerCase()
+  if (leftOriginal && leftOriginal === rightOriginal) return true
+  if (
+    leftOriginal &&
+    rightOriginal &&
+    (leftOriginal.includes(rightOriginal) || rightOriginal.includes(leftOriginal)) &&
+    (leftCorrected === rightCorrected ||
+      leftCorrected.includes(rightCorrected) ||
+      rightCorrected.includes(leftCorrected))
+  ) {
+    return true
+  }
+  return left.start < right.end && right.start < left.end && leftOriginal === rightOriginal
 }

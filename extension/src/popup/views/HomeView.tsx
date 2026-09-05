@@ -5,6 +5,7 @@ import { ShortcutKey } from '../../ui/shared.tsx'
 import { openWebsiteAccount } from '../../config/upgrade.ts'
 import { t } from '../i18n/index.ts'
 import { getShortcutLabels } from '../shortcuts.ts'
+import { isLayoutFeatureOn } from '../status.ts'
 import { resolveUsageUxFromStatus } from '../../ui/usageUx.ts'
 import { ToggleSwitch } from '../components.tsx'
 
@@ -41,8 +42,8 @@ function ActionGlyph({ kind }: { kind: 'correction' | 'translation' | 'layout' }
   }
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="3" y="5" width="18" height="14" rx="2" />
-      <path d="M7 9h4M7 12h10M7 15h6" />
+      <rect x="2" y="6" width="20" height="12" rx="2" />
+      <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8" />
     </svg>
   )
 }
@@ -67,7 +68,11 @@ export function HomeView({
 
   const correctAction = quickActionAvailable(domain.features.correction, status.active)
   const translateAction = quickActionAvailable(domain.features.translation, status.active)
-  const layoutAction = quickActionAvailable(domain.features.layout, status.active)
+  // Match Settings Layout toggle (fixWrongTyping), including Shortcuts only where autoEnabled is off.
+  const layoutAction =
+    status.active && isLayoutFeatureOn(status)
+      ? { available: true, reason: null as string | null }
+      : quickActionAvailable(domain.features.layout, status.active)
   const extensionOn = domain.extension === 'active'
 
   const usageTone =
@@ -162,28 +167,32 @@ export function HomeView({
           {t('actions.section')}
         </h2>
         <div className="fl-quick-actions">
-          {actions.map((action) =>
-            action.available ? (
-              <button
-                key={action.kind}
-                type="button"
-                className="fl-zip-action"
-                disabled={action.busy}
-                onClick={action.onClick}
-              >
-                <span className="fl-zip-action-icon">
-                  <ActionGlyph kind={action.kind} />
-                </span>
-                <span className="fl-zip-action-label">{action.label}</span>
-                <ShortcutKey label={action.shortcut} />
-              </button>
-            ) : (
-              <p key={action.kind} className="fl-action-unavailable">
-                <span className="fl-action-unavailable-label">{action.label}</span>
-                <span className="fl-action-unavailable-reason">{action.reason}</span>
-              </p>
-            ),
-          )}
+          {actions.map((action) => (
+            <button
+              key={action.kind}
+              type="button"
+              className={`fl-zip-action${action.available ? '' : ' is-off'}`}
+              disabled={!action.available || action.busy}
+              title={action.available ? undefined : (action.reason ?? undefined)}
+              aria-label={
+                action.available
+                  ? `${action.label}, ${action.shortcut}`
+                  : `${action.label}, ${action.reason ?? t('readiness.off')}, ${action.shortcut}`
+              }
+              onClick={action.onClick}
+            >
+              <span className="fl-zip-action-icon">
+                <ActionGlyph kind={action.kind} />
+              </span>
+              <span className="fl-zip-action-label">
+                {action.label}
+                {!action.available ? (
+                  <span className="fl-zip-action-state">{action.reason ?? t('readiness.off')}</span>
+                ) : null}
+              </span>
+              <ShortcutKey label={action.shortcut} />
+            </button>
+          ))}
         </div>
         <p className="fl-popup-speed-hint">
           {t('popup.speedBoxHint', { shortcut: shortcuts.speedBox })}

@@ -47,6 +47,9 @@ export const COMMON_ENGLISH_TYPOS: Record<string, string> = {
   weve: "we've",
   nee: 'need',
   hel: 'help',
+  helpng: 'helping',
+  helpin: 'helping',
+  helpign: 'helping',
   pleas: 'please',
   comming: 'coming',
   tommorow: 'tomorrow',
@@ -338,7 +341,13 @@ function isKnownEnglishToken(token: string): boolean {
   const lower = token.toLowerCase()
   if (lower === 'i' || lower === 'a') return true
   if (KNOWN_CONTRACTIONS.has(lower)) return true
-  return isSpellDictionaryWord(lower)
+  if (isSpellDictionaryWord(lower)) return true
+  // Words we intentionally emit from the typo map are credible even if the
+  // compact spell lexicon omits an inflection (helpng → helping).
+  for (const replacement of Object.values(COMMON_ENGLISH_TYPOS)) {
+    if (!replacement.includes(' ') && replacement.toLowerCase() === lower) return true
+  }
+  return false
 }
 
 /**

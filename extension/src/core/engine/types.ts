@@ -73,6 +73,7 @@ export type DecisionReasonCode =
   | 'review_candidate'
   | 'review_dropped'
   | 'review_stale'
+  | 'deferred_to_whole_field'
 
 export type WritingIntent =
   | 'write_as_is'

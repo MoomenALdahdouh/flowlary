@@ -2,6 +2,9 @@ node_modules/
 dist/
 release/*.zip
 release/.validate-tmp/
+website/public/downloads/*.zip
+website/public/downloads/*.sha256
+!website/public/downloads/.gitkeep
 *.local
 .env
 .env.*

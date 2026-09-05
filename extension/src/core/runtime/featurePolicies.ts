@@ -4,7 +4,6 @@ import { shouldWholeFieldOwnEnglishCorrection } from '../../features/correction/
 import { LIVE_PAUSE_MS } from '../../features/translation/pauseGate.ts'
 import { REVIEW_PAUSE_MS } from '../engine/writingReview.ts'
 import { resolveWritingPolicy, type HelpStyle } from '../policy/writingPolicy.ts'
-import { stateManager } from '../state/StateManager.ts'
 import type { SchedulerFeature } from './IdleScheduler.ts'
 
 export const ENGLISH_NETWORK_SPACING_MS = CORRECTION_DEFAULTS.LIVE_CORRECTION_MIN_INTERVAL_MS
@@ -82,7 +81,7 @@ export function resolveLivePolicyInput(options: {
 }): FeaturePolicyInput {
   const policy = resolveWritingPolicy()
   const helpStyle = policy.helpStyle
-  const englishMode = stateManager.correction.mode === 'direct' ? 'direct' : 'box'
+  const englishMode = helpStyle === 'suggestions' ? 'box' : 'direct'
   return {
     text: options.text,
     now: options.now,

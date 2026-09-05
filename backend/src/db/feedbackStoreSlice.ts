@@ -102,8 +102,8 @@ export type FeedbackAnalyticsRecord = {
   plan: string | null
   feature: string | null
   surface: string | null
-  locale: string | null
-  appVersion: string | null
+  locale?: string | null
+  appVersion?: string | null
   createdAt: number
 }
 
@@ -208,7 +208,7 @@ export function upsertFeedbackPreferences(
   return next
 }
 
-export function insertFeedback(record: Omit<FeedbackRecord, 'id' | 'createdAt' | 'updatedAt' | 'resolvedAt' | 'internalNotes'> & { id?: string; internalNotes?: string[] }): FeedbackRecord {
+export function insertFeedback(record: Omit<FeedbackRecord, 'id' | 'createdAt' | 'updatedAt' | 'resolvedAt' | 'internalNotes' | 'ticketId'> & { id?: string; internalNotes?: string[]; ticketId?: string | null }): FeedbackRecord {
   const now = Date.now()
   const item: FeedbackRecord = {
     id: record.id ?? randomUUID(),
@@ -411,9 +411,11 @@ export function countSupportTicketsSince(accountId: string, sinceMs: number): nu
 
 export function appendFeedbackAnalytics(event: Omit<FeedbackAnalyticsRecord, 'id' | 'createdAt'>): void {
   const item: FeedbackAnalyticsRecord = {
+    ...event,
     id: randomUUID(),
     createdAt: Date.now(),
-    ...event,
+    locale: event.locale ?? null,
+    appVersion: event.appVersion ?? null,
   }
   slice.analyticsEvents.unshift(item)
   if (slice.analyticsEvents.length > FEEDBACK_LIMITS.maxAnalyticsEvents) {

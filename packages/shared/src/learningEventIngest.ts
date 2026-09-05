@@ -64,13 +64,15 @@ export function validateLearningEventIngestInput(
   const sampleHash = boundedString(value.sampleHash, 64)
   if (!batchId || !original || !corrected || !sampleHash) return null
   if (!isLearningEventCategory(value.category)) return null
-  if (value.category === 'layout') return null
   if (!isLearningEventAction(value.action)) return null
   if (value.source !== 'writing' && value.source !== 'practice') return null
   if (!isValidLearningChange(original, corrected)) return null
 
   if (options?.website) {
-    if (value.source === 'practice') {
+    if (value.category === 'layout') {
+      if (value.source !== 'writing') return null
+      if (value.action !== 'detected' && value.action !== 'accepted') return null
+    } else if (value.source === 'practice') {
       if (!(WRITING_LEARNING_CATEGORIES as readonly string[]).includes(value.category)) return null
     } else if (value.source === 'writing') {
       if (value.action !== 'detected') return null

@@ -12,6 +12,12 @@ import { renderLearningReportDocx } from './renderDocx.ts'
 import { renderLearningReportPdf } from './renderPdf.ts'
 import type { UiLocale } from '../../../popup/i18n/types.ts'
 
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new ArrayBuffer(bytes.byteLength)
+  new Uint8Array(copy).set(bytes)
+  return copy
+}
+
 export type ExportLearningReportResult =
   | { ok: true }
   | { ok: false; error: 'signed_out' | 'no_report' | 'account_changed' | 'render_failed' }
@@ -45,7 +51,7 @@ export async function exportLearningReport(
 
     if (format === 'docx') {
       const bytes = await renderLearningReportDocx(model, labels)
-      downloadBlob(filename, new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }))
+      downloadBlob(filename, new Blob([toArrayBuffer(bytes)], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }))
       return { ok: true }
     }
 
@@ -54,7 +60,7 @@ export async function exportLearningReport(
         ? chrome.runtime.getURL('fonts/NotoSansArabic-Regular.ttf')
         : undefined
     const bytes = await renderLearningReportPdf(model, labels, { arabicFontUrl: fontUrl })
-    downloadBlob(filename, new Blob([bytes], { type: 'application/pdf' }))
+    downloadBlob(filename, new Blob([toArrayBuffer(bytes)], { type: 'application/pdf' }))
     return { ok: true }
   } catch {
     return { ok: false, error: 'render_failed' }

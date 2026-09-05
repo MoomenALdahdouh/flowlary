@@ -258,6 +258,7 @@ function toTicketAdmin(ticket: NonNullable<ReturnType<typeof getSupportTicketByI
     ...toTicketPublic(ticket),
     accountId: ticket.accountId,
     accountEmailMasked: maskEmail(account?.email ?? 'unknown'),
+    accountEmail: account?.email ?? 'unknown',
     plan: entitlement?.plan ?? account?.plan ?? 'unknown',
     messageCount: messages.length,
     internalNotes: feedback ? [...feedback.internalNotes] : [],
@@ -268,12 +269,22 @@ export function adminListSupportTickets(filters: {
   status?: string
   type?: string
   priority?: string
+  q?: string
   limit?: number
 }): SupportTicketAdminView[] {
   let items = listAllSupportTickets()
   if (filters.status) items = items.filter((item) => item.status === filters.status)
   if (filters.type) items = items.filter((item) => item.type === filters.type)
   if (filters.priority) items = items.filter((item) => item.priority === filters.priority)
+  if (filters.q?.trim()) {
+    const q = filters.q.trim().toLowerCase()
+    items = items.filter(
+      (item) =>
+        item.subject.toLowerCase().includes(q) ||
+        item.id.toLowerCase().includes(q) ||
+        formatSupportTicketNumber(item.id).toLowerCase().includes(q),
+    )
+  }
   const limit = Math.min(Math.max(filters.limit ?? 100, 1), 500)
   return items.slice(0, limit).map((item) => toTicketAdmin(item))
 }

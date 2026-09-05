@@ -33,7 +33,7 @@ import {
 import type { CorrectionMetrics } from './metrics.ts'
 import type { CorrectionCard } from './ui/CorrectionCard.ts'
 import type { CorrectionSuggestionBinding } from './ui/types.ts'
-import { presentLocalBoxSuggestion } from './localSuggestion.ts'
+import { presentLocalBoxSuggestion, isActionableCorrectionError } from './localSuggestion.ts'
 import type { IntelligentDebouncer } from './debounce.ts'
 import type { Operation } from '../../core/runtime/types.ts'
 import { authorizationForOperationWrite } from '../../core/runtime/writeAuthorization.ts'
@@ -50,6 +50,7 @@ import {
   writeAuthorizationFromBox,
 } from '../../core/runtime/suggestion.ts'
 import { markOperationFailed } from '../../core/runtime/Operation.ts'
+import { runtimeTrace } from '../../core/runtime/trace.ts'
 import { hashWritingSample } from '@flowlary/shared'
 
 export type FieldCorrectionState = {
@@ -59,6 +60,11 @@ export type FieldCorrectionState = {
   lastCorrectionRequestAt: number
   card: CorrectionCard | null
   cardMounted: boolean
+  /**
+   * Snapshot the user dismissed. Late AI/local recovery for the same snapshot
+   * must not resurrect a Box (Writing Runtime stale-Box invariant).
+   */
+  dismissedSnapshotFullText?: string | null
 }
 
 export type FieldCorrectionStateEntry = FieldCorrectionState & {
@@ -89,10 +95,20 @@ function toCorrectionBoxBinding(input: {
   debouncerGeneration: number
   response: CorrectionResponse
   operation?: Operation
-}): CorrectionSuggestionBinding {
+  selectionTarget?: { start: number; end: number; text: string }
+}): CorrectionSuggestionBinding | null {
   const operation = ensureEnglishOperation(input.session, input.fullText, input.operation)
-  const start = Math.max(0, input.fullText.lastIndexOf(input.segment))
-  const range = { start, end: start + input.segment.length }
+  let range: { start: number; end: number }
+  if (input.selectionTarget) {
+    range = { start: input.selectionTarget.start, end: input.selectionTarget.end }
+  } else {
+    // Legacy whole-field / context path only. Explicit selection must pass selectionTarget.
+    const start = Math.max(0, input.fullText.lastIndexOf(input.segment))
+    range = { start, end: start + input.segment.length }
+  }
+  if (input.fullText.slice(range.start, range.end) !== input.segment) {
+    return null
+  }
   const box = createBoxSuggestion({
     operation,
     range,
@@ -132,6 +148,12 @@ export type ApplyCorrectionOptions = {
     signal: AbortSignal
   }
   operation?: Operation
+  /** Explicit user selection — write target is this range only. */
+  selectionTarget?: {
+    start: number
+    end: number
+    text: string
+  }
 }
 
 export async function runCorrectionRequest(
@@ -181,7 +203,11 @@ export async function runCorrectionRequest(
     return 'blocked'
   }
 
-  const segment = extractWritingContext(fullText)
+  const segment = options.selectionTarget?.text ?? extractWritingContext(fullText)
+  if (options.selectionTarget) {
+    const liveSlice = fullText.slice(options.selectionTarget.start, options.selectionTarget.end)
+    if (liveSlice !== options.selectionTarget.text) return 'stale'
+  }
   if (!segment.trim()) return 'noop'
   if (!isEligibleForCorrection(segment)) {
     if (presentLocalBoxSuggestion(element, session, fullText, options)) return 'pending'
@@ -198,7 +224,11 @@ export async function runCorrectionRequest(
 
   if (!isCorrectionAiReady(stateManager.correction)) {
     if (presentLocalBoxSuggestion(element, session, fullText, options)) return 'pending'
-    card.setError(mapError('consent_required'))
+    if (mode === 'box' || stateManager.correction.highlights) {
+      card.setError(mapError('consent_required'))
+    } else {
+      card.hide()
+    }
     return 'blocked'
   }
 
@@ -206,9 +236,27 @@ export async function runCorrectionRequest(
     return 'noop'
   }
 
-  if (mode === 'box' || stateManager.correction.highlights) {
+  if (
+    options.fieldState.dismissedSnapshotFullText
+    && options.fieldState.dismissedSnapshotFullText !== fullText
+  ) {
+    options.fieldState.dismissedSnapshotFullText = null
+  }
+
+  // Box: surface a local fix immediately when we can. AI may refine it afterward.
+  // This keeps the tool useful even when the network path fails.
+  const hadLocalReady =
+    mode === 'box'
+    && !isDismissedSnapshot(options.fieldState, fullText)
+    && presentLocalBoxSuggestion(element, session, fullText, options)
+
+  if ((mode === 'box' || stateManager.correction.highlights) && !hadLocalReady) {
+    if (!isDismissedSnapshot(options.fieldState, fullText)) {
+      hideEnglishPipelineSuggestion(session.field.id)
+      card.setAnalyzing()
+    }
+  } else if (hadLocalReady) {
     hideEnglishPipelineSuggestion(session.field.id)
-    card.setAnalyzing()
   }
 
   const active = session.getActiveRequest()
@@ -217,28 +265,56 @@ export async function runCorrectionRequest(
     active?.operation === 'CORRECT' &&
     active.requestId === options.orchestratorLock.requestId
 
-  const acquired = reuseOrchestratorLock
-    ? { ok: true as const, ...options.orchestratorLock! }
-    : session.tryAcquireWrite('CORRECT')
-  if (!acquired.ok) {
-    options.metrics.correction_blocked += 1
-    return 'busy'
-  }
-  if (options.operation && !isOperationCurrent(options.operation, session.getRevision())) {
-    if (!reuseOrchestratorLock) session.releaseWrite('CORRECT', acquired.requestId)
+  // Box only shows a card — holding CORRECT through the network blocks Accept on the
+  // local-first Box (Writing Runtime: mutex is for writes, not for analysis).
+  const holdMutexForNetwork = mode === 'direct' || Boolean(reuseOrchestratorLock)
+
+  let requestId = Date.now()
+  let signal: AbortSignal | undefined = options.operation?.abort.signal
+  let releaseAfterRequest = false
+
+  if (holdMutexForNetwork) {
+    const acquired = reuseOrchestratorLock
+      ? { ok: true as const, ...options.orchestratorLock! }
+      : session.tryAcquireWrite('CORRECT')
+    if (!acquired.ok) {
+      options.metrics.correction_blocked += 1
+      return 'busy'
+    }
+    if (options.operation && !isOperationCurrent(options.operation, session.getRevision())) {
+      if (!reuseOrchestratorLock) session.releaseWrite('CORRECT', acquired.requestId)
+      return 'stale'
+    }
+    requestId = acquired.requestId
+    signal = mergeAbortSignals([acquired.signal, options.operation?.abort.signal])
+    releaseAfterRequest = !reuseOrchestratorLock
+  } else if (options.operation && !isOperationCurrent(options.operation, session.getRevision())) {
     return 'stale'
   }
 
-  const { requestId } = acquired
-  const signal = mergeAbortSignals([acquired.signal, options.operation?.abort.signal])
-  const releaseAfterRequest = !reuseOrchestratorLock
   const remoteRequestId = `${Date.now()}-${requestId}`
+  const pendingBefore = Boolean(
+    options.fieldState.pendingRequestId
+    || (session.getActiveRequest()?.operation === 'CORRECT'),
+  )
   options.fieldState.lastSentText = segment
   options.fieldState.pendingRequestId = remoteRequestId
   options.fieldState.lastCorrectionRequestAt = Date.now()
   session.noteEnglishNetwork(options.fieldState.lastCorrectionRequestAt)
   options.metrics.correction_requests += 1
   options.metrics.correction_ai_calls += 1
+  runtimeTrace({
+    name: 'ENGLISH_HTTP',
+    fieldId: session.field.id,
+    revision: options.operation?.revision ?? session.getRevision(),
+    operationId: options.operation?.operationId,
+    feature: 'english',
+    purpose: options.operation?.purpose,
+    state: 'dispatch',
+    trigger: options.operation?.trigger ?? (commandLocked ? 'shortcut' : 'auto'),
+    localFirst: hadLocalReady,
+    pendingBefore,
+  })
 
   let delivery:
     | {
@@ -249,6 +325,7 @@ export async function runCorrectionRequest(
 
   try {
     const previousText = fullText.slice(0, Math.max(0, fullText.length - segment.length)).slice(-200)
+    const httpStartedAt = Date.now()
     const result = await requestCorrectionRemote(
       remoteRequestId,
       segment,
@@ -260,22 +337,39 @@ export async function runCorrectionRequest(
         fieldId: session.field.id,
         feature: 'english',
         isCurrent: () => {
-          if (signal.aborted) return false
+          if (signal?.aborted) return false
           if (!options.operation) return true
           return isOperationCurrent(options.operation, session.getRevision())
         },
       },
     )
+    runtimeTrace({
+      name: 'ENGLISH_HTTP',
+      fieldId: session.field.id,
+      revision: options.operation?.revision ?? session.getRevision(),
+      operationId: options.operation?.operationId,
+      feature: 'english',
+      purpose: options.operation?.purpose,
+      state: result.ok ? 'ok' : result.aborted ? 'aborted' : 'error',
+      trigger: options.operation?.trigger ?? (commandLocked ? 'shortcut' : 'auto'),
+      localFirst: hadLocalReady,
+      pendingBefore,
+      httpStatus: result.ok ? 200 : result.error,
+      durationMs: Date.now() - httpStartedAt,
+    })
 
-    if (signal.aborted || (options.operation && !isOperationCurrent(options.operation, session.getRevision()))) {
+    if (
+      signal?.aborted
+      || (options.operation && !isOperationCurrent(options.operation, session.getRevision()))
+    ) {
       options.metrics.correction_stale_results += 1
-      invalidateCardSuggestion(options, 'stale')
+      invalidateOwnCardSuggestion(options, remoteRequestId, options.operation?.operationId)
       return options.operation?.state === 'aborted' ? 'aborted' : 'stale'
     }
 
     if (!element.isConnected) {
       options.metrics.correction_stale_results += 1
-      invalidateCardSuggestion(options, 'stale')
+      invalidateOwnCardSuggestion(options, remoteRequestId, options.operation?.operationId)
       return 'stale'
     }
 
@@ -283,7 +377,7 @@ export async function runCorrectionRequest(
     const snapshot = options.operation?.snapshotFullText ?? fullText
     if (currentText !== snapshot) {
       options.metrics.correction_stale_results += 1
-      invalidateCardSuggestion(options, 'stale')
+      invalidateOwnCardSuggestion(options, remoteRequestId, options.operation?.operationId)
       return 'stale'
     }
 
@@ -292,28 +386,34 @@ export async function runCorrectionRequest(
       if (result.error === 'rate_limited') {
         noteAssistRateLimited()
       }
-      const quotaLike =
-        result.error === 'usage_exhausted' ||
-        result.error === 'entitlement_denied' ||
-        result.error === 'consent_required' ||
-        result.error === 'account_required'
-      if (!quotaLike && mode === 'box' && presentLocalBoxSuggestion(element, session, snapshot, options)) {
-        options.fieldState.pendingRequestId = null
-        return 'error'
-      }
-      if (result.error !== 'aborted' && (mode === 'box' || stateManager.correction.highlights)) {
-        card.setError(mapError(result.error))
-      } else {
-        card.hide()
-      }
+      const recovered = recoverFromCorrectionFailure(
+        element,
+        session,
+        snapshot,
+        result.error,
+        options,
+        card,
+        hadLocalReady,
+      )
       options.fieldState.pendingRequestId = null
-      return 'error'
+      return recovered
     }
 
     delivery = { currentText, data: result.data }
   } catch {
     options.metrics.correction_errors += 1
-    return 'error'
+    const snapshot = options.operation?.snapshotFullText ?? fullText
+    const recovered = recoverFromCorrectionFailure(
+      element,
+      session,
+      snapshot,
+      'AI_PROVIDER_ERROR',
+      options,
+      card,
+      hadLocalReady,
+    )
+    options.fieldState.pendingRequestId = null
+    return recovered
   } finally {
     options.fieldState.pendingRequestId = null
     if (releaseAfterRequest) {
@@ -323,7 +423,7 @@ export async function runCorrectionRequest(
 
   if (!delivery) return 'error'
   if (options.operation && !isOperationCurrent(options.operation, session.getRevision())) {
-    invalidateCardSuggestion(options, 'stale')
+    invalidateOwnCardSuggestion(options, remoteRequestId, options.operation.operationId)
     return 'stale'
   }
 
@@ -350,13 +450,15 @@ async function deliverCorrectionResult(
   debouncerGeneration: number,
   data: CorrectionResponse,
   options: ApplyCorrectionOptions,
-): Promise<'committed' | 'noop' | 'pending' | 'stale'> {
+): Promise<'committed' | 'noop' | 'pending' | 'stale' | 'busy'> {
   if (options.operation && !isOperationCurrent(options.operation, session.getRevision())) {
     return 'stale'
   }
   const correctedSegment = data.correctedText
   if (!correctedSegment || correctedSegment === segment) {
     if (presentLocalBoxSuggestion(element, session, currentText, options)) return 'pending'
+    // Keep a local card that was shown before the AI round-trip.
+    if (options.getCard(element).hasReadyCorrection()) return 'pending'
     options.getCard(element).hide()
     return 'noop'
   }
@@ -364,6 +466,12 @@ async function deliverCorrectionResult(
   const mode = stateManager.correction.mode
 
   if (mode === 'box') {
+    if (isDismissedSnapshot(options.fieldState, requestedFullText)) {
+      return 'noop'
+    }
+    if (!mayRefineVisibleBox(options, remoteRequestId, requestedFullText, options.operation?.operationId)) {
+      return 'stale'
+    }
     const binding = toCorrectionBoxBinding({
       session,
       fullText: requestedFullText,
@@ -372,7 +480,9 @@ async function deliverCorrectionResult(
       debouncerGeneration,
       response: { ...data, originalText: segment },
       operation: options.operation,
+      selectionTarget: options.selectionTarget,
     })
+    if (!binding) return 'stale'
     hideEnglishPipelineSuggestion(session.field.id)
     options.getCard(element).setReady(binding)
     options.metrics.correction_card_shown += 1
@@ -389,7 +499,9 @@ async function deliverCorrectionResult(
       debouncerGeneration,
       response: { ...data, originalText: segment },
       operation: options.operation,
+      selectionTarget: options.selectionTarget,
     })
+    if (!binding) return 'stale'
     hideEnglishPipelineSuggestion(session.field.id)
     options.getCard(element).setReady(binding)
     options.metrics.correction_card_shown += 1
@@ -537,6 +649,10 @@ export function dismissCorrectionSuggestion(
   options.metrics.correction_card_dismissed += 1
   if (binding) {
     recordCorrectionRejected(binding.remoteRequestId, binding.segment, binding.response)
+    options.fieldState.dismissedSnapshotFullText =
+      binding.requestedFullText ?? binding.snapshotFullText ?? readFieldText(element)
+  } else {
+    options.fieldState.dismissedSnapshotFullText = readFieldText(element)
   }
   options.getCard(element).hide()
 }
@@ -568,18 +684,40 @@ export async function commitMergedCorrection(
     options.getCard(element).hide()
     return 'stale'
   }
+
+  const selectionTarget = options.selectionTarget
+  if (selectionTarget) {
+    const liveSlice = liveText.slice(selectionTarget.start, selectionTarget.end)
+    if (liveSlice !== selectionTarget.text || selectionTarget.text !== segment) {
+      options.metrics.correction_stale_results += 1
+      options.getCard(element).hide()
+      return 'stale'
+    }
+  }
+
   const authorizedWrite = meta?.authorization
+  const selectionWrite = Boolean(selectionTarget) && !authorizedWrite
   const merged = authorizedWrite
     ? authorizedWrite.replacement
-    : mergeCorrectionIntoField(snapshot, segment, correctedSegment)
-  if (!merged) {
+    : selectionWrite
+      ? correctedSegment
+      : mergeCorrectionIntoField(snapshot, segment, correctedSegment)
+  if (merged == null) {
     options.metrics.correction_stale_results += 1
     options.getCard(element).hide()
     return 'stale'
   }
 
-  const start = authorizedWrite ? authorizedWrite.range.start : 0
-  const end = authorizedWrite ? authorizedWrite.range.end : liveText.length
+  const start = authorizedWrite
+    ? authorizedWrite.range.start
+    : selectionTarget
+      ? selectionTarget.start
+      : 0
+  const end = authorizedWrite
+    ? authorizedWrite.range.end
+    : selectionTarget
+      ? selectionTarget.end
+      : liveText.length
 
   let autoAuthorization = authorizedWrite
   if (!autoAuthorization && meta?.auto === true) {
@@ -666,7 +804,9 @@ export async function commitMergedCorrection(
     }
   }
 
-  options.fieldState.lastCorrectedFor = extractWritingContext(readFieldText(element))
+  options.fieldState.lastCorrectedFor = selectionTarget
+    ? correctedSegment
+    : extractWritingContext(readFieldText(element))
   options.fieldState.lastSentText = options.fieldState.lastCorrectedFor
   if (stateManager.correction.mode === 'box') {
     options.getCard(element).retainAfterApply(readFieldText(element), session.getGeneration())
@@ -707,6 +847,71 @@ export function invalidateCardIfStale(
   }
 }
 
+function isDismissedSnapshot(fieldState: FieldCorrectionState, snapshot: string): boolean {
+  return Boolean(fieldState.dismissedSnapshotFullText && fieldState.dismissedSnapshotFullText === snapshot)
+}
+
+/** True when the visible card is owned by this in-flight request (or still analyzing). */
+function cardOwnedByRequest(
+  card: CorrectionCard | null | undefined,
+  remoteRequestId: string,
+  operationId?: string,
+): boolean {
+  if (!card) return false
+  const binding = card.getBinding()
+  if (!binding) return card.getState() === 'analyzing'
+  if (binding.remoteRequestId === remoteRequestId) return true
+  if (operationId && binding.operationId === operationId) return true
+  return false
+}
+
+/**
+ * AI may refine a ready Box only when it still owns the visible suggestion
+ * (same request/operation) or the card is a local-first preview for the same snapshot.
+ */
+function mayRefineVisibleBox(
+  options: ApplyCorrectionOptions,
+  remoteRequestId: string,
+  requestedFullText: string,
+  operationId?: string,
+): boolean {
+  const card = options.fieldState.card
+  if (!card) return true
+  const state = card.getState()
+  if (state === 'hidden' || state === 'error') return true
+  if (state === 'analyzing') return true
+  if (cardOwnedByRequest(card, remoteRequestId, operationId)) return true
+  const binding = card.getBinding()
+  if (
+    binding
+    && binding.remoteRequestId.startsWith('local-')
+    && binding.snapshotFullText === requestedFullText
+    && (operationId == null || binding.operationId === operationId || binding.operationId != null)
+  ) {
+    // Same-snapshot local preview: AI refinement is allowed when identity still matches.
+    if (options.operation && binding.operationId && binding.operationId !== options.operation.operationId) {
+      return false
+    }
+    if (options.operation && binding.revision != null && binding.revision !== options.operation.revision) {
+      return false
+    }
+    return true
+  }
+  return false
+}
+
+function invalidateOwnCardSuggestion(
+  options: ApplyCorrectionOptions,
+  remoteRequestId: string,
+  operationId?: string,
+): void {
+  if (!cardOwnedByRequest(options.fieldState.card, remoteRequestId, operationId)) {
+    return
+  }
+  options.metrics.correction_card_stale += 1
+  options.fieldState.card?.hide()
+}
+
 function invalidateCardSuggestion(
   options: ApplyCorrectionOptions,
   reason: 'stale' | 'hidden',
@@ -715,6 +920,58 @@ function invalidateCardSuggestion(
     options.metrics.correction_card_stale += 1
   }
   options.fieldState.card?.hide()
+}
+
+function recoverFromCorrectionFailure(
+  element: EditableElement,
+  session: FieldSession,
+  snapshot: string,
+  errorCode: string,
+  options: ApplyCorrectionOptions,
+  card: CorrectionCard,
+  hadLocalReady: boolean,
+): 'pending' | 'error' | 'aborted' {
+  if (errorCode === 'aborted') {
+    if (!hadLocalReady && cardOwnedByRequest(card, options.fieldState.pendingRequestId ?? '', options.operation?.operationId)) {
+      card.hide()
+    }
+    return 'aborted'
+  }
+
+  if (isDismissedSnapshot(options.fieldState, snapshot)) {
+    if (isActionableCorrectionError(errorCode) && (stateManager.correction.mode === 'box' || stateManager.correction.highlights)) {
+      card.setError(mapError(errorCode))
+      return 'error'
+    }
+    return 'error'
+  }
+
+  // Prefer any local improvement over an error card — including partial repairs.
+  if (
+    presentLocalBoxSuggestion(element, session, snapshot, {
+      ...options,
+      allowPartial: true,
+    })
+  ) {
+    return 'pending'
+  }
+
+  // Keep an already-shown local suggestion; never replace it with a failure toast.
+  if (hadLocalReady || card.hasReadyCorrection()) {
+    return 'pending'
+  }
+
+  // Only surface errors the user can act on (sign-in, quota, offline, rate limit).
+  if (
+    isActionableCorrectionError(errorCode) &&
+    (stateManager.correction.mode === 'box' || stateManager.correction.highlights)
+  ) {
+    card.setError(mapError(errorCode))
+    return 'error'
+  }
+
+  card.hide()
+  return 'error'
 }
 
 function mapError(code: string): string {

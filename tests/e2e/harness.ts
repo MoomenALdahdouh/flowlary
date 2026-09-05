@@ -9,6 +9,8 @@ const here = path.resolve(process.cwd(), 'tests/e2e')
 const extensionPath = path.resolve(process.cwd(), 'extension/dist')
 
 function mockEnglishTranslation(text: string): string {
+  if (/فاتورة|الرجاء إرسال/.test(text)) return 'Please send the invoice today.'
+  if (/سأتأخر|الاجتماع/.test(text)) return 'I will be half an hour late to the meeting.'
   if (/موعد/.test(text)) return 'Can you confirm the Thursday appointment?'
   if (/تقرير|أحتاج|هل يمكنك/.test(text)) return 'I need the final report before noon.'
   if (/راح|تيجي|خبرني|استناك|اطلع/.test(text)) {

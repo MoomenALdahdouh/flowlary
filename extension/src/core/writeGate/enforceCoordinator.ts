@@ -65,6 +65,10 @@ export function scheduleEnforceRetry(
     target,
     setTimeout(() => {
       pendingRetry.delete(target)
+      if (isEditableElement(target)) {
+        // Pause elapsed — include the last word under the caret (suggestions box).
+        engine.sessions.getOrCreate(target).requestCommitOpenToken()
+      }
       void runIfEditable(engine, target)
     }, Math.max(0, delayMs)),
   )

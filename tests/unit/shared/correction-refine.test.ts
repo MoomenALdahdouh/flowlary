@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   applyLocalEnglishRepair,
   deriveCorrectionChanges,
+  enrichCorrectionResponseWithExplanations,
+  finalizeCorrectionResponse,
   tightenCorrectionPair,
   validateCorrectionResponse,
 } from '@flowlary/shared'
@@ -63,6 +65,71 @@ describe('validateCorrectionResponse', () => {
     expect(validated!.changes.some((change) => change.original === 'yuo' && change.corrected === 'you')).toBe(true)
     expect(validated!.changes.some((change) => change.original === 'nee' && change.corrected === 'need')).toBe(true)
     expect(validated!.changes.some((change) => change.original === 'hel' && change.corrected === 'help')).toBe(true)
+  })
+})
+
+describe('finalizeCorrectionResponse layout classification', () => {
+  it('keeps layout type when capitalization of the replacement differs', () => {
+    const finalized = finalizeCorrectionResponse('lvpfh', {
+      correctedText: 'Hello',
+      changes: [
+        { type: 'layout', original: 'lvpfh', corrected: 'hello', start: 0, end: 5 },
+      ],
+    })
+    expect(finalized.correctedText).toBe('Hello')
+    expect(finalized.changes).toHaveLength(1)
+    expect(finalized.changes[0]).toMatchObject({
+      type: 'layout',
+      original: 'lvpfh',
+      corrected: 'Hello',
+    })
+    const enriched = enrichCorrectionResponseWithExplanations(finalized)
+    expect(enriched.explanations?.[0]?.category).toBe('layout')
+    expect(enriched.explanations?.[0]?.summary.toLowerCase()).toContain('keyboard')
+  })
+
+  it('keeps layout type when the replacement is a derived diff', () => {
+    const finalized = finalizeCorrectionResponse(
+      'lvpfh',
+      {
+        correctedText: 'hello',
+        changes: [
+          { type: 'layout', original: 'lvpfh', corrected: 'hello', start: 0, end: 5 },
+        ],
+      },
+      applyLocalEnglishRepair,
+    )
+    expect(finalized.changes.some((change) => change.type === 'layout' && change.original === 'lvpfh')).toBe(
+      true,
+    )
+    const enriched = enrichCorrectionResponseWithExplanations(finalized)
+    expect(enriched.explanations?.some((item) => item.category === 'layout')).toBe(true)
+    expect(enriched.explanations?.[0]?.summary.toLowerCase()).toContain('keyboard')
+  })
+
+  it('does not reclassify spelling or wording as layout', () => {
+    const spelling = finalizeCorrectionResponse(
+      'I recieve mail.',
+      {
+        correctedText: 'I receive mail.',
+        changes: [
+          { type: 'spelling', original: 'recieve', corrected: 'receive', start: 2, end: 9 },
+        ],
+      },
+      applyLocalEnglishRepair,
+    )
+    expect(spelling.changes.some((change) => change.type === 'layout')).toBe(false)
+    expect(
+      spelling.changes.some((change) => change.original === 'recieve' && change.type === 'spelling'),
+    ).toBe(true)
+
+    const wording = finalizeCorrectionResponse('make a photo today', {
+      correctedText: 'take a photo today',
+      changes: [
+        { type: 'wording', original: 'make a photo', corrected: 'take a photo', start: 0, end: 12 },
+      ],
+    })
+    expect(wording.changes.some((change) => change.type === 'layout')).toBe(false)
   })
 })
 

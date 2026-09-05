@@ -78,7 +78,6 @@ import {
   getFeedbackAnalyticsEvents,
   getFeedbackConfig,
   getFeedbackEligibility,
-  isFeedbackAdmin,
   listAccountFeedback,
   listAdminFeedbackItems,
   listPublicFeatureRequests,
@@ -108,6 +107,25 @@ import {
   resetProductStatisticsCacheForTests,
 } from '../services/productStatisticsService.ts'
 import { adminListTestimonials, adminUpdateTestimonial } from '../services/testimonialService.ts'
+import {
+  getAdminActivity,
+  getAdminOverview,
+  getAdminSettings,
+  getAdminSubscription,
+  getAdminUsage,
+  getAdminUserDetail,
+  isPlatformAdmin,
+  listAdminSubscriptions,
+  listAdminUsers,
+  parseAdminRangeDays,
+  requireConfirm,
+  resetAdminServicesForTests,
+  restoreAdminUser,
+  revokeAdminUserSessions,
+  searchAdmin,
+  suspendAdminUser,
+} from '../services/adminService.ts'
+import { appendAdminAuditEvent } from '../db/store.ts'
 
 type JsonRecord = Record<string, unknown>
 
@@ -294,7 +312,7 @@ export async function handleHttpRequest(
     return
   }
 
-  if (config.env === 'test' && method === 'POST' && url.pathname === '/__test/reset') {
+  if (process.env.FLOWLARY_ENV === 'test' && method === 'POST' && url.pathname === '/__test/reset') {
     resetRoutesForTests()
     sendJson(res, 200, { ok: true })
     return
@@ -885,7 +903,10 @@ export async function handleHttpRequest(
     if (method === 'POST' && url.pathname === '/api/feedback/dismiss') {
       try {
         const body = await readJsonBody(req, config.maxBodyBytes)
-        const preferences = dismissFeedbackPrompt(accountCtx.account.id, body)
+        const preferences = dismissFeedbackPrompt(accountCtx.account.id, {
+          promptId: body.promptId,
+          action: body.action,
+        })
         sendJson(res, 200, { ok: true, preferences })
       } catch (err) {
         const mapped = err instanceof GatewayError ? err : new GatewayError('AI_INVALID_REQUEST', 'Invalid dismiss', 400, 'feedback')
@@ -993,7 +1014,7 @@ export async function handleHttpRequest(
     }
 
     if (url.pathname.startsWith('/api/feedback/admin')) {
-      if (!isFeedbackAdmin(config, accountCtx.account)) {
+      if (!isPlatformAdmin(config, accountCtx.account)) {
         sendJson(res, 403, errorResponse(new GatewayError('AI_AUTH_FAILED', 'Admin access required', 403, 'feedback-admin')))
         return
       }
@@ -1016,6 +1037,14 @@ export async function handleHttpRequest(
         try {
           const body = await readJsonBody(req, config.maxBodyBytes)
           const item = adminUpdateFeedback(decodeURIComponent(adminItemMatch[1]!), body)
+          appendAdminAuditEvent({
+            action: 'feedback.update',
+            actorAccountId: accountCtx.account.id,
+            actorEmail: accountCtx.account.email,
+            targetType: 'feedback',
+            targetId: decodeURIComponent(adminItemMatch[1]!),
+            metadata: {},
+          })
           sendJson(res, 200, { ok: true, item })
         } catch (err) {
           const mapped = err instanceof GatewayError ? err : new GatewayError('AI_INVALID_REQUEST', 'Could not update feedback', 400, 'feedback-admin')
@@ -1027,10 +1056,11 @@ export async function handleHttpRequest(
         const status = url.searchParams.get('status') ?? undefined
         const type = url.searchParams.get('type') ?? undefined
         const priority = url.searchParams.get('priority') ?? undefined
+        const q = url.searchParams.get('q') ?? undefined
         const limit = Number(url.searchParams.get('limit') ?? '100')
         sendJson(res, 200, {
           ok: true,
-          tickets: adminListSupportTickets({ status, type, priority, limit: Number.isFinite(limit) ? limit : 100 }),
+          tickets: adminListSupportTickets({ status, type, priority, q, limit: Number.isFinite(limit) ? limit : 100 }),
         })
         return
       }
@@ -1051,6 +1081,14 @@ export async function handleHttpRequest(
           try {
             const body = await readJsonBody(req, config.maxBodyBytes)
             const message = adminReplySupportTicket(config, ticketId, body)
+            appendAdminAuditEvent({
+              action: 'support.reply',
+              actorAccountId: accountCtx.account.id,
+              actorEmail: accountCtx.account.email,
+              targetType: 'ticket',
+              targetId: ticketId,
+              metadata: {},
+            })
             sendJson(res, 200, { ok: true, message })
           } catch (err) {
             const mapped = err instanceof GatewayError ? err : new GatewayError('AI_INVALID_REQUEST', 'Could not reply', 400, 'support-admin')
@@ -1062,6 +1100,14 @@ export async function handleHttpRequest(
           try {
             const body = await readJsonBody(req, config.maxBodyBytes)
             const ticket = adminUpdateSupportTicketRecord(ticketId, body)
+            appendAdminAuditEvent({
+              action: 'support.update',
+              actorAccountId: accountCtx.account.id,
+              actorEmail: accountCtx.account.email,
+              targetType: 'ticket',
+              targetId: ticketId,
+              metadata: {},
+            })
             sendJson(res, 200, { ok: true, ticket })
           } catch (err) {
             const mapped = err instanceof GatewayError ? err : new GatewayError('AI_INVALID_REQUEST', 'Could not update ticket', 400, 'support-admin')
@@ -1079,8 +1125,133 @@ export async function handleHttpRequest(
       sendJson(res, 401, errorResponse(new GatewayError('AI_AUTH_FAILED', 'Authentication required', 401, 'admin')))
       return
     }
-    if (!isFeedbackAdmin(config, accountCtx.account)) {
+    if (!isPlatformAdmin(config, accountCtx.account)) {
       sendJson(res, 403, errorResponse(new GatewayError('AI_AUTH_FAILED', 'Admin access required', 403, 'admin')))
+      return
+    }
+    if (method === 'GET' && url.pathname === '/api/admin/session') {
+      sendJson(res, 200, {
+        ok: true,
+        admin: { id: accountCtx.account.id, email: accountCtx.account.email },
+      })
+      return
+    }
+    if (method === 'GET' && url.pathname === '/api/admin/overview') {
+      sendJson(res, 200, { ok: true, overview: getAdminOverview(config, parseAdminRangeDays(url.searchParams.get('rangeDays'))) })
+      return
+    }
+    if (method === 'GET' && url.pathname === '/api/admin/users') {
+      try {
+        sendJson(res, 200, {
+          ok: true,
+          ...listAdminUsers({
+            q: url.searchParams.get('q') ?? undefined,
+            plan: url.searchParams.get('plan') ?? undefined,
+            status: url.searchParams.get('status') ?? undefined,
+            from: url.searchParams.get('from') ?? undefined,
+            to: url.searchParams.get('to') ?? undefined,
+            sort: url.searchParams.get('sort') ?? undefined,
+            page: url.searchParams.get('page') ?? undefined,
+            pageSize: url.searchParams.get('pageSize') ?? undefined,
+          }),
+        })
+      } catch (err) {
+        const mapped = err instanceof GatewayError ? err : new GatewayError('AI_UNAVAILABLE', 'Could not list users', 500, 'admin')
+        sendJson(res, mapped.status, errorResponse(mapped))
+      }
+      return
+    }
+    const userActionMatch = url.pathname.match(/^\/api\/admin\/users\/([^/]+)\/(suspend|restore|revoke-sessions)$/)
+    if (userActionMatch) {
+      const userId = decodeURIComponent(userActionMatch[1]!)
+      const action = userActionMatch[2]
+      try {
+        if (method === 'POST' && action === 'suspend') {
+          const body = await readJsonBody(req, config.maxBodyBytes)
+          const user = suspendAdminUser(config, accountCtx.account, userId, requireConfirm(body))
+          sendJson(res, 200, { ok: true, user })
+          return
+        }
+        if (method === 'POST' && action === 'restore') {
+          const body = await readJsonBody(req, config.maxBodyBytes)
+          const user = restoreAdminUser(config, accountCtx.account, userId, requireConfirm(body))
+          sendJson(res, 200, { ok: true, user })
+          return
+        }
+        if (method === 'POST' && action === 'revoke-sessions') {
+          const body = await readJsonBody(req, config.maxBodyBytes)
+          const result = revokeAdminUserSessions(accountCtx.account, userId, requireConfirm(body))
+          sendJson(res, 200, { ok: true, ...result })
+          return
+        }
+      } catch (err) {
+        const mapped = err instanceof GatewayError ? err : new GatewayError('AI_INVALID_REQUEST', 'Could not update account', 400, 'admin')
+        sendJson(res, mapped.status, errorResponse(mapped))
+        return
+      }
+    }
+    const userMatch = url.pathname.match(/^\/api\/admin\/users\/([^/]+)$/)
+    if (method === 'GET' && userMatch) {
+      try {
+        sendJson(res, 200, { ok: true, user: getAdminUserDetail(config, decodeURIComponent(userMatch[1]!)) })
+      } catch (err) {
+        const mapped = err instanceof GatewayError ? err : new GatewayError('AI_INVALID_REQUEST', 'Account not found', 404, 'admin')
+        sendJson(res, mapped.status, errorResponse(mapped))
+      }
+      return
+    }
+    if (method === 'GET' && url.pathname === '/api/admin/subscriptions') {
+      sendJson(res, 200, {
+        ok: true,
+        ...listAdminSubscriptions(config, {
+          status: url.searchParams.get('status') ?? undefined,
+          q: url.searchParams.get('q') ?? undefined,
+          page: url.searchParams.get('page') ?? undefined,
+          pageSize: url.searchParams.get('pageSize') ?? undefined,
+        }),
+      })
+      return
+    }
+    const subscriptionMatch = url.pathname.match(/^\/api\/admin\/subscriptions\/([^/]+)$/)
+    if (method === 'GET' && subscriptionMatch) {
+      try {
+        sendJson(res, 200, {
+          ok: true,
+          subscription: getAdminSubscription(config, decodeURIComponent(subscriptionMatch[1]!)),
+        })
+      } catch (err) {
+        const mapped = err instanceof GatewayError ? err : new GatewayError('AI_INVALID_REQUEST', 'Subscription not found', 404, 'admin')
+        sendJson(res, mapped.status, errorResponse(mapped))
+      }
+      return
+    }
+    if (method === 'GET' && url.pathname === '/api/admin/usage') {
+      sendJson(res, 200, {
+        ok: true,
+        usage: getAdminUsage({
+          rangeDays: parseAdminRangeDays(url.searchParams.get('rangeDays')),
+          feature: url.searchParams.get('feature') ?? undefined,
+          status: url.searchParams.get('status') ?? undefined,
+          plan: url.searchParams.get('plan') ?? undefined,
+          provider: url.searchParams.get('provider') ?? undefined,
+        }),
+      })
+      return
+    }
+    if (method === 'GET' && url.pathname === '/api/admin/activity') {
+      sendJson(res, 200, { ok: true, ...getAdminActivity(config, {
+        q: url.searchParams.get('q') ?? undefined,
+        page: url.searchParams.get('page') ?? undefined,
+        pageSize: url.searchParams.get('pageSize') ?? undefined,
+      }) })
+      return
+    }
+    if (method === 'GET' && url.pathname === '/api/admin/settings') {
+      sendJson(res, 200, { ok: true, settings: getAdminSettings(config) })
+      return
+    }
+    if (method === 'GET' && url.pathname === '/api/admin/search') {
+      sendJson(res, 200, { ok: true, ...searchAdmin(config, url.searchParams.get('q') ?? '') })
       return
     }
     if (method === 'GET' && url.pathname === '/api/admin/growth/summary') {
@@ -1096,6 +1267,14 @@ export async function handleHttpRequest(
       try {
         const body = await readJsonBody(req, config.maxBodyBytes)
         const item = adminUpdateTestimonial(decodeURIComponent(testimonialMatch[1]!), body)
+        appendAdminAuditEvent({
+          action: 'testimonial.update',
+          actorAccountId: accountCtx.account.id,
+          actorEmail: accountCtx.account.email,
+          targetType: 'testimonial',
+          targetId: decodeURIComponent(testimonialMatch[1]!),
+          metadata: {},
+        })
         sendJson(res, 200, { ok: true, item })
       } catch (err) {
         const mapped = err instanceof GatewayError ? err : new GatewayError('AI_INVALID_REQUEST', 'Could not update testimonial', 400, 'admin')
@@ -1103,6 +1282,8 @@ export async function handleHttpRequest(
       }
       return
     }
+    sendJson(res, 404, errorResponse(new GatewayError('AI_INVALID_REQUEST', 'Not found', 404, 'admin')))
+    return
   }
 
   if (method === 'GET' && url.pathname === '/api/billing/config') {
@@ -1582,6 +1763,7 @@ export function resetRoutesForTests(): void {
   resetAccountLearningSyncForTests()
   resetFeedbackServicesForTests()
   resetProductStatisticsCacheForTests()
+  resetAdminServicesForTests()
   resetStoreForTests()
 }
 

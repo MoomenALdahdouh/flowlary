@@ -45,6 +45,27 @@ describe('unified writing assistant', () => {
     stateManager.translation.shortcutEnabled = true
   })
 
+  it('fixWrongTyping and improveEnglish project independently', () => {
+    applyUserWritingPolicy({
+      helpStyle: 'auto',
+      fixWrongTyping: true,
+      improveEnglish: true,
+      arabicToEnglishMode: false,
+    })
+    applyUserWritingPolicy({ fixWrongTyping: false })
+    expect(resolveWritingPolicy().fixWrongTyping).toBe(false)
+    expect(resolveWritingPolicy().improveEnglish).toBe(true)
+    expect(stateManager.layout.autoEnabled).toBe(false)
+    expect(stateManager.correction.enabled).toBe(true)
+
+    applyUserWritingPolicy({ improveEnglish: false })
+    applyUserWritingPolicy({ fixWrongTyping: true })
+    expect(resolveWritingPolicy().fixWrongTyping).toBe(true)
+    expect(resolveWritingPolicy().improveEnglish).toBe(false)
+    expect(stateManager.layout.autoEnabled).toBe(true)
+    expect(stateManager.correction.enabled).toBe(false)
+  })
+
   it('maps policy onto legacy feature flags', () => {
     applyUserWritingPolicy({
       helpStyle: 'shortcuts_only',

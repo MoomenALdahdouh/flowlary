@@ -136,7 +136,8 @@ export async function fulfillTranslationDecision(
     if (!gated.dispatched) return { ok: false as const, code: 'aborted' as const }
     return gated.value
   }
-  const showBox = stateManager.translation.mode === 'box'
+  // Prefer explicit helpStyle; fall back to projected translation.mode for older sessions.
+  const showBox = policy.helpStyle === 'suggestions' || stateManager.translation.mode === 'box'
   if (showBox) {
     if (operation && !isOperationCurrent(operation, session.getRevision())) {
       session.notePipelineTranslateKey(null)

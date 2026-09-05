@@ -14,13 +14,23 @@ describe('popup error copy', () => {
     expect(humanizePopupError('account_required')).toContain('Sign in')
     expect(humanizePopupError('account_required')).not.toMatch(/Upgrade/i)
     expect(humanizePopupError('auth_failed')).toBe('Please sign in again.')
-    expect(humanizePopupError('account_login_failed')).toBe('Incorrect email or password.')
-    expect(humanizePopupError('account_credentials')).toBe('Incorrect email or password.')
     expect(humanizePopupError('account_duplicate')).toContain('already registered')
     expect(humanizePopupError('invalid_email')).toContain('valid email')
     expect(humanizePopupError('network')).toContain("You're offline")
     expect(humanizePopupError('network')).not.toContain('dev:api')
     expect(humanizePopupError('AI_INVALID_RESPONSE')).toMatch(/try again|could not complete/i)
+  })
+
+  it('keeps credential rejection distinct from transport login failure', () => {
+    const credentials = 'Incorrect email or password.'
+    const transport = 'Could not sign in. Use flowlary.com or check your connection.'
+    expect(humanizePopupError('account_credentials')).toBe(credentials)
+    expect(humanizePopupError('account_login_invalid')).toBe(credentials)
+    expect(humanizePopupError('account_login_failed')).toBe(transport)
+    expect(humanizePopupError('account_login_failed')).not.toBe(credentials)
+    expect(humanizePopupError('network')).toContain("You're offline")
+    expect(humanizePopupError('network')).not.toBe(credentials)
+    expect(humanizePopupError('network')).not.toContain('Incorrect email')
   })
 
   it('does not expose provider internals', () => {

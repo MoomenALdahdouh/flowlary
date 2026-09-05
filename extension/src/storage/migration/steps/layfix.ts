@@ -137,10 +137,7 @@ export async function migrateLayfixLayout(
     }
 
     const existingSettings = await reader.getFlowlarySettings()
-    if (
-      existingSettings.excludedDomains.length === 0 &&
-      legacy.excludedDomains != null
-    ) {
+    if (Array.isArray(legacy.excludedDomains) && existingSettings.excludedDomains.length === 0) {
       const pausedUntil =
         typeof legacy.pausedUntil === 'number' && Number.isFinite(legacy.pausedUntil) && legacy.pausedUntil > 0
           ? legacy.pausedUntil

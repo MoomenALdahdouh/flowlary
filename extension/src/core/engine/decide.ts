@@ -281,9 +281,12 @@ export function decideWriting(
         risk: translation.risk,
       })
     }
-    if (winner && (winner.confidence.class === 'low' || !winner.eligibleForAuto)) {
+    if (
+      context.helpStyle === 'suggestions'
+      || (winner && (winner.confidence.class === 'low' || !winner.eligibleForAuto))
+    ) {
       blocked.push('english_correction')
-      return finish('suggestion', ['downgraded_to_suggestion', 'single_winner_translation'], winner, {
+      return finish('suggestion', ['downgraded_to_suggestion', 'single_winner_translation'], winner ?? null, {
         intent: 'translate',
         hypothesisId: translation.id,
       })

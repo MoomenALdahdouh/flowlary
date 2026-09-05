@@ -6,7 +6,12 @@ import { isBoundaryChar, tokenizeText, type TokenSpan } from '../safety/tokenize
 import { skipReasonForToken } from '../safety/tokenKind.ts'
 import { isArabicWord } from '../../features/layout/layouts/lexicons/ar-words.ts'
 import { isEnglishWord } from '../../features/layout/layouts/lexicons/en-words.ts'
-import { mapLayout, mapLayoutText } from '../../features/layout/layouts/registry.ts'
+import {
+  isSupportedLayout,
+  layoutCharSet,
+  mapLayout,
+  mapLayoutText,
+} from '../../features/layout/layouts/registry.ts'
 import {
   arabicPlausibility,
   englishPlausibility,
@@ -48,6 +53,17 @@ type TokenEval = {
   confirmedAsIs: boolean
 }
 
+function isLayoutCoverageChar(char: string): boolean {
+  return /\p{L}/u.test(char) || AR_LETTER_PUNCT.test(char)
+}
+
+/** Drop glyphs the target layout cannot produce (e.g. § stuck on ما§ → ما). */
+function cleanMappedLayoutForm(mapped: string, target: string): string {
+  if (!mapped || !isSupportedLayout(target)) return mapped
+  const allowed = layoutCharSet(target)
+  return [...mapped].filter((char) => allowed.has(char) || /\s/u.test(char)).join('')
+}
+
 export function layoutMappingCoverage(
   token: string,
   source: string,
@@ -56,7 +72,7 @@ export function layoutMappingCoverage(
   if (!token) return { mapped: null, coverage: 0 }
   const strict = mapLayout(token, source, target)
   if (strict && strict !== token) {
-    const letters = [...token].filter((char) => /\p{L}/u.test(char) || AR_LETTER_PUNCT.test(char))
+    const letters = [...token].filter((char) => isLayoutCoverageChar(char))
     return { mapped: strict, coverage: letters.length > 0 ? 1 : 0 }
   }
   const loose = mapLayoutText(token, source, target)
@@ -66,11 +82,13 @@ export function layoutMappingCoverage(
   for (let i = 0; i < token.length; i += 1) {
     const from = token[i]!
     const to = loose[i]
-    if (from === ' ') continue
+    if (from === ' ' || !isLayoutCoverageChar(from)) continue
     total += 1
     if (to && to !== from) mappedChars += 1
   }
-  return { mapped: loose, coverage: total === 0 ? 0 : mappedChars / total }
+  const cleaned = cleanMappedLayoutForm(loose, target)
+  const mapped = cleaned && cleaned !== token ? cleaned : loose
+  return { mapped, coverage: total === 0 ? 0 : mappedChars / total }
 }
 
 function mappedEnglishQuality(mapped: string): number {
@@ -235,7 +253,9 @@ function evaluateToken(span: TokenSpan, index: number): TokenEval {
     && (knownEnglish || (asIsEn >= 0.58 && asIsEn + 0.04 >= mappedArScore))
   ) {
     vote = 'as_is'
-    confirmedAsIs = knownEnglish || asIsEn >= 0.64
+    // Short Latin crumbs (h, a) must not hard-confirm as English — they often
+    // bridge a wrong-keyboard Arabic run (…ما ا تفعل) and would truncate the span.
+    confirmedAsIs = knownEnglish || (letterCount > 2 && asIsEn >= 0.64)
   }
   if (
     arabic >= 0.75
@@ -359,6 +379,13 @@ function scoreSpan(
   let heuristicScore = 0.2 * coverage + 0.35 * plausibility + sequenceBoost + neighbor + lexiconBonus - 0.2 * asIs
   heuristicScore = Math.max(0, Math.min(0.99, heuristicScore))
 
+  // Latin island after real Arabic (or Arabic island after English) is the classic
+  // wrong-keyboard last-word case — do not treat it as an isolated no-lexicon guess.
+  const targetNeighborSupport = neighbor >= 0.12
+  const isolatedLatinWithoutLexicon = direction === 'en_on_ar'
+    && lexiconBonus < 0.2
+    && !targetNeighborSupport
+
   let risk: HypothesisRisk = 'high'
   if (short && !shiftedLetterGlyph && !punctKeyed) {
     heuristicScore = Math.min(heuristicScore, 0.4)
@@ -371,14 +398,13 @@ function scoreSpan(
     && letterCount >= 3
     && coverage >= 0.85
     && plausibility >= 0.4
-    && (letterCount >= 4 || lexiconBonus >= 0.2)
+    && (letterCount >= 4 || lexiconBonus >= 0.2 || targetNeighborSupport)
   ) {
     const lexiconStrong = lexiconBonus >= 0.2 && letterCount > 2
     const comparative = asIs <= 0.45
       || plausibility >= asIs + 0.08
       || (coverage >= 0.95 && letterCount >= 6 && plausibility >= 0.5)
-    const isolatedLatinWithoutLexicon = direction === 'en_on_ar' && lexiconBonus < 0.2
-    if ((lexiconStrong || comparative) && !isolatedLatinWithoutLexicon) {
+    if ((lexiconStrong || comparative || targetNeighborSupport) && !isolatedLatinWithoutLexicon) {
       risk = 'low'
       heuristicScore = Math.max(heuristicScore, 0.85)
     } else {
@@ -398,6 +424,7 @@ function scoreSpan(
     && plausibility >= 0.4
     && (
       lexiconBonus >= 0.2
+      || targetNeighborSupport
       || plausibility >= 0.68
       || letterCount >= 5 && (asIs <= 0.45 || plausibility >= asIs + 0.08 || (coverage >= 0.95 && letterCount >= 6 && plausibility >= 0.5))
     )

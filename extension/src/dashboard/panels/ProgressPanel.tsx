@@ -5,7 +5,7 @@ import {
   categoryNeedsPractice,
   summarizeProgressRange,
 } from '../../storage/learning/progress.ts'
-import { WRITING_LEARNING_CATEGORIES } from '@flowlary/shared'
+import { INPUT_LEARNING_CATEGORIES, WRITING_LEARNING_CATEGORIES } from '@flowlary/shared'
 import { clearLearningHistory, fetchProgress } from '../../popup/api.ts'
 import { t } from '../../popup/i18n/index.ts'
 import { ConfirmDialog } from '../../ui/shared.tsx'
@@ -72,7 +72,9 @@ export function ProgressPanel({
   const [clearBusy, setClearBusy] = useState(false)
   const [chartRange, setChartRange] = useState<ProgressRange>('all')
   const [view, setView] = useState<'list' | 'type'>('list')
-  const [typeFilter, setTypeFilter] = useState<'all' | (typeof WRITING_LEARNING_CATEGORIES)[number]>('all')
+  const [typeFilter, setTypeFilter] = useState<
+    'all' | (typeof WRITING_LEARNING_CATEGORIES)[number] | (typeof INPUT_LEARNING_CATEGORIES)[number]
+  >('all')
   const [historyFocus, setHistoryFocus] = useState<string | null>(null)
 
   useEffect(() => {
@@ -166,7 +168,7 @@ export function ProgressPanel({
 
   const grouped =
     view === 'type'
-      ? WRITING_LEARNING_CATEGORIES.map((type) => ({
+      ? [...WRITING_LEARNING_CATEGORIES, ...INPUT_LEARNING_CATEGORIES].map((type) => ({
           type,
           items: visibleMistakes.filter((item) => item.category === type),
         })).filter((group) => group.items.length > 0)
@@ -329,6 +331,19 @@ export function ProgressPanel({
                 }}
               >
                 {categoryLabel(type)} · {rangeSummary.byType[type]}
+              </button>
+            ))}
+            {INPUT_LEARNING_CATEGORIES.map((type) => (
+              <button
+                key={type}
+                type="button"
+                className={`fl-history-filter${typeFilter === type ? ' is-active' : ''}`}
+                onClick={() => {
+                  setTypeFilter(type)
+                  setHistoryFocus(null)
+                }}
+              >
+                {categoryLabel(type)} · {metrics.byType[type]}
               </button>
             ))}
           </div>

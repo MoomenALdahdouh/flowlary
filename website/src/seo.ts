@@ -128,6 +128,54 @@ export const PAGE_META: Record<AppRoute, PageMeta> = {
       'Internal Flowlary feedback inbox for reviewing user feedback, feature requests, and support tickets.',
     robots: 'noindex, nofollow',
   },
+  '/admin': {
+    path: '/admin',
+    title: `Admin · ${SITE_NAME}`,
+    description: 'Internal Flowlary administration for accounts, billing, usage, and support activity.',
+    robots: 'noindex, nofollow',
+  },
+  '/admin/login': {
+    path: '/admin/login',
+    title: `Admin sign in · ${SITE_NAME}`,
+    description: 'Sign in with a Flowlary administrator email and password to open the internal admin panel.',
+    robots: 'noindex, nofollow',
+  },
+  '/admin/users': {
+    path: '/admin/users',
+    title: `Admin users · ${SITE_NAME}`,
+    description: 'Internal directory of Flowlary accounts, entitlements, and account status.',
+    robots: 'noindex, nofollow',
+  },
+  '/admin/subscriptions': {
+    path: '/admin/subscriptions',
+    title: `Admin subscriptions · ${SITE_NAME}`,
+    description: 'Internal view of Paddle subscription records mirrored into Flowlary.',
+    robots: 'noindex, nofollow',
+  },
+  '/admin/usage': {
+    path: '/admin/usage',
+    title: `Admin usage · ${SITE_NAME}`,
+    description: 'Internal AI usage and credit consumption for the Flowlary platform.',
+    robots: 'noindex, nofollow',
+  },
+  '/admin/support': {
+    path: '/admin/support',
+    title: `Admin support · ${SITE_NAME}`,
+    description: 'Internal inbox for Flowlary support tickets and follow-up replies.',
+    robots: 'noindex, nofollow',
+  },
+  '/admin/activity': {
+    path: '/admin/activity',
+    title: `Admin activity · ${SITE_NAME}`,
+    description: 'Internal audit trail of admin actions, signups, and billing webhook events.',
+    robots: 'noindex, nofollow',
+  },
+  '/admin/settings': {
+    path: '/admin/settings',
+    title: `Admin settings · ${SITE_NAME}`,
+    description: 'Internal operational status for billing, providers, and feature availability.',
+    robots: 'noindex, nofollow',
+  },
   '/guide': {
     path: '/guide',
     title: `Tutorial · ${SITE_NAME}`,
@@ -181,8 +229,21 @@ export function canonicalUrl(path: string): string {
   return `${SITE_URL}${path}`
 }
 
+function adminFallbackMeta(normalized: string): PageMeta | null {
+  if (normalized !== '/admin' && !normalized.startsWith('/admin/')) return null
+  const exact = PAGE_META[normalized as AppRoute]
+  if (exact) return exact
+  return {
+    ...PAGE_META['/admin'],
+    path: normalized,
+    title: `Admin · ${SITE_NAME}`,
+  }
+}
+
 export function resolveMeta(pathname: string): PageMeta {
   const normalized = pathname.endsWith('/') && pathname !== '/' ? pathname.slice(0, -1) : pathname
+  const adminMeta = adminFallbackMeta(normalized)
+  if (adminMeta) return adminMeta
   if (normalized.startsWith('/blog/')) {
     const slug = normalized.slice('/blog/'.length)
     const post = BLOG_POSTS.find((item) => item.slug === slug)
@@ -263,6 +324,14 @@ const SEO_PATH: Record<string, keyof Messages['pages']['seo']> = {
   '/account/forgot-password': 'forgot',
   '/account/reset-password': 'reset',
   '/admin/feedback': 'adminFeedback',
+  '/admin': 'admin',
+  '/admin/login': 'adminLogin',
+  '/admin/users': 'admin',
+  '/admin/subscriptions': 'admin',
+  '/admin/usage': 'admin',
+  '/admin/support': 'admin',
+  '/admin/activity': 'admin',
+  '/admin/settings': 'admin',
 }
 
 export function resolveLocalizedMeta(pathname: string, pages: Messages['pages']): PageMeta {
@@ -285,6 +354,10 @@ export function resolveLocalizedMeta(pathname: string, pages: Messages['pages'])
   const key = SEO_PATH[normalized]
   if (key) {
     const loc = pages.seo[key]
+    return { ...base, title: loc.title, description: loc.description }
+  }
+  if (normalized.startsWith('/admin/') && !(normalized in PAGE_META)) {
+    const loc = pages.seo.admin
     return { ...base, title: loc.title, description: loc.description }
   }
   if (!PAGE_META[normalized as AppRoute]) {
